@@ -15,8 +15,9 @@ export const BottomNav: React.FC = () => {
   const location = useLocation();
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 bg-card/95 backdrop-blur-xl border-t border-border z-50 pb-[env(safe-area-inset-bottom)]">
-      <div className="flex items-center justify-around px-2 pt-2 pb-1">
+    <nav className="fixed bottom-0 left-0 right-0 z-50 px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2 sm:px-6">
+      <div className="mx-auto max-w-7xl">
+        <div className="mx-auto flex w-full items-center justify-around rounded-[22px] border border-border/80 bg-card/95 px-2 pt-2 pb-1 shadow-[var(--shadow-md)] backdrop-blur-xl sm:max-w-max sm:gap-2 sm:px-3">
         {navItems.map((item) => {
           const isActive = location.pathname === item.to;
           
@@ -24,7 +25,7 @@ export const BottomNav: React.FC = () => {
             <NavLink
               key={item.to}
               to={item.to}
-              className="relative flex flex-col items-center gap-1 py-2 px-3 min-w-[56px]"
+              className="relative flex min-w-[56px] flex-col items-center gap-1 px-3 py-2 sm:min-w-[76px]"
             >
               {isActive && (
                 <motion.div
@@ -48,6 +49,7 @@ export const BottomNav: React.FC = () => {
             </NavLink>
           );
         })}
+        </div>
       </div>
     </nav>
   );

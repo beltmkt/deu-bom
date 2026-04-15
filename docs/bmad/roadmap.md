@@ -5,6 +5,12 @@
 - Validar visualmente Dashboard e Transactions em uso real.
 - Verificar se exclusao e edicao de recorrencias se mantem corretas apos reload.
 - Revisar textos com encoding quebrado e normalizar copy.
+- Revisar Budgets, Analytics, Leisure e Settings com foco em:
+  - responsividade desktop
+  - simplificacao de cards
+  - clareza hierarquica
+  - coerencia entre abas
+- Criar base compartilhada de layout para reduzir repeticao de estrutura.
 
 ## Proximo
 

@@ -20,8 +20,10 @@ import {
   Calendar,
   Mail,
 } from 'lucide-react';
+import { AppShell } from '@/components/AppShell';
 import { BottomNav } from '@/components/BottomNav';
 import { CurrencyInput } from '@/components/CurrencyInput';
+import { PageIntro } from '@/components/PageIntro';
 import { formatCurrency } from '@/utils/currency';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
@@ -728,10 +730,14 @@ const Leisure: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background pb-24">
+    <AppShell>
       {/* Header */}
-      <header className="sticky top-0 bg-background/80 backdrop-blur-xl z-30 px-4 py-4 border-b border-border/50">
-        <div className="flex items-center justify-between">
+      <PageIntro
+        eyebrow="Festômetro"
+        title="Planejamento e rateio de eventos"
+        description="Uma área prática para estimar consumo, organizar participantes e acompanhar custos do começo ao fim."
+      >
+        <div className="grid gap-3 lg:grid-cols-[1fr_auto] lg:items-center">
           <div>
             <h1 className="text-2xl font-bold">Festômetro</h1>
             <p className="text-sm text-muted-foreground">Calcule e organize seus eventos</p>
@@ -739,7 +745,7 @@ const Leisure: React.FC = () => {
         </div>
         
         {/* View Mode Tabs */}
-        <div className="flex gap-2 mt-4 p-1 bg-muted rounded-xl">
+        <div className="flex gap-2 mt-4 rounded-xl bg-muted p-1">
           <button
             onClick={() => setViewMode('calculator')}
             className={`flex-1 py-2 px-4 rounded-lg font-medium transition-all flex items-center justify-center gap-2 ${
@@ -763,9 +769,9 @@ const Leisure: React.FC = () => {
             Eventos ({events.length})
           </button>
         </div>
-      </header>
+      </PageIntro>
 
-      <main className="px-4 py-6 space-y-6">
+      <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-4 py-6 sm:px-6 lg:px-8">
         {viewMode === 'calculator' ? (
           // Calculator View
           !showCalculatorResult ? (
@@ -1443,7 +1449,7 @@ const Leisure: React.FC = () => {
             )}
           </>
         )}
-      </main>
+      </div>
 
       {/* Item Form Modal */}
       <AnimatePresence>
@@ -1699,7 +1705,7 @@ const Leisure: React.FC = () => {
       />
 
       <BottomNav />
-    </div>
+    </AppShell>
   );
 };
 

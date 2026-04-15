@@ -1,9 +1,8 @@
 import React, { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { X, ChevronDown } from 'lucide-react';
-import { useFinanceStore, useCategories } from '@/stores/financeStore';
+import { AnimatePresence, motion } from 'framer-motion';
+import { ChevronDown, Circle, PiggyBank, X, icons } from 'lucide-react';
+import { useCategories, useFinanceStore } from '@/stores/financeStore';
 import { CurrencyInput } from './CurrencyInput';
-import * as Icons from 'lucide-react';
 
 interface BudgetFormProps {
   isOpen: boolean;
@@ -18,8 +17,8 @@ export const BudgetForm: React.FC<BudgetFormProps> = ({ isOpen, onClose }) => {
   const [limit, setLimit] = useState(0);
   const [showCategoryPicker, setShowCategoryPicker] = useState(false);
 
-  const expenseCategories = categories.filter((c) => c.type === 'expense');
-  const selectedCategory = categories.find((c) => c.id === categoryId);
+  const expenseCategories = categories.filter((category) => category.type === 'expense');
+  const selectedCategory = categories.find((category) => category.id === categoryId);
 
   const handleSubmit = () => {
     if (!categoryId || !limit) return;
@@ -29,9 +28,10 @@ export const BudgetForm: React.FC<BudgetFormProps> = ({ isOpen, onClose }) => {
     setLimit(0);
   };
 
-  const CategoryIcon = selectedCategory?.icon
-    ? (Icons as any)[selectedCategory.icon] || Icons.Circle
-    : Icons.Circle;
+  const CategoryIcon =
+    (selectedCategory?.icon
+      ? icons[selectedCategory.icon as keyof typeof icons]
+      : undefined) || Circle;
 
   if (!isOpen) return null;
 
@@ -41,7 +41,7 @@ export const BudgetForm: React.FC<BudgetFormProps> = ({ isOpen, onClose }) => {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50"
+        className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm"
         onClick={onClose}
       >
         <motion.div
@@ -49,40 +49,48 @@ export const BudgetForm: React.FC<BudgetFormProps> = ({ isOpen, onClose }) => {
           animate={{ y: 0 }}
           exit={{ y: '100%' }}
           transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-          onClick={(e) => e.stopPropagation()}
-          className="absolute bottom-0 left-0 right-0 bg-card rounded-t-3xl overflow-hidden"
+          onClick={(event) => event.stopPropagation()}
+          className="absolute bottom-0 left-0 right-0 mx-auto max-h-[90vh] max-w-2xl overflow-hidden rounded-t-[28px] bg-card"
         >
-          {/* Header */}
-          <div className="sticky top-0 bg-card border-b border-border p-4 flex items-center justify-between z-10">
-            <h2 className="text-lg font-semibold">Novo Orçamento</h2>
+          <div className="flex items-center justify-between border-b border-border p-4">
+            <div className="flex items-center gap-3">
+              <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-primary/10">
+                <PiggyBank className="h-5 w-5 text-primary" />
+              </div>
+              <div>
+                <h2 className="text-lg font-semibold">Novo orçamento</h2>
+                <p className="text-sm text-muted-foreground">
+                  Defina um limite simples para acompanhar a categoria.
+                </p>
+              </div>
+            </div>
+
             <button
               onClick={onClose}
-              className="touch-btn w-10 h-10 rounded-full bg-muted flex items-center justify-center"
+              className="touch-btn h-10 rounded-full bg-muted px-3 text-muted-foreground"
             >
-              <X className="w-5 h-5" />
+              <X className="h-5 w-5" />
             </button>
           </div>
 
-          {/* Content */}
-          <div className="p-4 pb-32">
-            {/* Category */}
-            <div className="mb-6">
-              <label className="block text-sm font-medium text-muted-foreground mb-2">
+          <div className="space-y-6 px-4 pt-4 pb-32">
+            <div>
+              <label className="mb-2 block text-sm font-medium text-muted-foreground">
                 Categoria
               </label>
               <button
-                onClick={() => setShowCategoryPicker(!showCategoryPicker)}
-                className="w-full px-4 py-4 rounded-xl bg-input border border-border flex items-center justify-between"
+                onClick={() => setShowCategoryPicker((current) => !current)}
+                className="flex w-full items-center justify-between rounded-2xl border border-border bg-input px-4 py-4"
               >
                 <div className="flex items-center gap-3">
                   {selectedCategory ? (
                     <>
                       <div
-                        className="w-10 h-10 rounded-full flex items-center justify-center"
-                        style={{ backgroundColor: selectedCategory.color + '20' }}
+                        className="flex h-10 w-10 items-center justify-center rounded-2xl"
+                        style={{ backgroundColor: `${selectedCategory.color}20` }}
                       >
                         <CategoryIcon
-                          className="w-5 h-5"
+                          className="h-5 w-5"
                           style={{ color: selectedCategory.color }}
                         />
                       </div>
@@ -93,70 +101,69 @@ export const BudgetForm: React.FC<BudgetFormProps> = ({ isOpen, onClose }) => {
                   )}
                 </div>
                 <ChevronDown
-                  className={`w-5 h-5 transition-transform ${
+                  className={`h-5 w-5 transition-transform ${
                     showCategoryPicker ? 'rotate-180' : ''
                   }`}
                 />
               </button>
 
               <AnimatePresence>
-                {showCategoryPicker && (
+                {showCategoryPicker ? (
                   <motion.div
                     initial={{ height: 0, opacity: 0 }}
                     animate={{ height: 'auto', opacity: 1 }}
                     exit={{ height: 0, opacity: 0 }}
                     className="overflow-hidden"
                   >
-                    <div className="grid grid-cols-4 gap-2 mt-3 p-3 bg-muted rounded-xl max-h-48 overflow-y-auto">
-                      {expenseCategories.map((cat) => {
-                        const Icon = (Icons as any)[cat.icon] || Icons.Circle;
+                    <div className="mt-3 grid max-h-56 grid-cols-2 gap-2 overflow-y-auto rounded-2xl bg-muted p-3 sm:grid-cols-3">
+                      {expenseCategories.map((category) => {
+                        const Icon =
+                          icons[category.icon as keyof typeof icons] || Circle;
+
                         return (
                           <button
-                            key={cat.id}
+                            key={category.id}
                             onClick={() => {
-                              setCategoryId(cat.id);
+                              setCategoryId(category.id);
                               setShowCategoryPicker(false);
                             }}
-                            className={`
-                              flex flex-col items-center gap-2 p-3 rounded-xl transition-all
-                              ${categoryId === cat.id ? 'bg-card shadow-md' : 'hover:bg-card/50'}
-                            `}
+                            className={`rounded-2xl p-3 text-left transition-colors ${
+                              categoryId === category.id
+                                ? 'bg-card shadow-[var(--shadow-sm)]'
+                                : 'hover:bg-card/50'
+                            }`}
                           >
                             <div
-                              className="w-10 h-10 rounded-full flex items-center justify-center"
-                              style={{ backgroundColor: cat.color + '20' }}
+                              className="mb-3 flex h-10 w-10 items-center justify-center rounded-2xl"
+                              style={{ backgroundColor: `${category.color}20` }}
                             >
-                              <Icon className="w-5 h-5" style={{ color: cat.color }} />
+                              <Icon className="h-5 w-5" style={{ color: category.color }} />
                             </div>
-                            <span className="text-xs text-center truncate w-full">
-                              {cat.name}
-                            </span>
+                            <p className="truncate text-sm font-medium">{category.name}</p>
                           </button>
                         );
                       })}
                     </div>
                   </motion.div>
-                )}
+                ) : null}
               </AnimatePresence>
             </div>
 
-            {/* Limit */}
-            <div className="mb-6">
-              <label className="block text-sm font-medium text-muted-foreground mb-2">
-                Limite Mensal
+            <div>
+              <label className="mb-2 block text-sm font-medium text-muted-foreground">
+                Limite mensal
               </label>
               <CurrencyInput value={limit} onChange={setLimit} />
             </div>
           </div>
 
-          {/* Sticky footer */}
           <div className="modal-footer-sticky">
             <button
               onClick={handleSubmit}
               disabled={!categoryId || !limit}
-              className="w-full py-4 rounded-xl font-semibold text-lg bg-primary text-primary-foreground disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full rounded-2xl bg-primary py-4 text-lg font-semibold text-primary-foreground disabled:cursor-not-allowed disabled:opacity-50"
             >
-              Salvar Orçamento
+              Salvar orçamento
             </button>
           </div>
         </motion.div>

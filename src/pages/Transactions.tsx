@@ -113,8 +113,8 @@ const Transactions: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-background pb-24">
-      <header className="sticky top-0 z-30 border-b border-border/50 bg-background/88 px-4 py-4 backdrop-blur-xl">
-        <div className="rounded-[28px] border border-border/60 bg-card p-5 shadow-[var(--shadow-sm)]">
+      <header className="sticky top-0 z-30 border-b border-border/50 bg-background/88 px-4 py-4 backdrop-blur-xl sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-7xl rounded-[28px] border border-border/60 bg-card p-5 shadow-[var(--shadow-sm)]">
           <div className="mb-5 flex items-start justify-between gap-4">
             <div>
               <p className="mb-2 text-xs font-semibold uppercase tracking-[0.24em] text-primary">
@@ -205,7 +205,7 @@ const Transactions: React.FC = () => {
         </AnimatePresence>
       </header>
 
-      <main className="space-y-6 px-4 py-6">
+      <main className="mx-auto max-w-7xl space-y-6 px-4 py-6 sm:px-6 lg:px-8">
         <section className="grid grid-cols-3 gap-3">
           <div className="rounded-2xl border border-income/20 bg-income/10 p-4 text-center">
             <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">

@@ -1,38 +1,41 @@
-import React, { useRef, useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
-  Download,
-  Upload,
   Bell,
-  ChevronRight,
-  LogOut,
-  Loader2,
-  Users,
-  Edit2,
   Check,
-  X,
-  UserPlus,
-  Mail,
-  Eye,
+  ChevronRight,
+  Download,
   Edit,
-  User,
+  Edit2,
+  Eye,
   FileSpreadsheet,
-  Sun,
-  Moon,
+  Loader2,
+  LogOut,
+  Mail,
   Monitor,
+  Moon,
+  ShieldCheck,
+  Sun,
+  Upload,
+  User,
+  UserPlus,
+  Users,
+  X,
 } from 'lucide-react';
+import { AppShell } from '@/components/AppShell';
 import { BottomNav } from '@/components/BottomNav';
-import { useFinanceStore, useSettings, useFinanceLoading } from '@/stores/financeStore';
-import { useAuth } from '@/hooks/useAuth';
-import { useWorkspace } from '@/hooks/useWorkspace';
-import { useTheme } from '@/hooks/useTheme';
-import { toast } from 'sonner';
-import { WorkspaceInviteModal } from '@/components/WorkspaceInviteModal';
+import { PageIntro } from '@/components/PageIntro';
 import { ProfileEditModal } from '@/components/ProfileEditModal';
+import { SurfaceCard } from '@/components/SurfaceCard';
+import { WorkspaceInviteModal } from '@/components/WorkspaceInviteModal';
+import { useFinanceStore, useSettings } from '@/stores/financeStore';
+import { useAuth } from '@/hooks/useAuth';
+import { useTheme } from '@/hooks/useTheme';
+import { useWorkspace } from '@/hooks/useWorkspace';
+import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 
 const Settings: React.FC = () => {
   const settings = useSettings();
-  const loading = useFinanceLoading();
   const { exportData, importData, updateSettings, initialize, initialized } = useFinanceStore();
   const { user, signOut } = useAuth();
   const { currentWorkspace, members, userRole, inviteUser, refreshWorkspace } = useWorkspace();
@@ -45,19 +48,11 @@ const Settings: React.FC = () => {
   const [isEditingWorkspaceName, setIsEditingWorkspaceName] = useState(false);
   const [workspaceNameInput, setWorkspaceNameInput] = useState('');
   const [isSavingWorkspaceName, setIsSavingWorkspaceName] = useState(false);
-  
-  // Profile data
-  const [profileData, setProfileData] = useState<{ displayName: string; email: string }>({ 
-    displayName: '', 
-    email: '' 
-  });
-  
-  // Quick invite states
+  const [profileData, setProfileData] = useState({ displayName: '', email: '' });
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviteRole, setInviteRole] = useState<'editor' | 'viewer'>('viewer');
   const [isInviting, setIsInviting] = useState(false);
 
-  // Load profile data
   useEffect(() => {
     if (!initialized) {
       initialize();
@@ -67,13 +62,13 @@ const Settings: React.FC = () => {
   useEffect(() => {
     const loadProfile = async () => {
       if (!user) return;
-      
+
       const { data } = await supabase
         .from('profiles')
         .select('display_name, email')
         .eq('id', user.id)
         .maybeSingle();
-      
+
       if (data) {
         setProfileData({
           displayName: data.display_name || '',
@@ -81,7 +76,7 @@ const Settings: React.FC = () => {
         });
       }
     };
-    
+
     loadProfile();
   }, [user]);
 
@@ -101,12 +96,12 @@ const Settings: React.FC = () => {
     const data = exportData();
     const blob = new Blob([data], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `financas-${new Date().toISOString().split('T')[0]}.json`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = `financas-${new Date().toISOString().split('T')[0]}.json`;
+    document.body.appendChild(anchor);
+    anchor.click();
+    document.body.removeChild(anchor);
     URL.revokeObjectURL(url);
     toast.success('Dados exportados com sucesso!');
   };
@@ -114,29 +109,28 @@ const Settings: React.FC = () => {
   const handleExportCSV = () => {
     const state = useFinanceStore.getState();
     const categories = state.categories;
-    
-    const headers = ['Data', 'Descrição', 'Categoria', 'Tipo', 'Valor', 'Status'];
-    const rows = state.transactions.map((t) => {
-      const category = categories.find((c) => c.id === t.categoryId);
+    const headers = ['Data', 'Descricao', 'Categoria', 'Tipo', 'Valor', 'Status'];
+    const rows = state.transactions.map((transaction) => {
+      const category = categories.find((item) => item.id === transaction.categoryId);
       return [
-        t.date,
-        t.title,
+        transaction.date,
+        transaction.title,
         category?.name || '',
-        t.type === 'income' ? 'Receita' : 'Despesa',
-        t.amount.toFixed(2).replace('.', ','),
-        t.status === 'completed' ? 'Concluído' : 'Pendente',
+        transaction.type === 'income' ? 'Receita' : 'Despesa',
+        transaction.amount.toFixed(2).replace('.', ','),
+        transaction.status === 'completed' ? 'Concluido' : 'Pendente',
       ];
     });
 
     const csv = [headers, ...rows].map((row) => row.join(';')).join('\n');
     const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `financas-${new Date().toISOString().split('T')[0]}.csv`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = `financas-${new Date().toISOString().split('T')[0]}.csv`;
+    document.body.appendChild(anchor);
+    anchor.click();
+    document.body.removeChild(anchor);
     URL.revokeObjectURL(url);
     toast.success('Dados exportados em CSV!');
   };
@@ -146,8 +140,8 @@ const Settings: React.FC = () => {
     if (!file) return;
 
     const reader = new FileReader();
-    reader.onload = async (e) => {
-      const content = e.target?.result as string;
+    reader.onload = async (loadEvent) => {
+      const content = loadEvent.target?.result as string;
       const success = await importData(content);
       if (success) {
         toast.success('Dados importados com sucesso!');
@@ -156,18 +150,17 @@ const Settings: React.FC = () => {
       }
     };
     reader.readAsText(file);
-    
-    // Reset input
+
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
   };
 
   const handleDownloadTemplate = () => {
-    const headers = ['Data', 'Descrição', 'Categoria', 'Tipo', 'Valor', 'Status'];
+    const headers = ['Data', 'Descricao', 'Categoria', 'Tipo', 'Valor', 'Status'];
     const exampleRows = [
-      ['2025-01-15', 'Salário', 'Salário', 'Receita', '5000,00', 'Concluído'],
-      ['2025-01-16', 'Supermercado', 'Alimentação', 'Despesa', '350,50', 'Concluído'],
+      ['2025-01-15', 'Salario', 'Salario', 'Receita', '5000,00', 'Concluido'],
+      ['2025-01-16', 'Supermercado', 'Alimentacao', 'Despesa', '350,50', 'Concluido'],
       ['2025-01-20', 'Conta de Luz', 'Contas', 'Despesa', '180,00', 'Pendente'],
       ['2025-01-25', 'Freelance', 'Renda Extra', 'Receita', '1200,00', 'Pendente'],
     ];
@@ -175,22 +168,26 @@ const Settings: React.FC = () => {
     const csv = [headers, ...exampleRows].map((row) => row.join(';')).join('\n');
     const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'modelo-importacao.csv';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = 'modelo-importacao.csv';
+    document.body.appendChild(anchor);
+    anchor.click();
+    document.body.removeChild(anchor);
     URL.revokeObjectURL(url);
     toast.success('Modelo baixado! Preencha e importe.');
   };
 
   const getRoleLabel = (role: string | null) => {
     switch (role) {
-      case 'owner': return 'Proprietário';
-      case 'editor': return 'Editor';
-      case 'viewer': return 'Visualizador';
-      default: return 'Usuário';
+      case 'owner':
+        return 'Proprietario';
+      case 'editor':
+        return 'Editor';
+      case 'viewer':
+        return 'Visualizador';
+      default:
+        return 'Usuario';
     }
   };
 
@@ -201,17 +198,17 @@ const Settings: React.FC = () => {
 
   const handleSaveWorkspaceName = async () => {
     if (!currentWorkspace || !workspaceNameInput.trim()) return;
-    
+
     setIsSavingWorkspaceName(true);
     try {
       const { error } = await supabase.rpc('update_workspace_name', {
         ws_id: currentWorkspace.id,
-        new_name: workspaceNameInput.trim()
+        new_name: workspaceNameInput.trim(),
       });
-      
+
       if (error) throw error;
-      
-      toast.success('Nome do espaço atualizado!');
+
+      toast.success('Nome do espaco atualizado!');
       setIsEditingWorkspaceName(false);
       await refreshWorkspace();
     } catch (error: any) {
@@ -223,7 +220,7 @@ const Settings: React.FC = () => {
 
   const handleQuickInvite = async () => {
     if (!inviteEmail.trim()) return;
-    
+
     setIsInviting(true);
     try {
       await inviteUser(inviteEmail.trim(), inviteRole);
@@ -237,367 +234,381 @@ const Settings: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background pb-24">
-      {/* Header */}
-      <header className="sticky top-0 bg-background/80 backdrop-blur-xl z-30 px-4 py-4 border-b border-border/50">
-        <h1 className="text-2xl font-bold">Configurações</h1>
-      </header>
+    <AppShell>
+      <PageIntro
+        eyebrow="Configurações"
+        title="Conta, equipe e preferências"
+        description="Central de administração do ambiente, com foco em clareza, segurança e manutenção do dia a dia."
+      />
 
-      <main className="px-4 py-6 space-y-6">
-        {/* Team/Workspace Section */}
-        <section className="bg-card border border-border rounded-2xl overflow-hidden">
-          <h3 className="font-semibold p-4 border-b border-border">Equipe</h3>
-          
-          <div className="p-4 space-y-4">
-            {/* Current Workspace Info with Edit */}
-            <div className="p-4 bg-muted rounded-xl">
-              <p className="text-sm text-muted-foreground mb-1">Espaço atual</p>
-              {isEditingWorkspaceName ? (
-                <div className="flex items-center gap-2">
-                  <input
-                    type="text"
-                    value={workspaceNameInput}
-                    onChange={(e) => setWorkspaceNameInput(e.target.value)}
-                    className="flex-1 px-3 py-2 rounded-lg bg-input border border-border text-foreground"
-                    autoFocus
-                  />
-                  <button
-                    onClick={handleSaveWorkspaceName}
-                    disabled={isSavingWorkspaceName}
-                    className="w-10 h-10 rounded-lg bg-primary flex items-center justify-center"
-                  >
-                    {isSavingWorkspaceName ? (
-                      <Loader2 className="w-5 h-5 text-primary-foreground animate-spin" />
-                    ) : (
-                      <Check className="w-5 h-5 text-primary-foreground" />
-                    )}
-                  </button>
-                  <button
-                    onClick={() => setIsEditingWorkspaceName(false)}
-                    className="w-10 h-10 rounded-lg bg-muted-foreground/20 flex items-center justify-center"
-                  >
-                    <X className="w-5 h-5" />
-                  </button>
-                </div>
-              ) : (
-                <div className="flex items-center justify-between">
-                  <p className="font-medium">{currentWorkspace?.name || 'Carregando...'}</p>
-                  {userRole === 'owner' && (
+      <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
+        <div className="space-y-6">
+          <SurfaceCard className="overflow-hidden p-0">
+            <h3 className="border-b border-border p-4 font-semibold">Equipe</h3>
+            <div className="space-y-4 p-4">
+              <div className="rounded-2xl bg-muted p-4">
+                <p className="mb-1 text-sm text-muted-foreground">Espaço atual</p>
+                {isEditingWorkspaceName ? (
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      value={workspaceNameInput}
+                      onChange={(event) => setWorkspaceNameInput(event.target.value)}
+                      className="flex-1 rounded-lg border border-border bg-input px-3 py-2 text-foreground"
+                      autoFocus
+                    />
                     <button
-                      onClick={handleStartEditWorkspaceName}
-                      className="p-2 rounded-lg hover:bg-background/50 transition-colors"
+                      onClick={handleSaveWorkspaceName}
+                      disabled={isSavingWorkspaceName}
+                      className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary"
                     >
-                      <Edit2 className="w-4 h-4 text-muted-foreground" />
+                      {isSavingWorkspaceName ? (
+                        <Loader2 className="h-5 w-5 animate-spin text-primary-foreground" />
+                      ) : (
+                        <Check className="h-5 w-5 text-primary-foreground" />
+                      )}
                     </button>
-                  )}
-                </div>
-              )}
-              <p className="text-xs text-muted-foreground mt-2">
-                Seu nível de acesso: <span className="font-medium text-primary">{getRoleLabel(userRole)}</span>
-              </p>
-            </div>
+                    <button
+                      onClick={() => setIsEditingWorkspaceName(false)}
+                      className="flex h-10 w-10 items-center justify-center rounded-lg bg-muted-foreground/20"
+                    >
+                      <X className="h-5 w-5" />
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="font-medium">{currentWorkspace?.name || 'Carregando...'}</p>
+                    {userRole === 'owner' ? (
+                      <button
+                        onClick={handleStartEditWorkspaceName}
+                        className="rounded-lg p-2 transition-colors hover:bg-background/50"
+                      >
+                        <Edit2 className="h-4 w-4 text-muted-foreground" />
+                      </button>
+                    ) : null}
+                  </div>
+                )}
+                <p className="mt-2 text-xs text-muted-foreground">
+                  Seu nível de acesso:{' '}
+                  <span className="font-medium text-primary">{getRoleLabel(userRole)}</span>
+                </p>
+              </div>
 
-            {/* Quick Invite Form - Only for owners */}
-            {userRole === 'owner' && (
-              <div className="p-4 bg-primary/5 border border-primary/10 rounded-xl space-y-3">
-                <h4 className="font-medium flex items-center gap-2">
-                  <UserPlus className="w-4 h-4 text-primary" />
-                  Convidar Membro
-                </h4>
-                <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                  <input
-                    type="email"
-                    value={inviteEmail}
-                    onChange={(e) => setInviteEmail(e.target.value)}
-                    placeholder="email@exemplo.com"
-                    className="w-full pl-10 pr-4 py-3 rounded-xl bg-input border border-border text-foreground placeholder:text-muted-foreground text-sm"
-                  />
-                </div>
-                <div className="grid grid-cols-2 gap-2 p-1 bg-muted rounded-xl">
+              {userRole === 'owner' ? (
+                <div className="space-y-3 rounded-2xl border border-primary/10 bg-primary/5 p-4">
+                  <h4 className="flex items-center gap-2 font-medium">
+                    <UserPlus className="h-4 w-4 text-primary" />
+                    Convidar membro
+                  </h4>
+                  <div className="relative">
+                    <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                    <input
+                      type="email"
+                      value={inviteEmail}
+                      onChange={(event) => setInviteEmail(event.target.value)}
+                      placeholder="email@exemplo.com"
+                      className="w-full rounded-xl border border-border bg-input py-3 pl-10 pr-4 text-sm text-foreground placeholder:text-muted-foreground"
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 rounded-xl bg-muted p-1">
+                    <button
+                      onClick={() => setInviteRole('viewer')}
+                      className={`flex items-center justify-center gap-1 rounded-lg py-2 text-xs font-medium transition-all ${
+                        inviteRole === 'viewer'
+                          ? 'bg-card text-foreground shadow-[var(--shadow-sm)]'
+                          : 'text-muted-foreground'
+                      }`}
+                    >
+                      <Eye className="h-3 w-3" />
+                      Visualizador
+                    </button>
+                    <button
+                      onClick={() => setInviteRole('editor')}
+                      className={`flex items-center justify-center gap-1 rounded-lg py-2 text-xs font-medium transition-all ${
+                        inviteRole === 'editor'
+                          ? 'bg-card text-foreground shadow-[var(--shadow-sm)]'
+                          : 'text-muted-foreground'
+                      }`}
+                    >
+                      <Edit className="h-3 w-3" />
+                      Editor
+                    </button>
+                  </div>
                   <button
-                    onClick={() => setInviteRole('viewer')}
-                    className={`py-2 rounded-lg text-xs font-medium transition-all flex items-center justify-center gap-1 ${
-                      inviteRole === 'viewer'
-                        ? 'bg-card shadow-md text-foreground'
-                        : 'text-muted-foreground'
-                    }`}
+                    onClick={handleQuickInvite}
+                    disabled={!inviteEmail || isInviting}
+                    className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary py-3 text-sm font-semibold text-primary-foreground disabled:opacity-50"
                   >
-                    <Eye className="w-3 h-3" />
-                    Visualizador
-                  </button>
-                  <button
-                    onClick={() => setInviteRole('editor')}
-                    className={`py-2 rounded-lg text-xs font-medium transition-all flex items-center justify-center gap-1 ${
-                      inviteRole === 'editor'
-                        ? 'bg-card shadow-md text-foreground'
-                        : 'text-muted-foreground'
-                    }`}
-                  >
-                    <Edit className="w-3 h-3" />
-                    Editor
+                    {isInviting ? <Loader2 className="h-4 w-4 animate-spin" /> : <UserPlus className="h-4 w-4" />}
+                    Enviar convite
                   </button>
                 </div>
+              ) : null}
+
+              <button
+                onClick={() => setShowInviteModal(true)}
+                className="flex w-full items-center justify-between rounded-2xl bg-muted p-4"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
+                    <Users className="h-5 w-5 text-primary" />
+                  </div>
+                  <div className="text-left">
+                    <p className="font-medium">{members.length} membro{members.length !== 1 ? 's' : ''}</p>
+                    <p className="text-sm text-muted-foreground">
+                      {userRole === 'owner' ? 'Gerenciar equipe' : 'Ver membros'}
+                    </p>
+                  </div>
+                </div>
+                <ChevronRight className="h-5 w-5 text-muted-foreground" />
+              </button>
+
+              <div className="rounded-2xl bg-muted/50 p-3">
+                <p className="text-xs text-muted-foreground">
+                  {userRole === 'owner'
+                    ? 'Como proprietário, você tem acesso total ao ambiente e pode definir permissões da equipe.'
+                    : `Você participa deste espaço como ${getRoleLabel(userRole).toLowerCase()}.`}
+                </p>
+              </div>
+            </div>
+          </SurfaceCard>
+
+          <SurfaceCard className="overflow-hidden p-0">
+            <h3 className="border-b border-border p-4 font-semibold">Aparência</h3>
+            <div className="p-4">
+              <div className="grid grid-cols-3 gap-2 rounded-xl bg-muted p-1">
                 <button
-                  onClick={handleQuickInvite}
-                  disabled={!inviteEmail || isInviting}
-                  className="w-full py-3 rounded-xl bg-primary text-primary-foreground font-semibold flex items-center justify-center gap-2 disabled:opacity-50 text-sm"
+                  onClick={() => setTheme('light')}
+                  className={`flex items-center justify-center gap-2 rounded-lg py-3 text-sm font-medium transition-all ${
+                    theme === 'light'
+                      ? 'bg-card text-foreground shadow-[var(--shadow-sm)]'
+                      : 'text-muted-foreground'
+                  }`}
                 >
-                  {isInviting ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : (
-                    <>
-                      <UserPlus className="w-4 h-4" />
-                      Enviar Convite
-                    </>
-                  )}
+                  <Sun className="h-4 w-4" />
+                  Claro
+                </button>
+                <button
+                  onClick={() => setTheme('dark')}
+                  className={`flex items-center justify-center gap-2 rounded-lg py-3 text-sm font-medium transition-all ${
+                    theme === 'dark'
+                      ? 'bg-card text-foreground shadow-[var(--shadow-sm)]'
+                      : 'text-muted-foreground'
+                  }`}
+                >
+                  <Moon className="h-4 w-4" />
+                  Escuro
+                </button>
+                <button
+                  onClick={() => setTheme('system')}
+                  className={`flex items-center justify-center gap-2 rounded-lg py-3 text-sm font-medium transition-all ${
+                    theme === 'system'
+                      ? 'bg-card text-foreground shadow-[var(--shadow-sm)]'
+                      : 'text-muted-foreground'
+                  }`}
+                >
+                  <Monitor className="h-4 w-4" />
+                  Sistema
                 </button>
               </div>
-            )}
-
-            {/* Members count */}
-            <button
-              onClick={() => setShowInviteModal(true)}
-              className="w-full flex items-center justify-between p-4 bg-muted rounded-xl"
-            >
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-                  <Users className="w-5 h-5 text-primary" />
-                </div>
-                <div className="text-left">
-                  <p className="font-medium">{members.length} membro{members.length !== 1 ? 's' : ''}</p>
-                  <p className="text-sm text-muted-foreground">
-                    {userRole === 'owner' ? 'Gerenciar equipe' : 'Ver membros'}
-                  </p>
-                </div>
-              </div>
-              <ChevronRight className="w-5 h-5 text-muted-foreground" />
-            </button>
-
-            {/* Info about access */}
-            <div className="p-3 bg-muted/50 rounded-xl">
-              <p className="text-xs text-muted-foreground">
-                {userRole === 'owner' ? (
-                  <>Como proprietário, você tem <strong>acesso total</strong> a todas as funcionalidades. Você pode convidar membros e definir suas permissões.</>
-                ) : (
-                  <>Você foi convidado para este espaço como <strong>{getRoleLabel(userRole)}</strong>. Entre em contato com o proprietário para alterar permissões.</>
-                )}
-              </p>
             </div>
-          </div>
-        </section>
+          </SurfaceCard>
 
-        {/* Theme */}
-        <section className="bg-card border border-border rounded-2xl overflow-hidden">
-          <h3 className="font-semibold p-4 border-b border-border">Aparência</h3>
-          <div className="p-4">
-            <div className="grid grid-cols-3 gap-2 p-1 bg-muted rounded-xl">
+          <SurfaceCard className="overflow-hidden p-0">
+            <h3 className="border-b border-border p-4 font-semibold">Notificações</h3>
+            <div className="p-4">
+              <div className="flex items-center justify-between gap-4">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
+                    <Bell className="h-5 w-5 text-primary" />
+                  </div>
+                  <div>
+                    <p className="font-medium">Lembretes</p>
+                    <p className="text-sm text-muted-foreground">
+                      Receber alertas sobre transações e pendências
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() =>
+                    updateSettings({ notificationsEnabled: !settings.notificationsEnabled })
+                  }
+                  className={`relative h-7 w-12 rounded-full transition-all ${
+                    settings.notificationsEnabled ? 'bg-primary' : 'bg-muted-foreground/30'
+                  }`}
+                >
+                  <div
+                    className={`absolute top-1 h-5 w-5 rounded-full bg-card shadow-md transition-all ${
+                      settings.notificationsEnabled ? 'left-6' : 'left-1'
+                    }`}
+                  />
+                </button>
+              </div>
+            </div>
+          </SurfaceCard>
+        </div>
+
+        <div className="space-y-6">
+          <SurfaceCard>
+            <div className="flex items-start gap-3">
+              <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-primary/10">
+                <ShieldCheck className="h-5 w-5 text-primary" />
+              </div>
+              <div className="w-full">
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                  Panorama
+                </p>
+                <h3 className="mt-1 text-lg font-semibold">Status do ambiente</h3>
+                <div className="mt-4 grid gap-3">
+                  <div className="rounded-2xl bg-muted/50 p-4">
+                    <p className="text-sm text-muted-foreground">Usuário</p>
+                    <p className="mt-1 font-medium">
+                      {profileData.displayName || user?.email || 'Sem identificação'}
+                    </p>
+                  </div>
+                  <div className="rounded-2xl bg-muted/50 p-4">
+                    <p className="text-sm text-muted-foreground">Workspace</p>
+                    <p className="mt-1 font-medium">
+                      {currentWorkspace?.name || 'Sem workspace ativo'}
+                    </p>
+                  </div>
+                  <div className="rounded-2xl bg-muted/50 p-4">
+                    <p className="text-sm text-muted-foreground">Perfil de acesso</p>
+                    <p className="mt-1 font-medium">{getRoleLabel(userRole)}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </SurfaceCard>
+
+          <SurfaceCard className="overflow-hidden p-0">
+            <h3 className="border-b border-border p-4 font-semibold">Dados</h3>
+            <div className="space-y-3 p-4">
               <button
-                onClick={() => setTheme('light')}
-                className={`py-3 rounded-lg text-sm font-medium transition-all flex items-center justify-center gap-2 ${
-                  theme === 'light' ? 'bg-card shadow-md text-foreground' : 'text-muted-foreground'
-                }`}
+                onClick={handleExport}
+                className="flex w-full items-center justify-between rounded-2xl bg-muted p-4"
               >
-                <Sun className="w-4 h-4" />
-                Claro
+                <div className="flex items-center gap-3">
+                  <Download className="h-5 w-5 text-muted-foreground" />
+                  <span>Exportar JSON</span>
+                </div>
+                <ChevronRight className="h-5 w-5 text-muted-foreground" />
               </button>
+
               <button
-                onClick={() => setTheme('dark')}
-                className={`py-3 rounded-lg text-sm font-medium transition-all flex items-center justify-center gap-2 ${
-                  theme === 'dark' ? 'bg-card shadow-md text-foreground' : 'text-muted-foreground'
-                }`}
+                onClick={handleExportCSV}
+                className="flex w-full items-center justify-between rounded-2xl bg-muted p-4"
               >
-                <Moon className="w-4 h-4" />
-                Escuro
+                <div className="flex items-center gap-3">
+                  <Download className="h-5 w-5 text-muted-foreground" />
+                  <span>Exportar CSV</span>
+                </div>
+                <ChevronRight className="h-5 w-5 text-muted-foreground" />
               </button>
+
               <button
-                onClick={() => setTheme('system')}
-                className={`py-3 rounded-lg text-sm font-medium transition-all flex items-center justify-center gap-2 ${
-                  theme === 'system' ? 'bg-card shadow-md text-foreground' : 'text-muted-foreground'
-                }`}
+                onClick={handleDownloadTemplate}
+                className="flex w-full items-center justify-between rounded-2xl border border-primary/10 bg-primary/5 p-4"
               >
-                <Monitor className="w-4 h-4" />
-                Sistema
+                <div className="flex items-center gap-3">
+                  <FileSpreadsheet className="h-5 w-5 text-primary" />
+                  <div className="text-left">
+                    <span className="block">Baixar modelo de planilha</span>
+                    <span className="text-xs text-muted-foreground">Para importar seus dados</span>
+                  </div>
+                </div>
+                <ChevronRight className="h-5 w-5 text-muted-foreground" />
+              </button>
+
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                className="flex w-full items-center justify-between rounded-2xl bg-muted p-4"
+              >
+                <div className="flex items-center gap-3">
+                  <Upload className="h-5 w-5 text-muted-foreground" />
+                  <span>Importar dados</span>
+                </div>
+                <ChevronRight className="h-5 w-5 text-muted-foreground" />
+              </button>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".json"
+                onChange={handleImport}
+                className="hidden"
+              />
+            </div>
+          </SurfaceCard>
+
+          <SurfaceCard className="overflow-hidden p-0">
+            <h3 className="border-b border-border p-4 font-semibold">Minha conta</h3>
+            <div className="space-y-3 p-4">
+              <button
+                onClick={() => setShowProfileModal(true)}
+                className="flex w-full items-center justify-between rounded-2xl bg-muted p-4"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
+                    <User className="h-5 w-5 text-primary" />
+                  </div>
+                  <div className="text-left">
+                    <p className="font-medium">{profileData.displayName || 'Sem nome'}</p>
+                    <p className="max-w-[220px] truncate text-sm text-muted-foreground">
+                      {user?.email}
+                    </p>
+                  </div>
+                </div>
+                <Edit2 className="h-5 w-5 text-muted-foreground" />
+              </button>
+
+              <button
+                onClick={handleSignOut}
+                disabled={isLoggingOut}
+                className="flex w-full items-center justify-between rounded-2xl border border-expense/20 bg-expense/10 p-4 text-expense"
+              >
+                <div className="flex items-center gap-3">
+                  {isLoggingOut ? (
+                    <Loader2 className="h-5 w-5 animate-spin" />
+                  ) : (
+                    <LogOut className="h-5 w-5" />
+                  )}
+                  <span>Sair da conta</span>
+                </div>
               </button>
             </div>
-          </div>
-        </section>
+          </SurfaceCard>
 
-        {/* Notifications */}
-        <section className="bg-card border border-border rounded-2xl overflow-hidden">
-          <h3 className="font-semibold p-4 border-b border-border">Notificações</h3>
-          
-          <div className="p-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-                  <Bell className="w-5 h-5 text-primary" />
-                </div>
-                <div>
-                  <p className="font-medium">Lembretes</p>
-                  <p className="text-sm text-muted-foreground">
-                    Receber alertas de transações
-                  </p>
-                </div>
-              </div>
-              <button
-                onClick={() =>
-                  updateSettings({ notificationsEnabled: !settings.notificationsEnabled })
-                }
-                className={`
-                  w-12 h-7 rounded-full transition-all relative
-                  ${settings.notificationsEnabled ? 'bg-primary' : 'bg-muted-foreground/30'}
-                `}
-              >
-                <div
-                  className={`
-                    absolute top-1 w-5 h-5 rounded-full bg-card shadow-md transition-all
-                    ${settings.notificationsEnabled ? 'left-6' : 'left-1'}
-                  `}
-                />
-              </button>
-            </div>
-          </div>
-        </section>
+          <section className="py-2 text-center">
+            <p className="text-sm text-muted-foreground">DEU BOM!! v1.0</p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Dados sincronizados com a nuvem
+            </p>
+          </section>
+        </div>
+      </div>
 
-        {/* Data Management */}
-        <section className="bg-card border border-border rounded-2xl overflow-hidden">
-          <h3 className="font-semibold p-4 border-b border-border">Dados</h3>
-          
-          <div className="p-4 space-y-3">
-            <button
-              onClick={handleExport}
-              className="w-full flex items-center justify-between p-4 bg-muted rounded-xl"
-            >
-              <div className="flex items-center gap-3">
-                <Download className="w-5 h-5 text-muted-foreground" />
-                <span>Exportar JSON</span>
-              </div>
-              <ChevronRight className="w-5 h-5 text-muted-foreground" />
-            </button>
-
-            <button
-              onClick={handleExportCSV}
-              className="w-full flex items-center justify-between p-4 bg-muted rounded-xl"
-            >
-              <div className="flex items-center gap-3">
-                <Download className="w-5 h-5 text-muted-foreground" />
-                <span>Exportar CSV</span>
-              </div>
-              <ChevronRight className="w-5 h-5 text-muted-foreground" />
-            </button>
-
-            {/* Template download */}
-            <button
-              onClick={handleDownloadTemplate}
-              className="w-full flex items-center justify-between p-4 bg-primary/5 border border-primary/10 rounded-xl"
-            >
-              <div className="flex items-center gap-3">
-                <FileSpreadsheet className="w-5 h-5 text-primary" />
-                <div className="text-left">
-                  <span className="block">Baixar Modelo de Planilha</span>
-                  <span className="text-xs text-muted-foreground">Para importar seus dados</span>
-                </div>
-              </div>
-              <ChevronRight className="w-5 h-5 text-muted-foreground" />
-            </button>
-
-            <button
-              onClick={() => fileInputRef.current?.click()}
-              className="w-full flex items-center justify-between p-4 bg-muted rounded-xl"
-            >
-              <div className="flex items-center gap-3">
-                <Upload className="w-5 h-5 text-muted-foreground" />
-                <span>Importar Dados</span>
-              </div>
-              <ChevronRight className="w-5 h-5 text-muted-foreground" />
-            </button>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept=".json"
-              onChange={handleImport}
-              className="hidden"
-            />
-          </div>
-        </section>
-
-        {/* Account Section */}
-        <section className="bg-card border border-border rounded-2xl overflow-hidden">
-          <h3 className="font-semibold p-4 border-b border-border">Minha Conta</h3>
-          
-          <div className="p-4 space-y-3">
-            {/* Profile info */}
-            <button
-              onClick={() => setShowProfileModal(true)}
-              className="w-full flex items-center justify-between p-4 bg-muted rounded-xl"
-            >
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-                  <User className="w-5 h-5 text-primary" />
-                </div>
-                <div className="text-left">
-                  <p className="font-medium">{profileData.displayName || 'Sem nome'}</p>
-                  <p className="text-sm text-muted-foreground truncate max-w-[200px]">
-                    {user?.email}
-                  </p>
-                </div>
-              </div>
-              <Edit2 className="w-5 h-5 text-muted-foreground" />
-            </button>
-            
-            <button
-              onClick={handleSignOut}
-              disabled={isLoggingOut}
-              className="w-full flex items-center justify-between p-4 bg-expense/10 text-expense rounded-xl border border-expense/20"
-            >
-              <div className="flex items-center gap-3">
-                {isLoggingOut ? (
-                  <Loader2 className="w-5 h-5 animate-spin" />
-                ) : (
-                  <LogOut className="w-5 h-5" />
-                )}
-                <span>Sair da Conta</span>
-              </div>
-            </button>
-          </div>
-        </section>
-
-        {/* App Info */}
-        <section className="text-center py-4">
-          <p className="text-sm text-muted-foreground">DEU BOM!! v1.0</p>
-          <p className="text-xs text-muted-foreground mt-1">
-            Dados sincronizados com a nuvem
-          </p>
-        </section>
-      </main>
-
-      {/* Bottom Navigation */}
       <BottomNav />
 
-      {/* Workspace Invite Modal */}
       <WorkspaceInviteModal
         isOpen={showInviteModal}
         onClose={() => setShowInviteModal(false)}
       />
 
-      {/* Profile Edit Modal */}
       <ProfileEditModal
         isOpen={showProfileModal}
         onClose={() => setShowProfileModal(false)}
         userId={user?.id}
         initialName={profileData.displayName}
         initialEmail={profileData.email}
-        isOwnProfile={true}
+        isOwnProfile
         onSaved={async () => {
-          // Reload profile data
           if (user) {
             const { data } = await supabase
               .from('profiles')
               .select('display_name, email')
               .eq('id', user.id)
               .maybeSingle();
-            
+
             if (data) {
               setProfileData({
                 displayName: data.display_name || '',
@@ -608,9 +619,8 @@ const Settings: React.FC = () => {
           refreshWorkspace();
         }}
       />
-    </div>
+    </AppShell>
   );
 };
-
 
 export default Settings;

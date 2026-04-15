@@ -1,17 +1,26 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
+import { Circle, PieChart, Wallet, icons } from 'lucide-react';
+import { endOfMonth, format, isWithinInterval, parseISO, startOfMonth } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
+import { AppShell } from '@/components/AppShell';
+import { BottomNav } from '@/components/BottomNav';
 import { BudgetCard } from '@/components/BudgetCard';
 import { BudgetForm } from '@/components/BudgetForm';
-import { BottomNav } from '@/components/BottomNav';
-import { useTransactions, useCategories, useFinanceStore, useFinanceLoading } from '@/stores/financeStore';
+import { EmptyState } from '@/components/EmptyState';
+import { PageIntro } from '@/components/PageIntro';
+import { SurfaceCard } from '@/components/SurfaceCard';
+import {
+  useCategories,
+  useFinanceLoading,
+  useFinanceStore,
+  useTransactions,
+} from '@/stores/financeStore';
 import { formatCurrency } from '@/utils/currency';
-import { startOfMonth, endOfMonth, isWithinInterval, parseISO, format } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
-import * as Icons from 'lucide-react';
 
 const Budgets: React.FC = () => {
   const [isBudgetFormOpen, setIsBudgetFormOpen] = useState(false);
-  
+
   const transactions = useTransactions();
   const categories = useCategories();
   const loading = useFinanceLoading();
@@ -24,133 +33,159 @@ const Budgets: React.FC = () => {
     }
   }, [initialize, initialized]);
 
-  // Get spending by category for current month
   const now = new Date();
   const monthStart = startOfMonth(now);
   const monthEnd = endOfMonth(now);
 
-  const categorySpending = categories
-    .filter((c) => c.type === 'expense')
-    .map((category) => {
-      const spent = transactions
-        .filter(
-          (t) =>
-            t.categoryId === category.id &&
-            t.type === 'expense' &&
-            t.status === 'completed' &&
-            isWithinInterval(parseISO(t.date), { start: monthStart, end: monthEnd })
-        )
-        .reduce((acc, t) => acc + t.amount, 0);
+  const categorySpending = useMemo(() => {
+    return categories
+      .filter((category) => category.type === 'expense')
+      .map((category) => {
+        const spent = transactions
+          .filter(
+            (transaction) =>
+              transaction.categoryId === category.id &&
+              transaction.type === 'expense' &&
+              transaction.status === 'completed' &&
+              isWithinInterval(parseISO(transaction.date), { start: monthStart, end: monthEnd })
+          )
+          .reduce((total, transaction) => total + transaction.amount, 0);
 
-      return { category, spent };
-    })
-    .filter((cs) => cs.spent > 0)
-    .sort((a, b) => b.spent - a.spent);
+        return { category, spent };
+      })
+      .filter((item) => item.spent > 0)
+      .sort((first, second) => second.spent - first.spent);
+  }, [categories, transactions, monthStart, monthEnd]);
 
-  const totalSpent = categorySpending.reduce((acc, cs) => acc + cs.spent, 0);
+  const totalSpent = categorySpending.reduce((total, item) => total + item.spent, 0);
+
+  if (loading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background">
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen bg-background pb-24">
-      {/* Header */}
-      <header className="sticky top-0 bg-background/80 backdrop-blur-xl z-30 px-4 py-4 border-b border-border/50">
-        <h1 className="text-2xl font-bold">Orçamento</h1>
-        <p className="text-sm text-muted-foreground capitalize">
+    <AppShell>
+      <PageIntro
+        eyebrow="Orçamento"
+        title="Controle por limite e categoria"
+        description="Uma visão mais objetiva do uso do dinheiro por categoria, com foco em evitar excessos."
+      >
+        <p className="text-sm capitalize text-muted-foreground">
           {format(now, "MMMM 'de' yyyy", { locale: ptBR })}
         </p>
-      </header>
+      </PageIntro>
 
-      <main className="px-4 py-6 space-y-6">
-        {/* Budget Cards */}
-        <BudgetCard onAddBudget={() => setIsBudgetFormOpen(true)} />
+      <BudgetCard onAddBudget={() => setIsBudgetFormOpen(true)} />
 
-        {/* Category breakdown */}
-        <section>
-          <h3 className="font-semibold text-lg mb-4">Gastos por Categoria</h3>
+      <section className="grid gap-4 xl:grid-cols-[1.15fr_0.85fr]">
+        <SurfaceCard>
+          <div className="mb-4 flex items-center gap-2">
+            <PieChart className="h-5 w-5 text-primary" />
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                Distribuição
+              </p>
+              <h2 className="mt-1 text-lg font-semibold">Gastos por categoria</h2>
+            </div>
+          </div>
 
           {categorySpending.length === 0 ? (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="bg-card border border-dashed border-border rounded-2xl p-6 text-center"
-            >
-              <Icons.PieChart className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-              <h4 className="font-semibold mb-2">Sem gastos este mês</h4>
-              <p className="text-sm text-muted-foreground">
-                Adicione transações para ver a distribuição
-              </p>
-            </motion.div>
+            <EmptyState
+              icon={PieChart}
+              title="Sem gastos neste mês"
+              description="Assim que as despesas forem registradas, a distribuição por categoria aparece aqui."
+              className="border-none bg-transparent px-0 py-10"
+            />
           ) : (
             <div className="space-y-3">
-              {categorySpending.map((cs, index) => {
-                const Icon = (Icons as any)[cs.category.icon] || Icons.Circle;
-                const percentage = (cs.spent / totalSpent) * 100;
+              {categorySpending.map((item, index) => {
+                const Icon =
+                  icons[item.category.icon as keyof typeof icons] || Circle;
+                const percentage = (item.spent / totalSpent) * 100;
 
                 return (
                   <motion.div
-                    key={cs.category.id}
-                    initial={{ opacity: 0, x: -20 }}
+                    key={item.category.id}
+                    initial={{ opacity: 0, x: -12 }}
                     animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: index * 0.05 }}
-                    className="bg-card border border-border rounded-xl p-4"
+                    transition={{ delay: index * 0.04 }}
+                    className="rounded-2xl bg-muted/50 p-4"
                   >
-                    <div className="flex items-center justify-between mb-3">
+                    <div className="mb-3 flex items-center justify-between gap-3">
                       <div className="flex items-center gap-3">
                         <div
-                          className="w-10 h-10 rounded-full flex items-center justify-center"
-                          style={{ backgroundColor: cs.category.color + '20' }}
+                          className="flex h-10 w-10 items-center justify-center rounded-2xl"
+                          style={{ backgroundColor: `${item.category.color}20` }}
                         >
-                          <Icon
-                            className="w-5 h-5"
-                            style={{ color: cs.category.color }}
-                          />
+                          <Icon className="h-5 w-5" style={{ color: item.category.color }} />
                         </div>
-                        <span className="font-medium">{cs.category.name}</span>
+                        <span className="font-medium">{item.category.name}</span>
                       </div>
                       <div className="text-right">
-                        <p className="font-mono font-semibold">
-                          {formatCurrency(cs.spent)}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          {percentage.toFixed(1)}%
-                        </p>
+                        <p className="font-mono font-semibold">{formatCurrency(item.spent)}</p>
+                        <p className="text-xs text-muted-foreground">{percentage.toFixed(1)}%</p>
                       </div>
                     </div>
 
-                    {/* Progress bar */}
-                    <div className="h-2 bg-muted rounded-full overflow-hidden">
+                    <div className="h-2 overflow-hidden rounded-full bg-background/80">
                       <motion.div
                         initial={{ width: 0 }}
                         animate={{ width: `${percentage}%` }}
-                        transition={{ duration: 0.5, delay: index * 0.1 }}
+                        transition={{ duration: 0.45, delay: index * 0.05 }}
                         className="h-full rounded-full"
-                        style={{ backgroundColor: cs.category.color }}
+                        style={{ backgroundColor: item.category.color }}
                       />
                     </div>
                   </motion.div>
                 );
               })}
-
-              {/* Total */}
-              <div className="bg-muted rounded-xl p-4 flex items-center justify-between">
-                <span className="font-medium">Total</span>
-                <span className="font-mono font-bold text-lg">
-                  {formatCurrency(totalSpent)}
-                </span>
-              </div>
             </div>
           )}
-        </section>
-      </main>
+        </SurfaceCard>
 
-      {/* Bottom Navigation */}
-      <BottomNav />
+        <SurfaceCard>
+          <div className="mb-4 flex items-center gap-2">
+            <Wallet className="h-5 w-5 text-primary" />
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                Resumo
+              </p>
+              <h2 className="mt-1 text-lg font-semibold">Leitura rápida do mês</h2>
+            </div>
+          </div>
 
-      {/* Budget Form Modal */}
+          <div className="space-y-4">
+            <div className="rounded-2xl bg-muted/50 p-4">
+              <p className="text-sm text-muted-foreground">Total gasto no mês</p>
+              <p className="mt-1 text-2xl font-semibold">{formatCurrency(totalSpent)}</p>
+            </div>
+
+            <div className="rounded-2xl bg-muted/50 p-4">
+              <p className="text-sm text-muted-foreground">Categorias com movimento</p>
+              <p className="mt-1 text-2xl font-semibold">{categorySpending.length}</p>
+            </div>
+
+            <div className="rounded-2xl border border-border/70 bg-background/60 p-4">
+              <p className="text-sm font-medium">Uso sugerido</p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Use esta aba para perceber rápido onde os gastos estão se concentrando e ajustar limites antes de estourar o mês.
+              </p>
+            </div>
+          </div>
+        </SurfaceCard>
+      </section>
+
       <BudgetForm
         isOpen={isBudgetFormOpen}
         onClose={() => setIsBudgetFormOpen(false)}
       />
-    </div>
+
+      <BottomNav />
+    </AppShell>
   );
 };
 

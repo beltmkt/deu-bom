@@ -24,6 +24,13 @@
 - Dashboard e Transactions redesenhadas com identidade distinta.
 - Utilitarios compartilhados de agrupamento e resumo para reduzir duplicidade.
 
+## Frente atual em andamento
+
+- Revisao visual e funcional de todas as abas.
+- Criacao de uma linguagem mais minimalista, coerente e responsiva para desktop e mobile.
+- Consolidacao de headers, cards, grids e estados vazios para diminuir poluicao visual.
+- Ajuste das paginas secundarias para manter identidade propria sem quebrar simplicidade.
+
 ## Pontos de atencao
 
 - Alguns textos antigos ainda aparecem com encoding inconsistente em partes do projeto.
