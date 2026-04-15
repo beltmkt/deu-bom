@@ -1,12 +1,11 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Check, Clock, Trash2 } from 'lucide-react';
+import { Check, Circle, Clock, Trash2, icons } from 'lucide-react';
 import { useSwipeable } from 'react-swipeable';
 import { useFinanceStore, useCategoryById } from '@/stores/financeStore';
 import { formatCurrency } from '@/utils/currency';
 import { getRelativeDate } from '@/utils/dates';
 import type { Transaction } from '@/types/finance';
-import * as Icons from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { TransactionDeleteModal } from '@/components/TransactionDeleteModal';
 
@@ -78,9 +77,8 @@ export const TransactionCard: React.FC<TransactionCardProps> = ({ transaction, o
     }
   };
 
-  const IconComponent = category?.icon 
-    ? (Icons as any)[category.icon] || Icons.Circle
-    : Icons.Circle;
+  const IconComponent =
+    (category?.icon ? icons[category.icon as keyof typeof icons] : undefined) || Circle;
 
   const isIncome = transaction.type === 'income';
   const isPending = transaction.status === 'pending';

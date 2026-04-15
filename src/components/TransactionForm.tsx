@@ -1,6 +1,16 @@
-import React, { useState, useEffect } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Calendar, ChevronDown, CalendarPlus, Download } from 'lucide-react';
+import {
+  X,
+  Calendar,
+  ChevronDown,
+  CalendarPlus,
+  Download,
+  Check,
+  Circle,
+  Clock,
+  icons,
+} from 'lucide-react';
 import { format, addMonths, addWeeks, addYears } from 'date-fns';
 import { useFinanceStore, useCategories } from '@/stores/financeStore';
 import { CurrencyInput } from './CurrencyInput';
@@ -8,7 +18,6 @@ import { openGoogleCalendar } from '@/utils/googleCalendar';
 import { downloadCalendarFile } from '@/utils/calendarFile';
 import { toast } from 'sonner';
 import type { Transaction, TransactionType, RecurrenceType, RecurrenceInterval } from '@/types/finance';
-import * as Icons from 'lucide-react';
 import { TransactionUpdateModal } from '@/components/TransactionDeleteModal';
 
 type EndConditionType = 'never' | 'date' | 'occurrences';
@@ -48,7 +57,6 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
   const [installments, setInstallments] = useState(2);
   
   const [showCategoryPicker, setShowCategoryPicker] = useState(false);
-  const [showUpdateOptions, setShowUpdateOptions] = useState(false);
   const [showUpdateScopeModal, setShowUpdateScopeModal] = useState(false);
   const [pendingUpdateData, setPendingUpdateData] = useState<Record<string, unknown> | null>(null);
   const [showSuccessActions, setShowSuccessActions] = useState(false);
@@ -62,6 +70,24 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
 
   const filteredCategories = categories.filter(c => c.type === type);
   const selectedCategory = categories.find(c => c.id === categoryId);
+
+  const resetForm = useCallback(() => {
+    setType(defaultType);
+    setTitle('');
+    setAmount(0);
+    setCategoryId('');
+    setDate(format(new Date(), 'yyyy-MM-dd'));
+    setNotes('');
+    setStatus('pending');
+    setRecurrenceType('none');
+    setInstallments(2);
+    setRecurrenceInterval('monthly');
+    setEndCondition('occurrences');
+    setOccurrences(12);
+    setEndDate(format(addMonths(new Date(), 12), 'yyyy-MM-dd'));
+    setShowSuccessActions(false);
+    setLastSavedTransaction(null);
+  }, [defaultType]);
 
   useEffect(() => {
     if (editTransaction) {
@@ -79,31 +105,13 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
     } else {
       resetForm();
     }
-  }, [editTransaction, isOpen]);
+  }, [editTransaction, isOpen, resetForm]);
 
   useEffect(() => {
     if (!editTransaction && filteredCategories.length > 0 && !categoryId) {
       setCategoryId(filteredCategories[0].id);
     }
   }, [type, filteredCategories, categoryId, editTransaction]);
-
-  const resetForm = () => {
-    setType(defaultType);
-    setTitle('');
-    setAmount(0);
-    setCategoryId('');
-    setDate(format(new Date(), 'yyyy-MM-dd'));
-    setNotes('');
-    setStatus('pending');
-    setRecurrenceType('none');
-    setInstallments(2);
-    setRecurrenceInterval('monthly');
-    setEndCondition('occurrences');
-    setOccurrences(12);
-    setEndDate(format(addMonths(new Date(), 12), 'yyyy-MM-dd'));
-    setShowSuccessActions(false);
-    setLastSavedTransaction(null);
-  };
 
   const calculateOccurrencesFromDate = (): number => {
     const start = new Date(date);
@@ -149,7 +157,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
         setShowUpdateScopeModal(true);
         return;
       }
-      await updateTransaction(editTransaction.id, transactionData, updateFuture);
+      await updateTransaction(editTransaction.id, transactionData, updateFuture, updateAll);
       toast.success('Transação atualizada!');
       onClose();
       resetForm();
@@ -189,20 +197,12 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
     } else if (scope === 'future') {
       await updateTransaction(editTransaction.id, pendingUpdateData as Partial<Transaction>, true);
     } else {
-      // Update all: update this + future + past
-      await updateTransaction(editTransaction.id, pendingUpdateData as Partial<Transaction>, true);
-      // Also update past ones via group
-      const groupKey = editTransaction.groupId || editTransaction.parentTransactionId;
-      if (groupKey) {
-        const pastTransactions = useFinanceStore.getState().transactions.filter(
-          (t) => (t.groupId === groupKey || t.parentTransactionId === groupKey || t.id === groupKey) &&
-                 t.id !== editTransaction.id &&
-                 (t.installmentNumber || 0) < (editTransaction.installmentNumber || 0)
-        );
-        for (const pt of pastTransactions) {
-          await updateTransaction(pt.id, pendingUpdateData as Partial<Transaction>, false);
-        }
-      }
+      await updateTransaction(
+        editTransaction.id,
+        pendingUpdateData as Partial<Transaction>,
+        false,
+        true
+      );
     }
     toast.success('Transação atualizada!');
     setPendingUpdateData(null);
@@ -229,9 +229,10 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
     resetForm();
   };
 
-  const CategoryIcon = selectedCategory?.icon
-    ? (Icons as any)[selectedCategory.icon] || Icons.Circle
-    : Icons.Circle;
+  const CategoryIcon =
+    (selectedCategory?.icon
+      ? icons[selectedCategory.icon as keyof typeof icons]
+      : undefined) || Circle;
 
   if (!isOpen) return null;
 
@@ -256,7 +257,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
           >
             <div className="p-6 text-center">
               <div className="w-16 h-16 rounded-full bg-income/20 flex items-center justify-center mx-auto mb-4">
-                <Icons.Check className="w-8 h-8 text-income" />
+                <Check className="w-8 h-8 text-income" />
               </div>
               <h2 className="text-xl font-semibold mb-2">Transação Salva!</h2>
               <p className="text-muted-foreground mb-6">
@@ -412,7 +413,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
                   >
                     <div className="grid grid-cols-4 gap-2 mt-3 p-3 bg-muted rounded-xl">
                       {filteredCategories.map((cat) => {
-                        const Icon = (Icons as any)[cat.icon] || Icons.Circle;
+                        const Icon = icons[cat.icon as keyof typeof icons] || Circle;
                         return (
                           <button
                             key={cat.id}
@@ -667,7 +668,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
                       }
                     `}
                   >
-                    <Icons.Clock className="w-4 h-4" />
+                    <Clock className="w-4 h-4" />
                     Pendente
                   </button>
                   <button
@@ -680,7 +681,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
                       }
                     `}
                   >
-                    <Icons.Check className="w-4 h-4" />
+                    <Check className="w-4 h-4" />
                     Confirmado
                   </button>
                 </div>

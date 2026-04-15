@@ -1,9 +1,12 @@
 import React, { useMemo } from 'react';
 import { TrendingUp, TrendingDown, Wallet, Clock } from 'lucide-react';
 import { motion } from 'framer-motion';
-import { parseISO, startOfMonth, endOfMonth, isWithinInterval } from 'date-fns';
 import { useTransactions } from '@/stores/financeStore';
 import { formatCurrency } from '@/utils/currency';
+import {
+  filterTransactionsByMonth,
+  summarizeTransactions,
+} from '@/utils/transactionInsights';
 
 interface BalanceCardProps {
   selectedMonth?: Date;
@@ -12,38 +15,13 @@ interface BalanceCardProps {
 export const BalanceCard: React.FC<BalanceCardProps> = ({ selectedMonth = new Date() }) => {
   const transactions = useTransactions();
 
-  // Filter transactions by selected month
   const monthlyTransactions = useMemo(() => {
-    const monthStart = startOfMonth(selectedMonth);
-    const monthEnd = endOfMonth(selectedMonth);
-
-    return transactions.filter((t) => {
-      const date = parseISO(t.date);
-      return isWithinInterval(date, { start: monthStart, end: monthEnd });
-    });
+    return filterTransactionsByMonth(transactions, selectedMonth);
   }, [transactions, selectedMonth]);
-  
-  const totalIncome = monthlyTransactions
-    .filter(t => t.type === 'income' && t.status === 'completed')
-    .reduce((acc, t) => acc + t.amount, 0);
-    
-  const totalExpenses = monthlyTransactions
-    .filter(t => t.type === 'expense' && t.status === 'completed')
-    .reduce((acc, t) => acc + t.amount, 0);
-
-  const currentBalance = totalIncome - totalExpenses;
-
-  const projectedIncome = monthlyTransactions
-    .filter(t => t.type === 'income')
-    .reduce((acc, t) => acc + t.amount, 0);
-
-  const projectedExpenses = monthlyTransactions
-    .filter(t => t.type === 'expense')
-    .reduce((acc, t) => acc + t.amount, 0);
-
-  const projectedBalance = projectedIncome - projectedExpenses;
-
-  const pendingCount = monthlyTransactions.filter(t => t.status === 'pending').length;
+  const summary = useMemo(
+    () => summarizeTransactions(monthlyTransactions),
+    [monthlyTransactions]
+  );
 
   return (
     <div className="space-y-4">
@@ -61,12 +39,12 @@ export const BalanceCard: React.FC<BalanceCardProps> = ({ selectedMonth = new Da
           
           <p className={`
             text-4xl font-bold font-mono currency-display
-            ${currentBalance >= 0 ? 'text-income' : 'text-expense'}
+            ${summary.completedBalance >= 0 ? 'text-income' : 'text-expense'}
           `}>
-            {formatCurrency(currentBalance)}
+            {formatCurrency(summary.completedBalance)}
           </p>
 
-          {pendingCount > 0 && (
+          {summary.pendingCount > 0 && (
             <div className="flex items-center gap-2 mt-4 pt-4 border-t border-border/30">
               <Clock className="w-4 h-4 text-pending" />
               <span className="text-sm text-muted-foreground">
@@ -74,12 +52,12 @@ export const BalanceCard: React.FC<BalanceCardProps> = ({ selectedMonth = new Da
               </span>
               <span className={`
                 font-mono font-medium
-                ${projectedBalance >= 0 ? 'text-income' : 'text-expense'}
+                ${summary.balance >= 0 ? 'text-income' : 'text-expense'}
               `}>
-                {formatCurrency(projectedBalance)}
+                {formatCurrency(summary.balance)}
               </span>
               <span className="text-xs text-pending ml-auto">
-                {pendingCount} pendente{pendingCount > 1 ? 's' : ''}
+                {summary.pendingCount} pendente{summary.pendingCount > 1 ? 's' : ''}
               </span>
             </div>
           )}
@@ -104,7 +82,7 @@ export const BalanceCard: React.FC<BalanceCardProps> = ({ selectedMonth = new Da
             <span className="text-sm text-muted-foreground">Receitas</span>
           </div>
           <p className="text-xl font-bold font-mono text-income">
-            {formatCurrency(totalIncome)}
+            {formatCurrency(summary.completedIncome)}
           </p>
         </motion.div>
 
@@ -121,7 +99,7 @@ export const BalanceCard: React.FC<BalanceCardProps> = ({ selectedMonth = new Da
             <span className="text-sm text-muted-foreground">Despesas</span>
           </div>
           <p className="text-xl font-bold font-mono text-expense">
-            {formatCurrency(totalExpenses)}
+            {formatCurrency(summary.completedExpense)}
           </p>
         </motion.div>
       </div>

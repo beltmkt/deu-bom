@@ -1,13 +1,24 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Plus, TrendingUp, TrendingDown, Loader2, ChevronDown } from 'lucide-react';
-import { format, parseISO, isToday, isTomorrow, isYesterday, startOfMonth, endOfMonth, isWithinInterval } from 'date-fns';
+import {
+  ArrowRight,
+  CalendarClock,
+  CreditCard,
+  Loader2,
+  Plus,
+  TrendingDown,
+  TrendingUp,
+} from 'lucide-react';
+import { format, isToday, isTomorrow, isYesterday, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { Link } from 'react-router-dom';
 import { BalanceCard } from '@/components/BalanceCard';
+import { BottomNav } from '@/components/BottomNav';
+import { MonthSwitcher } from '@/components/MonthSwitcher';
 import { TransactionCard } from '@/components/TransactionCard';
 import { TransactionForm } from '@/components/TransactionForm';
-import { BottomNav } from '@/components/BottomNav';
-import { useTransactions, useFinanceStore, useFinanceLoading } from '@/stores/financeStore';
+import { useFinanceLoading, useFinanceStore, useTransactions } from '@/stores/financeStore';
+import { filterTransactionsByMonth, groupTransactionsByDate, summarizeTransactions } from '@/utils/transactionInsights';
 import type { Transaction, TransactionType } from '@/types/finance';
 
 const Dashboard: React.FC = () => {
@@ -15,7 +26,7 @@ const Dashboard: React.FC = () => {
   const [editTransaction, setEditTransaction] = useState<Transaction | null>(null);
   const [defaultType, setDefaultType] = useState<TransactionType>('expense');
   const [selectedMonth, setSelectedMonth] = useState(new Date());
-  
+
   const transactions = useTransactions();
   const loading = useFinanceLoading();
   const initialize = useFinanceStore((state) => state.initialize);
@@ -27,41 +38,37 @@ const Dashboard: React.FC = () => {
     }
   }, [initialize, initialized]);
 
-  // Filter transactions by selected month
-  const monthlyTransactions = useMemo(() => {
-    const monthStart = startOfMonth(selectedMonth);
-    const monthEnd = endOfMonth(selectedMonth);
+  const monthlyTransactions = useMemo(
+    () => filterTransactionsByMonth(transactions, selectedMonth),
+    [transactions, selectedMonth]
+  );
 
-    return transactions.filter((t) => {
-      const date = parseISO(t.date);
-      return isWithinInterval(date, { start: monthStart, end: monthEnd });
-    });
-  }, [transactions, selectedMonth]);
+  const summary = useMemo(
+    () => summarizeTransactions(monthlyTransactions),
+    [monthlyTransactions]
+  );
 
-  // Group transactions by date
-  const groupedTransactions = useMemo(() => {
-    const sorted = [...monthlyTransactions].sort(
-      (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
-    );
+  const groupedTransactions = useMemo(
+    () => groupTransactionsByDate(monthlyTransactions).slice(0, 6),
+    [monthlyTransactions]
+  );
 
-    const groups: { [key: string]: Transaction[] } = {};
-    
-    sorted.forEach((transaction) => {
-      const dateKey = transaction.date;
-      if (!groups[dateKey]) {
-        groups[dateKey] = [];
-      }
-      groups[dateKey].push(transaction);
-    });
+  const pendingExpenses = useMemo(
+    () =>
+      monthlyTransactions.filter(
+        (transaction) =>
+          transaction.type === 'expense' && transaction.status === 'pending'
+      ).length,
+    [monthlyTransactions]
+  );
 
-    return Object.entries(groups).slice(0, 7); // Show last 7 days with transactions
-  }, [monthlyTransactions]);
+  const formatDateHeader = (dateValue: string) => {
+    const date = parseISO(dateValue);
 
-  const formatDateHeader = (dateStr: string) => {
-    const date = parseISO(dateStr);
     if (isToday(date)) return 'Hoje';
-    if (isTomorrow(date)) return 'Amanhã';
+    if (isTomorrow(date)) return 'Amanha';
     if (isYesterday(date)) return 'Ontem';
+
     return format(date, "EEEE, dd 'de' MMMM", { locale: ptBR });
   };
 
@@ -71,21 +78,19 @@ const Dashboard: React.FC = () => {
     setIsFormOpen(true);
   };
 
-  const handleEditTransaction = (transaction: Transaction) => {
-    setEditTransaction(transaction);
-    setIsFormOpen(true);
-  };
-
   const handleMonthChange = (direction: number) => {
-    setSelectedMonth((prev) => new Date(prev.getFullYear(), prev.getMonth() + direction, 1));
+    setSelectedMonth(
+      (previous) =>
+        new Date(previous.getFullYear(), previous.getMonth() + direction, 1)
+    );
   };
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="flex min-h-screen items-center justify-center bg-background">
         <div className="text-center">
-          <Loader2 className="w-8 h-8 animate-spin text-primary mx-auto mb-4" />
-          <p className="text-muted-foreground">Carregando dados...</p>
+          <Loader2 className="mx-auto mb-4 h-8 w-8 animate-spin text-primary" />
+          <p className="text-muted-foreground">Carregando seu painel...</p>
         </div>
       </div>
     );
@@ -93,81 +98,224 @@ const Dashboard: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-background pb-24">
-      {/* Header */}
-      <header className="sticky top-0 bg-background/80 backdrop-blur-xl z-30 px-4 py-4 border-b border-border/50">
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <h1 className="text-2xl font-bold">Finanças</h1>
-          </div>
-          <div className="flex gap-2">
-            <button
-              onClick={() => handleAddTransaction('income')}
-              className="touch-btn w-12 h-12 rounded-full bg-income/10 flex items-center justify-center border border-income/20"
-            >
-              <TrendingUp className="w-5 h-5 text-income" />
-            </button>
-            <button
-              onClick={() => handleAddTransaction('expense')}
-              className="touch-btn w-12 h-12 rounded-full bg-expense/10 flex items-center justify-center border border-expense/20"
-            >
-              <TrendingDown className="w-5 h-5 text-expense" />
-            </button>
-          </div>
-        </div>
+      <header className="sticky top-0 z-30 border-b border-border/50 bg-background/85 px-4 py-4 backdrop-blur-xl">
+        <div className="rounded-[28px] border border-border/60 bg-card/75 p-5 shadow-[var(--shadow-sm)]">
+          <div className="mb-5 flex items-start justify-between gap-4">
+            <div>
+              <p className="mb-2 text-xs font-semibold uppercase tracking-[0.24em] text-primary">
+                Inicio
+              </p>
+              <h1 className="text-2xl font-semibold">Painel do mes</h1>
+              <p className="mt-1 max-w-xs text-sm text-muted-foreground">
+                Visao rapida do saldo, pendencias e movimentos mais recentes.
+              </p>
+            </div>
 
-        {/* Month selector */}
-        <div className="flex items-center justify-between">
-          <button
-            onClick={() => handleMonthChange(-1)}
-            className="touch-btn w-10 h-10 rounded-full bg-muted flex items-center justify-center"
-          >
-            <ChevronDown className="w-5 h-5 rotate-90" />
-          </button>
-          <span className="font-semibold capitalize">
-            {format(selectedMonth, "MMMM 'de' yyyy", { locale: ptBR })}
-          </span>
-          <button
-            onClick={() => handleMonthChange(1)}
-            className="touch-btn w-10 h-10 rounded-full bg-muted flex items-center justify-center"
-          >
-            <ChevronDown className="w-5 h-5 -rotate-90" />
-          </button>
+            <div className="flex gap-2">
+              <button
+                onClick={() => handleAddTransaction('income')}
+                className="touch-btn h-12 rounded-2xl border border-income/25 bg-income/10 px-4 text-income"
+              >
+                <TrendingUp className="h-5 w-5" />
+              </button>
+              <button
+                onClick={() => handleAddTransaction('expense')}
+                className="touch-btn h-12 rounded-2xl border border-expense/25 bg-expense/10 px-4 text-expense"
+              >
+                <TrendingDown className="h-5 w-5" />
+              </button>
+            </div>
+          </div>
+
+          <MonthSwitcher
+            selectedMonth={selectedMonth}
+            onChange={handleMonthChange}
+          />
         </div>
       </header>
 
-      <main className="px-4 py-6 space-y-6">
-        {/* Balance Card */}
+      <main className="space-y-6 px-4 py-6">
         <BalanceCard selectedMonth={selectedMonth} />
 
-        {/* Recent Transactions */}
+        <section className="grid grid-cols-3 gap-3">
+          <div className="rounded-2xl border border-primary/15 bg-primary/8 p-4">
+            <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
+              Entradas
+            </p>
+            <p className="mt-2 text-2xl font-semibold text-foreground">
+              {monthlyTransactions.filter((transaction) => transaction.type === 'income').length}
+            </p>
+            <p className="mt-1 text-xs text-muted-foreground">receitas no periodo</p>
+          </div>
+
+          <div className="rounded-2xl border border-border bg-card p-4">
+            <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
+              Saidas
+            </p>
+            <p className="mt-2 text-2xl font-semibold text-foreground">
+              {monthlyTransactions.filter((transaction) => transaction.type === 'expense').length}
+            </p>
+            <p className="mt-1 text-xs text-muted-foreground">despesas registradas</p>
+          </div>
+
+          <div className="rounded-2xl border border-pending/20 bg-pending/10 p-4">
+            <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
+              Pendentes
+            </p>
+            <p className="mt-2 text-2xl font-semibold text-foreground">
+              {summary.pendingCount}
+            </p>
+            <p className="mt-1 text-xs text-muted-foreground">movimentos abertos</p>
+          </div>
+        </section>
+
+        <section className="grid gap-4 md:grid-cols-[1.4fr_1fr]">
+          <motion.div
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="rounded-[28px] border border-border bg-card p-5"
+          >
+            <div className="mb-4 flex items-center justify-between">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+                  Proximo foco
+                </p>
+                <h2 className="mt-1 text-lg font-semibold">Ritmo financeiro</h2>
+              </div>
+              <CalendarClock className="h-5 w-5 text-primary" />
+            </div>
+
+            <div className="space-y-3">
+              <div className="flex items-center justify-between rounded-2xl bg-muted/50 px-4 py-3">
+                <div className="flex items-center gap-3">
+                  <div className="rounded-2xl bg-income/15 p-2 text-income">
+                    <TrendingUp className="h-4 w-4" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium">Recebimentos confirmados</p>
+                    <p className="text-xs text-muted-foreground">
+                      o que ja entrou de verdade no caixa
+                    </p>
+                  </div>
+                </div>
+                <span className="font-mono text-sm text-income">
+                  {summary.completedIncome.toLocaleString('pt-BR', {
+                    style: 'currency',
+                    currency: 'BRL',
+                  })}
+                </span>
+              </div>
+
+              <div className="flex items-center justify-between rounded-2xl bg-muted/50 px-4 py-3">
+                <div className="flex items-center gap-3">
+                  <div className="rounded-2xl bg-expense/15 p-2 text-expense">
+                    <CreditCard className="h-4 w-4" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium">Contas pendentes</p>
+                    <p className="text-xs text-muted-foreground">
+                      despesas que ainda podem mexer no saldo
+                    </p>
+                  </div>
+                </div>
+                <span className="text-sm font-semibold text-foreground">
+                  {pendingExpenses}
+                </span>
+              </div>
+
+              <Link
+                to="/transactions"
+                className="flex items-center justify-between rounded-2xl border border-border/70 px-4 py-3 transition-colors hover:bg-muted/40"
+              >
+                <div>
+                  <p className="text-sm font-medium">Abrir central de transacoes</p>
+                  <p className="text-xs text-muted-foreground">
+                    explorar historico, filtros e configuracoes do ciclo
+                  </p>
+                </div>
+                <ArrowRight className="h-4 w-4 text-muted-foreground" />
+              </Link>
+            </div>
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.05 }}
+            className="rounded-[28px] border border-border bg-[linear-gradient(180deg,rgba(16,185,129,0.12),rgba(15,23,42,0.02))] p-5"
+          >
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+              Leitura rapida
+            </p>
+            <h2 className="mt-1 text-lg font-semibold">Resumo executivo</h2>
+            <div className="mt-5 space-y-4">
+              <div>
+                <p className="text-xs text-muted-foreground">Saldo confirmado</p>
+                <p className="mt-1 text-2xl font-semibold">
+                  {summary.completedBalance.toLocaleString('pt-BR', {
+                    style: 'currency',
+                    currency: 'BRL',
+                  })}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Saldo projetado</p>
+                <p className="mt-1 text-lg font-medium text-primary">
+                  {summary.balance.toLocaleString('pt-BR', {
+                    style: 'currency',
+                    currency: 'BRL',
+                  })}
+                </p>
+              </div>
+              <div className="rounded-2xl border border-border/70 bg-background/60 p-4">
+                <p className="text-sm font-medium">Proxima acao sugerida</p>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Revise as pendencias e confirme as receitas antes de fechar o mes.
+                </p>
+              </div>
+            </div>
+          </motion.div>
+        </section>
+
         <section>
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold">Transações do Mês</h2>
+          <div className="mb-4 flex items-center justify-between">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                Movimento recente
+              </p>
+              <h2 className="mt-1 text-lg font-semibold">Ultimos lancamentos</h2>
+            </div>
+            <Link
+              to="/transactions"
+              className="text-sm font-medium text-primary"
+            >
+              Ver tudo
+            </Link>
           </div>
 
           {groupedTransactions.length === 0 ? (
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              className="bg-card border border-dashed border-border rounded-2xl p-8 text-center"
+              className="rounded-[28px] border border-dashed border-border bg-card p-8 text-center"
             >
-              <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mx-auto mb-4">
-                <Plus className="w-8 h-8 text-muted-foreground" />
+              <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-muted">
+                <Plus className="h-8 w-8 text-muted-foreground" />
               </div>
-              <h3 className="font-semibold text-lg mb-2">Nenhuma transação</h3>
-              <p className="text-muted-foreground text-sm mb-4">
-                Não há transações neste mês
+              <h3 className="text-lg font-semibold">Ainda sem movimentacao</h3>
+              <p className="mt-2 text-sm text-muted-foreground">
+                Registre uma receita ou despesa para começar o acompanhamento.
               </p>
-              <div className="flex gap-3 justify-center">
+              <div className="mt-5 flex justify-center gap-3">
                 <button
                   onClick={() => handleAddTransaction('income')}
-                  className="px-4 py-2 bg-income/10 text-income rounded-xl font-medium border border-income/20"
+                  className="rounded-2xl border border-income/20 bg-income/10 px-4 py-2 font-medium text-income"
                 >
                   + Receita
                 </button>
                 <button
                   onClick={() => handleAddTransaction('expense')}
-                  className="px-4 py-2 bg-expense/10 text-expense rounded-xl font-medium border border-expense/20"
+                  className="rounded-2xl border border-expense/20 bg-expense/10 px-4 py-2 font-medium text-expense"
                 >
                   + Despesa
                 </button>
@@ -175,14 +323,14 @@ const Dashboard: React.FC = () => {
             </motion.div>
           ) : (
             <div className="space-y-6">
-              {groupedTransactions.map(([date, dayTransactions], groupIndex) => (
+              {groupedTransactions.map(([date, dayTransactions], index) => (
                 <motion.div
                   key={date}
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: groupIndex * 0.1 }}
+                  transition={{ delay: index * 0.06 }}
                 >
-                  <h3 className="text-sm font-medium text-muted-foreground mb-3 capitalize">
+                  <h3 className="mb-3 text-sm font-medium capitalize text-muted-foreground">
                     {formatDateHeader(date)}
                   </h3>
                   <div className="space-y-3">
@@ -190,7 +338,7 @@ const Dashboard: React.FC = () => {
                       <TransactionCard
                         key={transaction.id}
                         transaction={transaction}
-                        onEdit={handleEditTransaction}
+                        onEdit={setEditTransaction}
                       />
                     ))}
                   </div>
@@ -201,23 +349,20 @@ const Dashboard: React.FC = () => {
         </section>
       </main>
 
-      {/* FAB */}
       <motion.button
         initial={{ scale: 0 }}
         animate={{ scale: 1 }}
-        whileTap={{ scale: 0.9 }}
+        whileTap={{ scale: 0.95 }}
         onClick={() => handleAddTransaction('expense')}
-        className="fixed bottom-24 right-4 w-14 h-14 rounded-full bg-primary text-primary-foreground shadow-lg shadow-primary/30 flex items-center justify-center z-40"
+        className="fixed bottom-24 right-4 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg shadow-primary/30"
       >
-        <Plus className="w-6 h-6" />
+        <Plus className="h-6 w-6" />
       </motion.button>
 
-      {/* Bottom Navigation */}
       <BottomNav />
 
-      {/* Transaction Form Modal */}
       <TransactionForm
-        isOpen={isFormOpen}
+        isOpen={isFormOpen || !!editTransaction}
         onClose={() => {
           setIsFormOpen(false);
           setEditTransaction(null);
