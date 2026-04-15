@@ -1,0 +1,1 @@
+ALTER TABLE public.event_participants ADD COLUMN email text;
