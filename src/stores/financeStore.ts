@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { addMonths, addWeeks, addYears, format } from 'date-fns';
+import { addMonths, addWeeks, addYears, format, parseISO } from 'date-fns';
 import { supabase } from '@/integrations/supabase/client';
 import type { Database } from '@/integrations/supabase/types';
 import { toast } from 'sonner';
@@ -155,7 +155,7 @@ const getTransactionSeries = (
         return firstOrder - secondOrder;
       }
 
-      return new Date(first.date).getTime() - new Date(second.date).getTime();
+      return parseISO(first.date).getTime() - parseISO(second.date).getTime();
     });
 };
 
@@ -181,6 +181,44 @@ const getScopedTransactionIds = (
   return relatedTransactions
     .slice(targetIndex >= 0 ? targetIndex : 0)
     .map((transaction) => transaction.id);
+};
+
+const addDateByInterval = (
+  date: Date,
+  index: number,
+  interval: 'weekly' | 'monthly' | 'yearly'
+): Date => {
+  switch (interval) {
+    case 'weekly':
+      return addWeeks(date, index);
+    case 'monthly':
+      return addMonths(date, index);
+    case 'yearly':
+      return addYears(date, index);
+    default:
+      return addMonths(date, index);
+  }
+};
+
+const subtractDateByInterval = (
+  date: Date,
+  index: number,
+  interval: 'weekly' | 'monthly' | 'yearly'
+): Date => addDateByInterval(date, index * -1, interval);
+
+const resolveSeriesInterval = (
+  transaction: Transaction,
+  updates: Partial<Transaction>
+): 'weekly' | 'monthly' | 'yearly' => {
+  if (updates.recurrenceInterval) {
+    return updates.recurrenceInterval;
+  }
+
+  if (transaction.recurrenceInterval) {
+    return transaction.recurrenceInterval;
+  }
+
+  return transaction.recurrenceType === 'installment' ? 'monthly' : 'monthly';
 };
 
 const loadFinanceSnapshot = async (): Promise<FinanceSnapshot | null> => {
@@ -360,8 +398,57 @@ export const useFinanceStore = create<FinanceState>((set, get) => ({
     if (!transaction) return;
 
     const scope = updateAll ? 'all' : updateFuture ? 'future' : 'single';
-    const ids = getScopedTransactionIds(get().transactions, transaction, scope);
     const dbUpdates = buildDbTransactionUpdates(updates);
+    const hasSeriesDateChange =
+      scope !== 'single' &&
+      (updates.date !== undefined || updates.recurrenceInterval !== undefined);
+
+    if (hasSeriesDateChange) {
+      const relatedTransactions = getTransactionSeries(get().transactions, transaction);
+      const targetIndex = relatedTransactions.findIndex((item) => item.id === transaction.id);
+      const scopedTransactions =
+        scope === 'all'
+          ? relatedTransactions.map((item, index) => ({ item, index }))
+          : relatedTransactions
+              .slice(targetIndex >= 0 ? targetIndex : 0)
+              .map((item, index) => ({
+                item,
+                index: (targetIndex >= 0 ? targetIndex : 0) + index,
+              }));
+      const anchorDate = parseISO(updates.date ?? transaction.date);
+      const interval = resolveSeriesInterval(transaction, updates);
+
+      for (const { item, index } of scopedTransactions) {
+        const relativeIndex = index - (targetIndex >= 0 ? targetIndex : 0);
+        const scopedDate = format(
+          relativeIndex >= 0
+            ? addDateByInterval(anchorDate, relativeIndex, interval)
+            : subtractDateByInterval(anchorDate, Math.abs(relativeIndex), interval),
+          'yyyy-MM-dd'
+        );
+        const scopedUpdates = {
+          ...dbUpdates,
+          date: scopedDate,
+          recurrence_interval: interval,
+        };
+
+        const { error } = await supabase
+          .from('transactions')
+          .update(scopedUpdates)
+          .eq('id', item.id);
+
+        if (error) {
+          console.error('Failed to update recurring transaction series:', error);
+          toast.error('Nao foi possivel atualizar a serie da transacao.');
+          return;
+        }
+      }
+
+      await get().refreshData();
+      return;
+    }
+
+    const ids = getScopedTransactionIds(get().transactions, transaction, scope);
 
     const { error } = await supabase
       .from('transactions')
@@ -661,7 +748,7 @@ export const useFinanceStore = create<FinanceState>((set, get) => ({
     const amountPerInstallment = baseTransaction.amount / count;
 
     for (let index = 0; index < count; index += 1) {
-      const date = addMonths(new Date(baseTransaction.date), index);
+      const date = addMonths(parseISO(baseTransaction.date), index);
 
       await get().addTransaction({
         ...baseTransaction,
@@ -689,23 +776,10 @@ export const useFinanceStore = create<FinanceState>((set, get) => ({
 
     const groupId = crypto.randomUUID();
     const amountPerTransaction = splitAmount ? baseTransaction.amount / count : baseTransaction.amount;
-    const baseDate = new Date(baseTransaction.date);
-
-    const addDateByInterval = (date: Date, index: number): Date => {
-      switch (interval) {
-        case 'weekly':
-          return addWeeks(date, index);
-        case 'monthly':
-          return addMonths(date, index);
-        case 'yearly':
-          return addYears(date, index);
-        default:
-          return addMonths(date, index);
-      }
-    };
+    const baseDate = parseISO(baseTransaction.date);
 
     const transactionsToInsert = Array.from({ length: count }, (_, index) => {
-      const transactionDate = addDateByInterval(baseDate, index);
+      const transactionDate = addDateByInterval(baseDate, index, interval);
 
       return {
         user_id: user.id,

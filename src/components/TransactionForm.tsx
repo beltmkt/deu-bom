@@ -12,7 +12,7 @@ import {
   Clock,
   icons,
 } from 'lucide-react';
-import { format, addMonths, addWeeks, addYears } from 'date-fns';
+import { format, addMonths, addWeeks, addYears, parseISO } from 'date-fns';
 import { useFinanceStore, useCategories, useTransactions } from '@/stores/financeStore';
 import { CurrencyInput } from './CurrencyInput';
 import { openGoogleCalendar } from '@/utils/googleCalendar';
@@ -159,8 +159,8 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
   }, [editTransaction, filteredCategories, title, transactions, type]);
 
   const calculateOccurrencesFromDate = (): number => {
-    const start = new Date(date);
-    const end = new Date(endDate);
+    const start = parseISO(date);
+    const end = parseISO(endDate);
     let count = 0;
     let current = start;
     
