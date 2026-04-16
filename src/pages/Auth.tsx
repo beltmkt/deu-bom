@@ -120,6 +120,9 @@ const Auth: React.FC = () => {
           <p className="text-primary mt-1 text-lg font-semibold">
             FINANÇAS SEM ERRO
           </p>
+          <p className="mx-auto mt-3 max-w-sm text-sm text-muted-foreground">
+            Controle seu mês com clareza, acompanhe entradas, saídas e pendências sem depender de planilha.
+          </p>
         </motion.div>
       </header>
 
@@ -337,6 +340,13 @@ const Auth: React.FC = () => {
                   )}
                 </button>
               </form>
+
+              <div className="mt-6 rounded-xl border border-primary/10 bg-primary/5 p-4 text-left">
+                <p className="text-sm font-medium">Você entra sabendo o que fazer</p>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Veja o saldo do mês, registre receitas e despesas em poucos passos e acompanhe o que ainda está pendente.
+                </p>
+              </div>
             </>
           )}
         </motion.div>
@@ -357,7 +367,7 @@ const Auth: React.FC = () => {
       {/* Footer */}
       <footer className="flex-shrink-0 px-6 pb-8 text-center">
         <p className="text-sm text-muted-foreground">
-          Seus dados financeiros protegidos e sincronizados
+          Seus dados financeiros protegidos, sincronizados e prontos para organizar seu mês
         </p>
       </footer>
     </div>

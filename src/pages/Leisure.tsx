@@ -372,7 +372,7 @@ const Leisure: React.FC = () => {
         await supabase.from('event_items').insert(itemsToInsert);
       }
 
-      // Find or create a Festômetro/Lazer category for the transaction
+      // Find or create an events/leisure category for the transaction
       let categoryId: string | null = null;
       const { data: existingCategories } = await supabase
         .from('categories')
@@ -384,13 +384,13 @@ const Leisure: React.FC = () => {
       if (existingCategories && existingCategories.length > 0) {
         categoryId = existingCategories[0].id;
       } else {
-        // Create a new Festômetro category
+        // Create a new events category
         const { data: newCategory } = await supabase
           .from('categories')
           .insert({
             user_id: user.id,
             workspace_id: currentWorkspace.id,
-            name: 'Festômetro',
+            name: 'Eventos',
             type: 'expense',
             color: '#f59e0b',
             icon: 'PartyPopper',
@@ -733,13 +733,13 @@ const Leisure: React.FC = () => {
     <AppShell>
       {/* Header */}
       <PageIntro
-        eyebrow="Festômetro"
+        eyebrow="Extra"
         title="Planejamento e rateio de eventos"
         description="Uma área prática para estimar consumo, organizar participantes e acompanhar custos do começo ao fim."
       >
         <div className="grid gap-3 lg:grid-cols-[1fr_auto] lg:items-center">
           <div>
-            <h1 className="text-2xl font-bold">Festômetro</h1>
+            <h1 className="text-2xl font-bold">Planejador de eventos</h1>
             <p className="text-sm text-muted-foreground">Calcule e organize seus eventos</p>
           </div>
         </div>

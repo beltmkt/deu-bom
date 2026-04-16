@@ -36,6 +36,7 @@ const Transactions: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterType, setFilterType] = useState<'all' | TransactionType>('all');
   const [filterStatus, setFilterStatus] = useState<'all' | 'pending' | 'completed'>('all');
+  const [filterCategoryId, setFilterCategoryId] = useState<'all' | string>('all');
   const [showFilters, setShowFilters] = useState(false);
   const [selectedMonth, setSelectedMonth] = useState(new Date());
   const [showCycleSettings, setShowCycleSettings] = useState(false);
@@ -64,6 +65,7 @@ const Transactions: React.FC = () => {
       .filter((transaction) => {
         if (filterType !== 'all' && transaction.type !== filterType) return false;
         if (filterStatus !== 'all' && transaction.status !== filterStatus) return false;
+        if (filterCategoryId !== 'all' && transaction.categoryId !== filterCategoryId) return false;
 
         if (!searchQuery) return true;
 
@@ -81,7 +83,7 @@ const Transactions: React.FC = () => {
         (first, second) =>
           new Date(second.date).getTime() - new Date(first.date).getTime()
       );
-  }, [categories, filterStatus, filterType, monthTransactions, searchQuery]);
+  }, [categories, filterCategoryId, filterStatus, filterType, monthTransactions, searchQuery]);
 
   const groupedTransactions = useMemo(
     () => groupTransactionsByDate(filteredTransactions),
@@ -118,11 +120,11 @@ const Transactions: React.FC = () => {
           <div className="mb-5 flex items-start justify-between gap-4">
             <div>
               <p className="mb-2 text-xs font-semibold uppercase tracking-[0.24em] text-primary">
-                Operacao
+                Organização
               </p>
               <h1 className="text-2xl font-semibold">Central de transacoes</h1>
-              <p className="mt-1 max-w-xs text-sm text-muted-foreground">
-                Filtre, revise e corrija movimentos com mais contexto e menos ruido.
+              <p className="mt-1 max-w-sm text-sm text-muted-foreground">
+                Encontre rápido o que entrou, o que saiu e o que ainda precisa de confirmação.
               </p>
             </div>
 
@@ -260,8 +262,8 @@ const Transactions: React.FC = () => {
                 <h2 className="mt-1 text-lg font-semibold">Refinar visualizacao</h2>
               </div>
 
-              <div className="space-y-3">
-                <div className="flex gap-2">
+                <div className="space-y-3">
+                  <div className="flex gap-2">
                   {(['all', 'income', 'expense'] as const).map((type) => (
                     <button
                       key={type}
@@ -283,9 +285,27 @@ const Transactions: React.FC = () => {
                         : 'Despesas'}
                     </button>
                   ))}
-                </div>
+                  </div>
 
-                <div className="flex gap-2">
+                  <div>
+                    <label className="mb-2 block text-sm font-medium text-muted-foreground">
+                      Categoria
+                    </label>
+                    <select
+                      value={filterCategoryId}
+                      onChange={(event) => setFilterCategoryId(event.target.value)}
+                      className="w-full rounded-xl border border-border bg-background px-4 py-3 text-sm text-foreground"
+                    >
+                      <option value="all">Todas as categorias</option>
+                      {categories.map((category) => (
+                        <option key={category.id} value={category.id}>
+                          {category.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="flex gap-2">
                   {(['all', 'completed', 'pending'] as const).map((status) => (
                     <button
                       key={status}
@@ -319,9 +339,20 @@ const Transactions: React.FC = () => {
             <h3 className="text-lg font-semibold">Nenhuma transacao encontrada</h3>
             <p className="mt-2 text-sm text-muted-foreground">
               {searchQuery
-                ? 'Tente outro termo ou remova alguns filtros.'
-                : 'Este periodo ainda nao possui lancamentos visiveis.'}
+                ? 'Tente outro termo, troque a categoria ou remova alguns filtros.'
+                : 'Este período ainda não possui lançamentos visíveis. Você pode registrar uma nova movimentação agora.'}
             </p>
+            <div className="mt-5 flex justify-center">
+              <button
+                onClick={() => {
+                  setEditTransaction(null);
+                  setIsFormOpen(true);
+                }}
+                className="rounded-2xl border border-primary/20 bg-primary/10 px-4 py-2 text-sm font-medium text-primary"
+              >
+                Adicionar transação
+              </button>
+            </div>
           </motion.div>
         ) : (
           <div className="space-y-6">

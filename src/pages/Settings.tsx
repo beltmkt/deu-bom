@@ -20,6 +20,7 @@ import {
   UserPlus,
   Users,
   X,
+  PartyPopper,
 } from 'lucide-react';
 import { AppShell } from '@/components/AppShell';
 import { BottomNav } from '@/components/BottomNav';
@@ -33,6 +34,7 @@ import { useTheme } from '@/hooks/useTheme';
 import { useWorkspace } from '@/hooks/useWorkspace';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
+import { Link } from 'react-router-dom';
 
 const Settings: React.FC = () => {
   const settings = useSettings();
@@ -238,7 +240,7 @@ const Settings: React.FC = () => {
       <PageIntro
         eyebrow="Configurações"
         title="Conta, equipe e preferências"
-        description="Central de administração do ambiente, com foco em clareza, segurança e manutenção do dia a dia."
+        description="Ajuste conta, equipe, dados e extras sem poluir o fluxo principal do controle financeiro."
       />
 
       <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
@@ -537,6 +539,27 @@ const Settings: React.FC = () => {
                 onChange={handleImport}
                 className="hidden"
               />
+            </div>
+          </SurfaceCard>
+
+          <SurfaceCard className="overflow-hidden p-0">
+            <h3 className="border-b border-border p-4 font-semibold">Extras</h3>
+            <div className="space-y-3 p-4">
+              <Link
+                to="/leisure"
+                className="flex w-full items-center justify-between rounded-2xl border border-primary/10 bg-primary/5 p-4"
+              >
+                <div className="flex items-center gap-3">
+                  <PartyPopper className="h-5 w-5 text-primary" />
+                  <div className="text-left">
+                    <span className="block">Planejador de eventos</span>
+                    <span className="text-xs text-muted-foreground">
+                      Organize festas e leve o total para suas finanças
+                    </span>
+                  </div>
+                </div>
+                <ChevronRight className="h-5 w-5 text-muted-foreground" />
+              </Link>
             </div>
           </SurfaceCard>
 

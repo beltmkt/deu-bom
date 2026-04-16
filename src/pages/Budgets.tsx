@@ -72,7 +72,7 @@ const Budgets: React.FC = () => {
       <PageIntro
         eyebrow="Orçamento"
         title="Controle por limite e categoria"
-        description="Uma visão mais objetiva do uso do dinheiro por categoria, com foco em evitar excessos."
+        description="Descubra rápido quais categorias estão consumindo mais do mês e ajuste antes de estourar o orçamento."
       >
         <p className="text-sm capitalize text-muted-foreground">
           {format(now, "MMMM 'de' yyyy", { locale: ptBR })}
@@ -97,7 +97,7 @@ const Budgets: React.FC = () => {
             <EmptyState
               icon={PieChart}
               title="Sem gastos neste mês"
-              description="Assim que as despesas forem registradas, a distribuição por categoria aparece aqui."
+              description="Assim que você registrar despesas confirmadas, esta aba mostra onde o dinheiro está se concentrando."
               className="border-none bg-transparent px-0 py-10"
             />
           ) : (

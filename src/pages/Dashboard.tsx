@@ -4,6 +4,7 @@ import {
   ArrowRight,
   CalendarClock,
   CreditCard,
+  Lightbulb,
   Loader2,
   Plus,
   TrendingDown,
@@ -17,7 +18,7 @@ import { BottomNav } from '@/components/BottomNav';
 import { MonthSwitcher } from '@/components/MonthSwitcher';
 import { TransactionCard } from '@/components/TransactionCard';
 import { TransactionForm } from '@/components/TransactionForm';
-import { useFinanceLoading, useFinanceStore, useTransactions } from '@/stores/financeStore';
+import { useCategories, useFinanceLoading, useFinanceStore, useTransactions } from '@/stores/financeStore';
 import { filterTransactionsByMonth, groupTransactionsByDate, summarizeTransactions } from '@/utils/transactionInsights';
 import type { Transaction, TransactionType } from '@/types/finance';
 
@@ -28,6 +29,7 @@ const Dashboard: React.FC = () => {
   const [selectedMonth, setSelectedMonth] = useState(new Date());
 
   const transactions = useTransactions();
+  const categories = useCategories();
   const loading = useFinanceLoading();
   const initialize = useFinanceStore((state) => state.initialize);
   const initialized = useFinanceStore((state) => state.initialized);
@@ -61,6 +63,49 @@ const Dashboard: React.FC = () => {
       ).length,
     [monthlyTransactions]
   );
+
+  const topExpenseCategory = useMemo(() => {
+    const expenseTotals = monthlyTransactions
+      .filter(
+        (transaction) =>
+          transaction.type === 'expense' && transaction.status === 'completed'
+      )
+      .reduce<Record<string, number>>((accumulator, transaction) => {
+        accumulator[transaction.categoryId] =
+          (accumulator[transaction.categoryId] || 0) + transaction.amount;
+        return accumulator;
+      }, {});
+
+    const [categoryId, amount] =
+      Object.entries(expenseTotals).sort((first, second) => second[1] - first[1])[0] || [];
+
+    if (!categoryId || !amount) return null;
+
+    return {
+      category: categories.find((item) => item.id === categoryId),
+      amount,
+    };
+  }, [categories, monthlyTransactions]);
+
+  const suggestedAction = useMemo(() => {
+    if (monthlyTransactions.length === 0) {
+      return 'Comece registrando a primeira despesa ou receita do mês.';
+    }
+
+    if (summary.pendingCount > 0) {
+      return `Revise ${summary.pendingCount} lançamento${summary.pendingCount > 1 ? 's' : ''} pendente${summary.pendingCount > 1 ? 's' : ''} para fechar o mês com mais confiança.`;
+    }
+
+    if (summary.completedBalance < 0) {
+      return 'Seu saldo confirmado está negativo. Vale revisar os maiores gastos antes da próxima semana.';
+    }
+
+    if (topExpenseCategory?.category) {
+      return `Seu maior gasto confirmado até agora está em ${topExpenseCategory.category.name}.`;
+    }
+
+    return 'Seu mês está sob controle. Continue registrando as movimentações para manter a leitura confiável.';
+  }, [monthlyTransactions.length, summary.completedBalance, summary.pendingCount, topExpenseCategory]);
 
   const formatDateHeader = (dateValue: string) => {
     const date = parseISO(dateValue);
@@ -103,11 +148,11 @@ const Dashboard: React.FC = () => {
           <div className="mb-5 flex items-start justify-between gap-4">
             <div>
               <p className="mb-2 text-xs font-semibold uppercase tracking-[0.24em] text-primary">
-                Inicio
+                Seu mês
               </p>
-              <h1 className="text-2xl font-semibold">Painel do mes</h1>
-              <p className="mt-1 max-w-xs text-sm text-muted-foreground">
-                Visao rapida do saldo, pendencias e movimentos mais recentes.
+              <h1 className="text-2xl font-semibold">Controle mensal sem planilha</h1>
+              <p className="mt-1 max-w-sm text-sm text-muted-foreground">
+                Veja o saldo, entenda o que ainda está pendente e registre o próximo movimento sem perder tempo.
               </p>
             </div>
 
@@ -228,9 +273,9 @@ const Dashboard: React.FC = () => {
                 className="flex items-center justify-between rounded-2xl border border-border/70 px-4 py-3 transition-colors hover:bg-muted/40"
               >
                 <div>
-                  <p className="text-sm font-medium">Abrir central de transacoes</p>
+                  <p className="text-sm font-medium">Abrir central de transações</p>
                   <p className="text-xs text-muted-foreground">
-                    explorar historico, filtros e configuracoes do ciclo
+                    explorar histórico, filtros e ajustes do ciclo financeiro
                   </p>
                 </div>
                 <ArrowRight className="h-4 w-4 text-muted-foreground" />
@@ -268,13 +313,68 @@ const Dashboard: React.FC = () => {
                 </p>
               </div>
               <div className="rounded-2xl border border-border/70 bg-background/60 p-4">
-                <p className="text-sm font-medium">Proxima acao sugerida</p>
+                <div className="flex items-center gap-2">
+                  <Lightbulb className="h-4 w-4 text-primary" />
+                  <p className="text-sm font-medium">Próxima ação sugerida</p>
+                </div>
                 <p className="mt-1 text-sm text-muted-foreground">
-                  Revise as pendencias e confirme as receitas antes de fechar o mes.
+                  {suggestedAction}
                 </p>
               </div>
             </div>
           </motion.div>
+        </section>
+
+        <section className="grid gap-4 md:grid-cols-2">
+          <div className="rounded-[28px] border border-border bg-card p-5">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+              Comece por aqui
+            </p>
+            <h2 className="mt-1 text-lg font-semibold">Ação mais útil agora</h2>
+            <p className="mt-2 text-sm text-muted-foreground">{suggestedAction}</p>
+            <div className="mt-4 flex flex-wrap gap-3">
+              <button
+                onClick={() => handleAddTransaction('expense')}
+                className="rounded-2xl border border-expense/20 bg-expense/10 px-4 py-2 text-sm font-medium text-expense"
+              >
+                Registrar despesa
+              </button>
+              <button
+                onClick={() => handleAddTransaction('income')}
+                className="rounded-2xl border border-income/20 bg-income/10 px-4 py-2 text-sm font-medium text-income"
+              >
+                Registrar receita
+              </button>
+            </div>
+          </div>
+
+          <div className="rounded-[28px] border border-border bg-card p-5">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+              Insight rápido
+            </p>
+            <h2 className="mt-1 text-lg font-semibold">Leitura sem esforço</h2>
+            {topExpenseCategory?.category ? (
+              <>
+                <p className="mt-2 text-sm text-muted-foreground">
+                  A categoria com maior peso confirmado no mês é{' '}
+                  <span className="font-medium text-foreground">
+                    {topExpenseCategory.category.name}
+                  </span>
+                  .
+                </p>
+                <p className="mt-3 font-mono text-lg font-semibold">
+                  {topExpenseCategory.amount.toLocaleString('pt-BR', {
+                    style: 'currency',
+                    currency: 'BRL',
+                  })}
+                </p>
+              </>
+            ) : (
+              <p className="mt-2 text-sm text-muted-foreground">
+                Assim que você confirmar algumas despesas, o app passa a destacar onde o mês está pesando mais.
+              </p>
+            )}
+          </div>
         </section>
 
         <section>
@@ -304,7 +404,7 @@ const Dashboard: React.FC = () => {
               </div>
               <h3 className="text-lg font-semibold">Ainda sem movimentacao</h3>
               <p className="mt-2 text-sm text-muted-foreground">
-                Registre uma receita ou despesa para começar o acompanhamento.
+                Registre a primeira receita ou despesa para o app começar a organizar seu mês e mostrar pendências, saldo e insights.
               </p>
               <div className="mt-5 flex justify-center gap-3">
                 <button

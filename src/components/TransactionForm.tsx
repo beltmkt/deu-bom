@@ -4,6 +4,7 @@ import {
   X,
   Calendar,
   ChevronDown,
+  Sparkles,
   CalendarPlus,
   Download,
   Check,
@@ -12,7 +13,7 @@ import {
   icons,
 } from 'lucide-react';
 import { format, addMonths, addWeeks, addYears } from 'date-fns';
-import { useFinanceStore, useCategories } from '@/stores/financeStore';
+import { useFinanceStore, useCategories, useTransactions } from '@/stores/financeStore';
 import { CurrencyInput } from './CurrencyInput';
 import { openGoogleCalendar } from '@/utils/googleCalendar';
 import { downloadCalendarFile } from '@/utils/calendarFile';
@@ -36,6 +37,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
   defaultType = 'expense',
 }) => {
   const categories = useCategories();
+  const transactions = useTransactions();
   const { addTransaction, updateTransaction, generateRecurringTransactions } = useFinanceStore();
 
   const [type, setType] = useState<TransactionType>(defaultType);
@@ -57,9 +59,11 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
   const [installments, setInstallments] = useState(2);
   
   const [showCategoryPicker, setShowCategoryPicker] = useState(false);
+  const [showAdvancedFields, setShowAdvancedFields] = useState(false);
   const [showUpdateScopeModal, setShowUpdateScopeModal] = useState(false);
   const [pendingUpdateData, setPendingUpdateData] = useState<Record<string, unknown> | null>(null);
   const [showSuccessActions, setShowSuccessActions] = useState(false);
+  const [suggestedCategoryId, setSuggestedCategoryId] = useState<string | null>(null);
   const [lastSavedTransaction, setLastSavedTransaction] = useState<{
     title: string;
     date: string;
@@ -85,6 +89,8 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
     setEndCondition('occurrences');
     setOccurrences(12);
     setEndDate(format(addMonths(new Date(), 12), 'yyyy-MM-dd'));
+    setShowAdvancedFields(false);
+    setSuggestedCategoryId(null);
     setShowSuccessActions(false);
     setLastSavedTransaction(null);
   }, [defaultType]);
@@ -102,6 +108,10 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
       if (editTransaction.recurrenceInterval) {
         setRecurrenceInterval(editTransaction.recurrenceInterval);
       }
+      setShowAdvancedFields(
+        editTransaction.recurrenceType !== 'none' || Boolean(editTransaction.notes)
+      );
+      setSuggestedCategoryId(null);
     } else {
       resetForm();
     }
@@ -112,6 +122,41 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
       setCategoryId(filteredCategories[0].id);
     }
   }, [type, filteredCategories, categoryId, editTransaction]);
+
+  useEffect(() => {
+    if (editTransaction || !title.trim()) {
+      setSuggestedCategoryId(null);
+      return;
+    }
+
+    const normalizedTitle = title.trim().toLowerCase();
+
+    const categoryNameMatch = filteredCategories.find((category) =>
+      normalizedTitle.includes(category.name.toLowerCase())
+    );
+
+    if (categoryNameMatch) {
+      setSuggestedCategoryId(categoryNameMatch.id);
+      return;
+    }
+
+    const recentMatch = [...transactions]
+      .filter((transaction) => transaction.type === type)
+      .sort(
+        (first, second) =>
+          new Date(second.updatedAt).getTime() - new Date(first.updatedAt).getTime()
+      )
+      .find((transaction) => {
+        const transactionTitle = transaction.title.trim().toLowerCase();
+        return (
+          transactionTitle === normalizedTitle ||
+          transactionTitle.includes(normalizedTitle) ||
+          normalizedTitle.includes(transactionTitle)
+        );
+      });
+
+    setSuggestedCategoryId(recentMatch?.categoryId || null);
+  }, [editTransaction, filteredCategories, title, transactions, type]);
 
   const calculateOccurrencesFromDate = (): number => {
     const start = new Date(date);
@@ -229,10 +274,19 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
     resetForm();
   };
 
+  const applySuggestedCategory = () => {
+    if (!suggestedCategoryId) return;
+    setCategoryId(suggestedCategoryId);
+  };
+
   const CategoryIcon =
     (selectedCategory?.icon
       ? icons[selectedCategory.icon as keyof typeof icons]
       : undefined) || Circle;
+
+  const suggestedCategory = suggestedCategoryId
+    ? categories.find((category) => category.id === suggestedCategoryId)
+    : null;
 
   if (!isOpen) return null;
 
@@ -377,6 +431,16 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
                 placeholder="Ex: Supermercado"
                 className="w-full px-4 py-4 rounded-xl bg-input border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
               />
+              {!editTransaction && suggestedCategory && suggestedCategory.id !== categoryId ? (
+                <button
+                  type="button"
+                  onClick={applySuggestedCategory}
+                  className="mt-3 inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-3 py-1.5 text-xs font-medium text-primary"
+                >
+                  <Sparkles className="h-3.5 w-3.5" />
+                  Sugerir categoria: {suggestedCategory.name}
+                </button>
+              ) : null}
             </div>
 
             {/* Category */}
@@ -447,194 +511,6 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
               </AnimatePresence>
             </div>
 
-            {/* Recurrence (only for new transactions) - MOVED BEFORE DATE */}
-            {!editTransaction && (
-              <div className="mb-6">
-                <label className="block text-sm font-medium text-muted-foreground mb-2">
-                  Tipo de Transação
-                </label>
-                <div className="grid grid-cols-3 gap-2 p-1 bg-muted rounded-xl">
-                  <button
-                    onClick={() => setRecurrenceType('none')}
-                    className={`
-                      py-3 rounded-lg text-sm font-medium transition-all
-                      ${recurrenceType === 'none'
-                        ? 'bg-card shadow-md text-foreground'
-                        : 'text-muted-foreground'
-                      }
-                    `}
-                  >
-                    Única
-                  </button>
-                  <button
-                    onClick={() => setRecurrenceType('installment')}
-                    className={`
-                      py-3 rounded-lg text-sm font-medium transition-all
-                      ${recurrenceType === 'installment'
-                        ? 'bg-card shadow-md text-foreground'
-                        : 'text-muted-foreground'
-                      }
-                    `}
-                  >
-                    Parcelado
-                  </button>
-                  <button
-                    onClick={() => setRecurrenceType('subscription')}
-                    className={`
-                      py-3 rounded-lg text-sm font-medium transition-all
-                      ${recurrenceType === 'subscription'
-                        ? 'bg-card shadow-md text-foreground'
-                        : 'text-muted-foreground'
-                      }
-                    `}
-                  >
-                    Recorrente
-                  </button>
-                </div>
-
-                {/* Installments options */}
-                {recurrenceType === 'installment' && (
-                  <motion.div
-                    initial={{ height: 0, opacity: 0 }}
-                    animate={{ height: 'auto', opacity: 1 }}
-                    className="mt-4"
-                  >
-                    <label className="block text-sm text-muted-foreground mb-2">
-                      Número de parcelas
-                    </label>
-                    <div className="flex items-center gap-4">
-                      <input
-                        type="range"
-                        min="2"
-                        max="48"
-                        value={installments}
-                        onChange={(e) => setInstallments(parseInt(e.target.value))}
-                        className="flex-1"
-                      />
-                      <span className="font-mono text-lg font-semibold w-12 text-center">
-                        {installments}x
-                      </span>
-                    </div>
-                    <p className="text-sm text-muted-foreground mt-2">
-                      Valor por parcela:{' '}
-                      <span className="font-mono font-medium text-foreground">
-                        R$ {(amount / installments).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                      </span>
-                    </p>
-                  </motion.div>
-                )}
-
-                {/* Subscription/Recurring options */}
-                {recurrenceType === 'subscription' && (
-                  <motion.div
-                    initial={{ height: 0, opacity: 0 }}
-                    animate={{ height: 'auto', opacity: 1 }}
-                    className="mt-4 space-y-4"
-                  >
-                    {/* Interval selection */}
-                    <div>
-                      <label className="block text-sm text-muted-foreground mb-2">
-                        Repetir a cada
-                      </label>
-                      <div className="grid grid-cols-3 gap-2">
-                        {(['weekly', 'monthly', 'yearly'] as RecurrenceInterval[]).map((interval) => (
-                          <button
-                            key={interval}
-                            onClick={() => setRecurrenceInterval(interval)}
-                            className={`
-                              py-3 rounded-xl text-sm font-medium transition-all border
-                              ${recurrenceInterval === interval
-                                ? 'bg-primary text-primary-foreground border-primary'
-                                : 'bg-muted border-border text-muted-foreground'
-                              }
-                            `}
-                          >
-                            {interval === 'weekly' && 'Semana'}
-                            {interval === 'monthly' && 'Mês'}
-                            {interval === 'yearly' && 'Ano'}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* End condition */}
-                    <div>
-                      <label className="block text-sm text-muted-foreground mb-2">
-                        Termina
-                      </label>
-                      <div className="grid grid-cols-3 gap-2 mb-3">
-                        <button
-                          onClick={() => setEndCondition('never')}
-                          className={`
-                            py-3 rounded-xl text-sm font-medium transition-all border
-                            ${endCondition === 'never'
-                              ? 'bg-primary text-primary-foreground border-primary'
-                              : 'bg-muted border-border text-muted-foreground'
-                            }
-                          `}
-                        >
-                          Nunca
-                        </button>
-                        <button
-                          onClick={() => setEndCondition('occurrences')}
-                          className={`
-                            py-3 rounded-xl text-sm font-medium transition-all border
-                            ${endCondition === 'occurrences'
-                              ? 'bg-primary text-primary-foreground border-primary'
-                              : 'bg-muted border-border text-muted-foreground'
-                            }
-                          `}
-                        >
-                          Após X vezes
-                        </button>
-                        <button
-                          onClick={() => setEndCondition('date')}
-                          className={`
-                            py-3 rounded-xl text-sm font-medium transition-all border
-                            ${endCondition === 'date'
-                              ? 'bg-primary text-primary-foreground border-primary'
-                              : 'bg-muted border-border text-muted-foreground'
-                            }
-                          `}
-                        >
-                          Em data
-                        </button>
-                      </div>
-
-                      {endCondition === 'occurrences' && (
-                        <div className="flex items-center gap-4">
-                          <input
-                            type="range"
-                            min="2"
-                            max="60"
-                            value={occurrences}
-                            onChange={(e) => setOccurrences(parseInt(e.target.value))}
-                            className="flex-1"
-                          />
-                          <span className="font-mono text-lg font-semibold w-16 text-center">
-                            {occurrences}x
-                          </span>
-                        </div>
-                      )}
-
-                      {endCondition === 'date' && (
-                        <div className="relative">
-                          <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-                          <input
-                            type="date"
-                            value={endDate}
-                            onChange={(e) => setEndDate(e.target.value)}
-                            className="w-full pl-12 pr-4 py-4 rounded-xl bg-input border border-border text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-                          />
-                        </div>
-                      )}
-                    </div>
-                  </motion.div>
-                )}
-              </div>
-            )}
-
-            {/* Date - Now after recurrence type selection */}
             <div className="mb-6">
               <label className="block text-sm font-medium text-muted-foreground mb-2">
                 {recurrenceType === 'none' ? 'Data' : 'Data de início'}
@@ -648,6 +524,234 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
                   className="w-full pl-12 pr-4 py-4 rounded-xl bg-input border border-border text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
                 />
               </div>
+            </div>
+
+            <div className="mb-6 rounded-2xl border border-border/70 bg-muted/30">
+              <button
+                type="button"
+                onClick={() => setShowAdvancedFields((current) => !current)}
+                className="flex w-full items-center justify-between px-4 py-4 text-left"
+              >
+                <div>
+                  <p className="text-sm font-medium">Mais opções</p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Parcelamento, recorrência e observações ficam aqui para o fluxo principal continuar simples.
+                  </p>
+                </div>
+                <ChevronDown
+                  className={`h-5 w-5 text-muted-foreground transition-transform ${
+                    showAdvancedFields ? 'rotate-180' : ''
+                  }`}
+                />
+              </button>
+
+              <AnimatePresence>
+                {showAdvancedFields ? (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: 'auto', opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    className="overflow-hidden border-t border-border/70"
+                  >
+                    <div className="px-4 pb-4 pt-4">
+                      {!editTransaction && (
+                        <div className="mb-6">
+                          <label className="block text-sm font-medium text-muted-foreground mb-2">
+                            Tipo de transação
+                          </label>
+                          <div className="grid grid-cols-3 gap-2 p-1 bg-muted rounded-xl">
+                            <button
+                              onClick={() => setRecurrenceType('none')}
+                              className={`
+                                py-3 rounded-lg text-sm font-medium transition-all
+                                ${recurrenceType === 'none'
+                                  ? 'bg-card shadow-md text-foreground'
+                                  : 'text-muted-foreground'
+                                }
+                              `}
+                            >
+                              Única
+                            </button>
+                            <button
+                              onClick={() => setRecurrenceType('installment')}
+                              className={`
+                                py-3 rounded-lg text-sm font-medium transition-all
+                                ${recurrenceType === 'installment'
+                                  ? 'bg-card shadow-md text-foreground'
+                                  : 'text-muted-foreground'
+                                }
+                              `}
+                            >
+                              Parcelado
+                            </button>
+                            <button
+                              onClick={() => setRecurrenceType('subscription')}
+                              className={`
+                                py-3 rounded-lg text-sm font-medium transition-all
+                                ${recurrenceType === 'subscription'
+                                  ? 'bg-card shadow-md text-foreground'
+                                  : 'text-muted-foreground'
+                                }
+                              `}
+                            >
+                              Recorrente
+                            </button>
+                          </div>
+
+                          {recurrenceType === 'installment' && (
+                            <motion.div
+                              initial={{ height: 0, opacity: 0 }}
+                              animate={{ height: 'auto', opacity: 1 }}
+                              className="mt-4"
+                            >
+                              <label className="block text-sm text-muted-foreground mb-2">
+                                Número de parcelas
+                              </label>
+                              <div className="flex items-center gap-4">
+                                <input
+                                  type="range"
+                                  min="2"
+                                  max="48"
+                                  value={installments}
+                                  onChange={(e) => setInstallments(parseInt(e.target.value))}
+                                  className="flex-1"
+                                />
+                                <span className="font-mono text-lg font-semibold w-12 text-center">
+                                  {installments}x
+                                </span>
+                              </div>
+                              <p className="text-sm text-muted-foreground mt-2">
+                                Valor por parcela:{' '}
+                                <span className="font-mono font-medium text-foreground">
+                                  R$ {(amount / installments).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                                </span>
+                              </p>
+                            </motion.div>
+                          )}
+
+                          {recurrenceType === 'subscription' && (
+                            <motion.div
+                              initial={{ height: 0, opacity: 0 }}
+                              animate={{ height: 'auto', opacity: 1 }}
+                              className="mt-4 space-y-4"
+                            >
+                              <div>
+                                <label className="block text-sm text-muted-foreground mb-2">
+                                  Repetir a cada
+                                </label>
+                                <div className="grid grid-cols-3 gap-2">
+                                  {(['weekly', 'monthly', 'yearly'] as RecurrenceInterval[]).map((interval) => (
+                                    <button
+                                      key={interval}
+                                      onClick={() => setRecurrenceInterval(interval)}
+                                      className={`
+                                        py-3 rounded-xl text-sm font-medium transition-all border
+                                        ${recurrenceInterval === interval
+                                          ? 'bg-primary text-primary-foreground border-primary'
+                                          : 'bg-muted border-border text-muted-foreground'
+                                        }
+                                      `}
+                                    >
+                                      {interval === 'weekly' && 'Semana'}
+                                      {interval === 'monthly' && 'Mês'}
+                                      {interval === 'yearly' && 'Ano'}
+                                    </button>
+                                  ))}
+                                </div>
+                              </div>
+
+                              <div>
+                                <label className="block text-sm text-muted-foreground mb-2">
+                                  Termina
+                                </label>
+                                <div className="grid grid-cols-3 gap-2 mb-3">
+                                  <button
+                                    onClick={() => setEndCondition('never')}
+                                    className={`
+                                      py-3 rounded-xl text-sm font-medium transition-all border
+                                      ${endCondition === 'never'
+                                        ? 'bg-primary text-primary-foreground border-primary'
+                                        : 'bg-muted border-border text-muted-foreground'
+                                      }
+                                    `}
+                                  >
+                                    Nunca
+                                  </button>
+                                  <button
+                                    onClick={() => setEndCondition('occurrences')}
+                                    className={`
+                                      py-3 rounded-xl text-sm font-medium transition-all border
+                                      ${endCondition === 'occurrences'
+                                        ? 'bg-primary text-primary-foreground border-primary'
+                                        : 'bg-muted border-border text-muted-foreground'
+                                      }
+                                    `}
+                                  >
+                                    Após X vezes
+                                  </button>
+                                  <button
+                                    onClick={() => setEndCondition('date')}
+                                    className={`
+                                      py-3 rounded-xl text-sm font-medium transition-all border
+                                      ${endCondition === 'date'
+                                        ? 'bg-primary text-primary-foreground border-primary'
+                                        : 'bg-muted border-border text-muted-foreground'
+                                      }
+                                    `}
+                                  >
+                                    Em data
+                                  </button>
+                                </div>
+
+                                {endCondition === 'occurrences' && (
+                                  <div className="flex items-center gap-4">
+                                    <input
+                                      type="range"
+                                      min="2"
+                                      max="60"
+                                      value={occurrences}
+                                      onChange={(e) => setOccurrences(parseInt(e.target.value))}
+                                      className="flex-1"
+                                    />
+                                    <span className="font-mono text-lg font-semibold w-16 text-center">
+                                      {occurrences}x
+                                    </span>
+                                  </div>
+                                )}
+
+                                {endCondition === 'date' && (
+                                  <div className="relative">
+                                    <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+                                    <input
+                                      type="date"
+                                      value={endDate}
+                                      onChange={(e) => setEndDate(e.target.value)}
+                                      className="w-full pl-12 pr-4 py-4 rounded-xl bg-input border border-border text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                                    />
+                                  </div>
+                                )}
+                              </div>
+                            </motion.div>
+                          )}
+                        </div>
+                      )}
+
+                      <div className="mb-6">
+                        <label className="block text-sm font-medium text-muted-foreground mb-2">
+                          Observações (opcional)
+                        </label>
+                        <textarea
+                          value={notes}
+                          onChange={(e) => setNotes(e.target.value)}
+                          placeholder="Adicione uma nota..."
+                          rows={3}
+                          className="w-full px-4 py-4 rounded-xl bg-input border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary resize-none"
+                        />
+                      </div>
+                    </div>
+                  </motion.div>
+                ) : null}
+              </AnimatePresence>
             </div>
 
 
@@ -700,18 +804,6 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
               </div>
             )}
 
-            <div className="mb-6">
-              <label className="block text-sm font-medium text-muted-foreground mb-2">
-                Observações (opcional)
-              </label>
-              <textarea
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                placeholder="Adicione uma nota..."
-                rows={3}
-                className="w-full px-4 py-4 rounded-xl bg-input border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary resize-none"
-              />
-            </div>
           </div>
 
           {/* Sticky footer */}

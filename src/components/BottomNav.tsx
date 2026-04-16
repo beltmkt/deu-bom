@@ -1,13 +1,13 @@
 import React from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
-import { Home, List, PieChart, Settings, PartyPopper, BarChart3 } from 'lucide-react';
+import { Home, List, PieChart, Settings, BarChart3 } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 const navItems = [
   { to: '/', icon: Home, label: 'Início' },
   { to: '/transactions', icon: List, label: 'Transações' },
+  { to: '/budgets', icon: PieChart, label: 'Orçamentos' },
   { to: '/analytics', icon: BarChart3, label: 'Análise' },
-  { to: '/leisure', icon: PartyPopper, label: 'Festômetro' },
   { to: '/settings', icon: Settings, label: 'Config' },
 ];
 

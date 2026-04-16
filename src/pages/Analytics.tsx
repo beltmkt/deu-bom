@@ -136,7 +136,7 @@ const Analytics: React.FC = () => {
       <PageIntro
         eyebrow="Análise"
         title="Tendências e leitura histórica"
-        description="Uma visão mais fria e analítica do comportamento financeiro, sem excesso de informação na tela."
+        description="Veja a evolução do seu dinheiro e entenda rapidamente onde o mês está apertando ou sobrando."
       />
 
       {transactions.length === 0 ? (
@@ -184,6 +184,17 @@ const Analytics: React.FC = () => {
               </p>
             </SurfaceCard>
           </section>
+
+          <SurfaceCard>
+            <h2 className="text-lg font-semibold">O que merece atenção</h2>
+            <p className="mt-2 text-sm text-muted-foreground">
+              {pendingExpense > 0
+                ? `Você ainda tem ${formatCurrency(pendingExpense)} em despesas pendentes. Confirmar esses valores deixa o saldo do mês mais confiável.`
+                : topExpenseCategories[0]
+                ? `Seu maior gasto confirmado no mês está em ${topExpenseCategories[0].category!.name}. Vale acompanhar essa categoria mais de perto.`
+                : 'Assim que houver mais lançamentos, esta área começa a destacar padrões e possíveis excessos automaticamente.'}
+            </p>
+          </SurfaceCard>
 
           {(pendingIncome > 0 || pendingExpense > 0) && (
             <SurfaceCard className="bg-pending/10">
