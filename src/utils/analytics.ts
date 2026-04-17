@@ -1,19 +1,22 @@
 import {
+  eachMonthOfInterval,
+  endOfDay,
   endOfMonth,
   format,
   isWithinInterval,
   parseISO,
+  startOfDay,
   startOfMonth,
   subMonths,
 } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import type { Category, Transaction, TransactionType } from '@/types/finance';
 
-export type AnalyticsRange = '6m' | '12m' | 'ytd';
 export type AnalyticsStatusFilter = 'all' | 'pending' | 'completed';
 
 export interface AnalyticsFilters {
-  range: AnalyticsRange;
+  startDate: string;
+  endDate: string;
   typeFilter: 'all' | TransactionType;
   statusFilter: AnalyticsStatusFilter;
   categoryFilter: 'all' | string;
@@ -63,10 +66,23 @@ export interface AnalyticsSnapshot {
   pendingCount: number;
 }
 
-export const getMonthsToShow = (range: AnalyticsRange, referenceDate = new Date()) => {
-  if (range === '6m') return 6;
-  if (range === '12m') return 12;
-  return referenceDate.getMonth() + 1;
+export const getDefaultAnalyticsInterval = (referenceDate = new Date()) => ({
+  startDate: format(startOfMonth(subMonths(referenceDate, 5)), 'yyyy-MM-dd'),
+  endDate: format(referenceDate, 'yyyy-MM-dd'),
+});
+
+const resolveAnalyticsInterval = (filters: AnalyticsFilters, referenceDate = new Date()) => {
+  const defaults = getDefaultAnalyticsInterval(referenceDate);
+  const parsedStart = filters.startDate ? parseISO(filters.startDate) : parseISO(defaults.startDate);
+  const parsedEnd = filters.endDate ? parseISO(filters.endDate) : parseISO(defaults.endDate);
+
+  const start = parsedStart <= parsedEnd ? parsedStart : parsedEnd;
+  const end = parsedStart <= parsedEnd ? parsedEnd : parsedStart;
+
+  return {
+    start,
+    end,
+  };
 };
 
 export const buildAnalyticsSnapshot = (
@@ -75,26 +91,23 @@ export const buildAnalyticsSnapshot = (
   filters: AnalyticsFilters,
   referenceDate = new Date()
 ): AnalyticsSnapshot => {
-  const monthsToShow = getMonthsToShow(filters.range, referenceDate);
+  const { start, end } = resolveAnalyticsInterval(filters, referenceDate);
 
-  const monthBuckets = Array.from({ length: monthsToShow }, (_, index) => {
-    const monthDate = subMonths(referenceDate, monthsToShow - 1 - index);
-    return {
-      key: format(monthDate, 'yyyy-MM'),
-      label: format(monthDate, 'MMM', { locale: ptBR }),
-      fullLabel: format(monthDate, "MMMM 'de' yyyy", { locale: ptBR }),
-      start: startOfMonth(monthDate),
-      end: endOfMonth(monthDate),
-    };
-  });
-
-  const startDate = monthBuckets[0]?.start;
-  const endDate = monthBuckets[monthBuckets.length - 1]?.end;
+  const monthBuckets = eachMonthOfInterval({
+    start: startOfMonth(start),
+    end: startOfMonth(end),
+  }).map((monthDate) => ({
+    key: format(monthDate, 'yyyy-MM'),
+    label: format(monthDate, 'MMM', { locale: ptBR }),
+    fullLabel: format(monthDate, "MMMM 'de' yyyy", { locale: ptBR }),
+    start: startOfMonth(monthDate),
+    end: endOfMonth(monthDate),
+  }));
 
   const filteredTransactions = transactions.filter((transaction) => {
     const date = parseISO(transaction.date);
 
-    if (startDate && endDate && !isWithinInterval(date, { start: startDate, end: endDate })) {
+    if (!isWithinInterval(date, { start: startOfDay(start), end: endOfDay(end) })) {
       return false;
     }
 

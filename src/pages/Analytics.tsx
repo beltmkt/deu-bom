@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import {
   BarChart3,
   CalendarRange,
+  ChevronDown,
   Filter,
   Layers3,
   Loader2,
@@ -12,6 +13,7 @@ import {
   TrendingUp,
   Wallet,
 } from 'lucide-react';
+import { format, parseISO } from 'date-fns';
 import { Bar, BarChart, CartesianGrid, Legend, Line, LineChart, XAxis, YAxis } from 'recharts';
 import { AppShell } from '@/components/AppShell';
 import { BottomNav } from '@/components/BottomNav';
@@ -34,7 +36,7 @@ import {
 import type { TransactionType } from '@/types/finance';
 import {
   buildAnalyticsSnapshot,
-  type AnalyticsRange,
+  getDefaultAnalyticsInterval,
   type AnalyticsStatusFilter,
 } from '@/utils/analytics';
 import { formatCurrency } from '@/utils/currency';
@@ -44,12 +46,6 @@ const chartConfig = {
   expense: { label: 'Despesas', color: '#ef4444' },
   balance: { label: 'Saldo', color: '#3b82f6' },
 };
-
-const rangeOptions: Array<{ value: AnalyticsRange; label: string }> = [
-  { value: '6m', label: '6 meses' },
-  { value: '12m', label: '12 meses' },
-  { value: 'ytd', label: 'Ano atual' },
-];
 
 const typeOptions: Array<{ value: 'all' | TransactionType; label: string }> = [
   { value: 'all', label: 'Tudo' },
@@ -63,7 +59,7 @@ const statusOptions: Array<{ value: AnalyticsStatusFilter; label: string }> = [
   { value: 'pending', label: 'Pendentes' },
 ];
 
-interface FilterChipGroupProps<T extends string> {
+interface SelectFilterProps<T extends string> {
   icon: React.ComponentType<{ className?: string }>;
   label: string;
   value: T;
@@ -71,37 +67,37 @@ interface FilterChipGroupProps<T extends string> {
   onChange: (value: T) => void;
 }
 
-const FilterChipGroup = <T extends string>({
+const SelectFilter = <T extends string>({
   icon: Icon,
   label,
   value,
   options,
   onChange,
-}: FilterChipGroupProps<T>) => (
+}: SelectFilterProps<T>) => (
   <div className="rounded-[24px] border border-border/60 bg-background/70 p-3">
     <div className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
       <Icon className="h-3.5 w-3.5 text-primary" />
       <span>{label}</span>
     </div>
 
-    <div className="flex flex-wrap gap-2">
-      {options.map((option) => (
-        <button
-          key={option.value}
-          onClick={() => onChange(option.value)}
-          className={cn(
-            'rounded-full border px-3 py-2 text-sm transition-all',
-            value === option.value
-              ? 'border-primary/30 bg-primary text-primary-foreground shadow-[var(--shadow-sm)]'
-              : 'border-border/70 bg-card text-muted-foreground hover:border-primary/20 hover:text-foreground'
-          )}
-        >
-          {option.label}
-        </button>
-      ))}
+    <div className="relative">
+      <select
+        value={value}
+        onChange={(event) => onChange(event.target.value as T)}
+        className="w-full appearance-none rounded-2xl border border-border/70 bg-card px-4 py-3 pr-10 text-sm text-foreground outline-none transition-colors hover:border-primary/20 focus:border-primary/30"
+      >
+        {options.map((option) => (
+          <option key={option.value} value={option.value}>
+            {option.label}
+          </option>
+        ))}
+      </select>
+      <ChevronDown className="pointer-events-none absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
     </div>
   </div>
 );
+
+const getInitialInterval = () => getDefaultAnalyticsInterval();
 
 const Analytics: React.FC = () => {
   const transactions = useTransactions();
@@ -110,7 +106,10 @@ const Analytics: React.FC = () => {
   const initialize = useFinanceStore((state) => state.initialize);
   const initialized = useFinanceStore((state) => state.initialized);
 
-  const [range, setRange] = useState<AnalyticsRange>('6m');
+  const initialInterval = useMemo(() => getInitialInterval(), []);
+
+  const [startDate, setStartDate] = useState(initialInterval.startDate);
+  const [endDate, setEndDate] = useState(initialInterval.endDate);
   const [typeFilter, setTypeFilter] = useState<'all' | TransactionType>('all');
   const [statusFilter, setStatusFilter] = useState<AnalyticsStatusFilter>('all');
   const [categoryFilter, setCategoryFilter] = useState<'all' | string>('all');
@@ -137,22 +136,31 @@ const Analytics: React.FC = () => {
   const analytics = useMemo(
     () =>
       buildAnalyticsSnapshot(transactions, categories, {
-        range,
+        startDate,
+        endDate,
         typeFilter,
         statusFilter,
         categoryFilter,
       }),
-    [transactions, categories, range, typeFilter, statusFilter, categoryFilter]
+    [transactions, categories, startDate, endDate, typeFilter, statusFilter, categoryFilter]
   );
 
+  const defaultRangeStart = initialInterval.startDate;
+  const defaultRangeEnd = initialInterval.endDate;
   const hasActiveFilters =
-    range !== '6m' ||
+    startDate !== defaultRangeStart ||
+    endDate !== defaultRangeEnd ||
     typeFilter !== 'all' ||
     statusFilter !== 'all' ||
     categoryFilter !== 'all';
 
+  const formattedRangeLabel =
+    startDate && endDate
+      ? `${format(parseISO(startDate), 'dd/MM/yyyy')} ate ${format(parseISO(endDate), 'dd/MM/yyyy')}`
+      : null;
+
   const activeFilters = [
-    range !== '6m' ? rangeOptions.find((option) => option.value === range)?.label : null,
+    formattedRangeLabel,
     typeFilter !== 'all' ? typeOptions.find((option) => option.value === typeFilter)?.label : null,
     statusFilter !== 'all'
       ? statusOptions.find((option) => option.value === statusFilter)?.label
@@ -163,10 +171,26 @@ const Analytics: React.FC = () => {
   ].filter(Boolean) as string[];
 
   const resetFilters = () => {
-    setRange('6m');
+    const defaults = getInitialInterval();
+    setStartDate(defaults.startDate);
+    setEndDate(defaults.endDate);
     setTypeFilter('all');
     setStatusFilter('all');
     setCategoryFilter('all');
+  };
+
+  const handleStartDateChange = (value: string) => {
+    setStartDate(value);
+    if (value && endDate && value > endDate) {
+      setEndDate(value);
+    }
+  };
+
+  const handleEndDateChange = (value: string) => {
+    setEndDate(value);
+    if (value && startDate && value < startDate) {
+      setStartDate(value);
+    }
   };
 
   if (loading) {
@@ -214,7 +238,7 @@ const Analytics: React.FC = () => {
             </div>
             <h2 className="text-xl font-semibold">Leitura limpa e ajustavel</h2>
             <p className="mt-1 text-sm text-muted-foreground">
-              Refine o painel por periodo, tipo, status e categoria sem perder o contexto.
+              Defina o periodo pelo calendario e refine o painel por tipo, status e categoria.
             </p>
           </div>
 
@@ -236,16 +260,43 @@ const Analytics: React.FC = () => {
           </div>
         </div>
 
-        <div className="mt-5 grid gap-4 xl:grid-cols-[1.05fr_1fr_1fr_0.9fr]">
-          <FilterChipGroup
-            icon={CalendarRange}
-            label="Periodo"
-            value={range}
-            options={rangeOptions}
-            onChange={setRange}
-          />
+        <div className="mt-5 grid gap-4 xl:grid-cols-[1.2fr_0.9fr_0.9fr_0.95fr]">
+          <div className="rounded-[24px] border border-border/60 bg-background/70 p-3">
+            <div className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+              <CalendarRange className="h-3.5 w-3.5 text-primary" />
+              <span>Periodo</span>
+            </div>
 
-          <FilterChipGroup
+            <div className="grid gap-3 md:grid-cols-2">
+              <label className="space-y-2">
+                <span className="text-xs font-medium text-muted-foreground">De</span>
+                <input
+                  type="date"
+                  value={startDate}
+                  onChange={(event) => handleStartDateChange(event.target.value)}
+                  max={endDate || undefined}
+                  className="w-full rounded-2xl border border-border/70 bg-card px-4 py-3 text-sm text-foreground outline-none transition-colors hover:border-primary/20 focus:border-primary/30"
+                />
+              </label>
+
+              <label className="space-y-2">
+                <span className="text-xs font-medium text-muted-foreground">Ate</span>
+                <input
+                  type="date"
+                  value={endDate}
+                  onChange={(event) => handleEndDateChange(event.target.value)}
+                  min={startDate || undefined}
+                  className="w-full rounded-2xl border border-border/70 bg-card px-4 py-3 text-sm text-foreground outline-none transition-colors hover:border-primary/20 focus:border-primary/30"
+                />
+              </label>
+            </div>
+
+            <p className="mt-3 text-xs text-muted-foreground">
+              Recorte ativo: {formattedRangeLabel}
+            </p>
+          </div>
+
+          <SelectFilter
             icon={Layers3}
             label="Tipo"
             value={typeFilter}
@@ -253,7 +304,7 @@ const Analytics: React.FC = () => {
             onChange={setTypeFilter}
           />
 
-          <FilterChipGroup
+          <SelectFilter
             icon={BarChart3}
             label="Status"
             value={statusFilter}
@@ -261,27 +312,19 @@ const Analytics: React.FC = () => {
             onChange={setStatusFilter}
           />
 
-          <div className="rounded-[24px] border border-border/60 bg-background/70 p-3">
-            <div className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-              <Tag className="h-3.5 w-3.5 text-primary" />
-              <span>Categoria</span>
-            </div>
-
-            <div className="relative">
-              <select
-                value={categoryFilter}
-                onChange={(event) => setCategoryFilter(event.target.value)}
-                className="w-full appearance-none rounded-2xl border border-border/70 bg-card px-4 py-3 text-sm text-foreground outline-none transition-colors hover:border-primary/20 focus:border-primary/30"
-              >
-                <option value="all">Todas as categorias</option>
-                {categoryOptions.map((category) => (
-                  <option key={category.id} value={category.id}>
-                    {category.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
+          <SelectFilter
+            icon={Tag}
+            label="Categoria"
+            value={categoryFilter}
+            options={[
+              { value: 'all', label: 'Todas as categorias' },
+              ...categoryOptions.map((category) => ({
+                value: category.id,
+                label: category.name,
+              })),
+            ]}
+            onChange={setCategoryFilter}
+          />
         </div>
       </SurfaceCard>
 
