@@ -7,8 +7,8 @@ interface MobileLayoutProps {
 
 export const MobileLayout: React.FC<MobileLayoutProps> = ({ children }) => {
   return (
-    <div className="min-h-screen bg-background">
-      <main className="pb-24">
+    <div className="min-h-screen bg-background md:pl-[88px]">
+      <main className="pb-8">
         {children}
       </main>
       <BottomNav />

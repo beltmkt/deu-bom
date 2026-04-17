@@ -181,12 +181,12 @@ export const TransactionCard: React.FC<TransactionCardProps> = ({ transaction, o
 
               <div className="mt-3 flex items-center justify-between gap-3">
                 <span
-                  className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${
+                  className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${
                     isPending
-                      ? 'bg-pending/15 text-pending'
+                      ? 'bg-pending/10 text-pending'
                       : isIncome
-                      ? 'bg-income/15 text-income'
-                      : 'bg-primary/15 text-primary'
+                      ? 'bg-income/10 text-income'
+                      : 'bg-primary/10 text-primary'
                   }`}
                 >
                   {statusLabel}
@@ -195,22 +195,22 @@ export const TransactionCard: React.FC<TransactionCardProps> = ({ transaction, o
                 <button
                   onClick={handleStatusToggle}
                   aria-label={toggleLabel}
-                  className={`touch-btn relative flex h-7 w-[54px] flex-shrink-0 items-center rounded-full border px-1 transition-all duration-200 ${
+                  className={`touch-btn relative flex h-6 w-11 flex-shrink-0 items-center rounded-full border px-1 transition-all duration-200 ${
                     isPending
-                      ? 'border-border/80 bg-muted/60'
+                      ? 'border-border/70 bg-muted/40'
                       : isIncome
-                      ? 'border-income/20 bg-income/10'
-                      : 'border-primary/20 bg-primary/10'
+                      ? 'border-income/15 bg-income/5'
+                      : 'border-primary/15 bg-primary/5'
                   }`}
                 >
                   <span
-                    className={`absolute left-1 flex h-5 w-5 items-center justify-center rounded-full shadow-sm transition-all duration-200 ${
+                    className={`absolute left-1 flex h-4 w-4 items-center justify-center rounded-full shadow-sm transition-all duration-200 ${
                       isPending
                         ? 'translate-x-0 bg-background text-muted-foreground'
-                        : 'translate-x-6 bg-background text-primary'
+                        : 'translate-x-5 bg-background text-primary'
                     }`}
                   >
-                    <Check className="h-3 w-3" />
+                    <Check className="h-2.5 w-2.5" />
                   </span>
                   <span className="sr-only">{toggleLabel}</span>
                 </button>
