@@ -1387,6 +1387,37 @@ const Leisure: React.FC = () => {
                   )}
                 </div>
 
+                <div className="bg-card border border-border rounded-2xl p-4">
+                  <p className="text-sm font-medium">Leitura rapida do evento</p>
+                  <div className="mt-4 grid grid-cols-2 gap-3">
+                    <div className="rounded-xl bg-muted/50 p-3">
+                      <p className="text-xs text-muted-foreground">Valor por adulto</p>
+                      <p className="mt-1 font-semibold text-primary">
+                        {formatCurrency(
+                          participants.filter((p) => !p.isChild).length > 0
+                            ? participants.filter((p) => !p.isChild)[0]?.amountDue || 0
+                            : 0
+                        )}
+                      </p>
+                    </div>
+                    <div className="rounded-xl bg-muted/50 p-3">
+                      <p className="text-xs text-muted-foreground">Pagantes</p>
+                      <p className="mt-1 font-semibold">
+                        {participants.filter((p) => p.paid).length}/{participants.length}
+                      </p>
+                    </div>
+                    <div className="rounded-xl bg-muted/50 p-3">
+                      <p className="text-xs text-muted-foreground">Pago</p>
+                      <p className="mt-1 font-semibold text-income">{formatCurrency(totalPaid)}</p>
+                    </div>
+                    <div className="rounded-xl bg-muted/50 p-3">
+                      <p className="text-xs text-muted-foreground">Pendente</p>
+                      <p className="mt-1 font-semibold text-expense">{formatCurrency(totalPending)}</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid gap-4 xl:grid-cols-2">
                 {/* Participants Section */}
                 <section className="bg-card border border-border rounded-2xl overflow-hidden">
                   <div className="flex items-center justify-between p-4 border-b border-border">
@@ -1505,6 +1536,7 @@ const Leisure: React.FC = () => {
                     )}
                   </div>
                 </section>
+                </div>
 
                 {/* Delete Event */}
                 {canEdit && (

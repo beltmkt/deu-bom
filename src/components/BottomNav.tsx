@@ -1,13 +1,14 @@
 import React from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
-import { Home, KanbanSquare, PiggyBank, Settings, PartyPopper } from 'lucide-react';
+import { Home, KanbanSquare, PiggyBank, Settings, PartyPopper, BarChart3 } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 const navItems = [
   { to: '/', icon: Home, label: 'Inicio' },
   { to: '/transactions', icon: KanbanSquare, label: 'Financas' },
   { to: '/festometro', icon: PartyPopper, label: 'Festometro' },
-  { to: '/budgets', icon: PiggyBank, label: 'Orcamentos' },
+  { to: '/budgets', icon: PiggyBank, label: 'Metas' },
+  { to: '/analytics', icon: BarChart3, label: 'Dashboard' },
   { to: '/settings', icon: Settings, label: 'Config' },
 ];
 
@@ -25,7 +26,7 @@ export const BottomNav: React.FC = () => {
               <NavLink
                 key={item.to}
                 to={item.to}
-                className="relative flex min-w-[56px] flex-col items-center gap-1 px-3 py-2 sm:min-w-[76px]"
+                className="relative flex min-w-[52px] flex-col items-center gap-1 px-2 py-2 sm:min-w-[68px]"
               >
                 {isActive && (
                   <motion.div

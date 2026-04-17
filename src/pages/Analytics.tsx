@@ -1,6 +1,6 @@
-import React, { useEffect, useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
-import { BarChart3, TrendingDown, TrendingUp, Wallet } from 'lucide-react';
+import { BarChart3, Filter, Loader2, TrendingDown, TrendingUp, Wallet } from 'lucide-react';
 import {
   endOfMonth,
   format,
@@ -10,11 +10,18 @@ import {
   subMonths,
 } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { Bar, BarChart, CartesianGrid, Legend, Line, LineChart, XAxis, YAxis } from 'recharts';
 import { AppShell } from '@/components/AppShell';
 import { BottomNav } from '@/components/BottomNav';
 import { EmptyState } from '@/components/EmptyState';
 import { PageIntro } from '@/components/PageIntro';
 import { SurfaceCard } from '@/components/SurfaceCard';
+import {
+  ChartContainer,
+  ChartLegendContent,
+  ChartTooltip,
+  ChartTooltipContent,
+} from '@/components/ui/chart';
 import {
   useCategories,
   useFinanceLoading,
@@ -22,6 +29,16 @@ import {
   useTransactions,
 } from '@/stores/financeStore';
 import { formatCurrency } from '@/utils/currency';
+import type { TransactionType } from '@/types/finance';
+
+type RangeFilter = '6m' | '12m' | 'ytd';
+type StatusFilter = 'all' | 'pending' | 'completed';
+
+const chartConfig = {
+  income: { label: 'Receitas', color: '#22c55e' },
+  expense: { label: 'Despesas', color: '#ef4444' },
+  balance: { label: 'Saldo', color: '#3b82f6' },
+};
 
 const Analytics: React.FC = () => {
   const transactions = useTransactions();
@@ -30,20 +47,51 @@ const Analytics: React.FC = () => {
   const initialize = useFinanceStore((state) => state.initialize);
   const initialized = useFinanceStore((state) => state.initialized);
 
+  const [range, setRange] = useState<RangeFilter>('6m');
+  const [typeFilter, setTypeFilter] = useState<'all' | TransactionType>('all');
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
+  const [categoryFilter, setCategoryFilter] = useState<'all' | string>('all');
+
   useEffect(() => {
     if (!initialized) initialize();
   }, [initialize, initialized]);
 
-  const monthlyData = useMemo(() => {
-    return Array.from({ length: 6 }, (_, index) => {
-      const monthDate = subMonths(new Date(), 5 - index);
-      const monthStart = startOfMonth(monthDate);
-      const monthEnd = endOfMonth(monthDate);
+  const monthsToShow = range === '6m' ? 6 : range === '12m' ? 12 : new Date().getMonth() + 1;
 
-      const monthTransactions = transactions.filter((transaction) => {
-        const date = parseISO(transaction.date);
-        return isWithinInterval(date, { start: monthStart, end: monthEnd });
-      });
+  const monthBuckets = useMemo(() => {
+    return Array.from({ length: monthsToShow }, (_, index) => {
+      const monthDate = subMonths(new Date(), monthsToShow - 1 - index);
+      return {
+        key: format(monthDate, 'yyyy-MM'),
+        label: format(monthDate, 'MMM', { locale: ptBR }),
+        fullLabel: format(monthDate, "MMMM 'de' yyyy", { locale: ptBR }),
+        start: startOfMonth(monthDate),
+        end: endOfMonth(monthDate),
+      };
+    });
+  }, [monthsToShow]);
+
+  const filteredTransactions = useMemo(() => {
+    const startDate = monthBuckets[0]?.start;
+    const endDate = monthBuckets[monthBuckets.length - 1]?.end;
+
+    return transactions.filter((transaction) => {
+      const date = parseISO(transaction.date);
+      if (startDate && endDate && !isWithinInterval(date, { start: startDate, end: endDate })) {
+        return false;
+      }
+      if (typeFilter !== 'all' && transaction.type !== typeFilter) return false;
+      if (statusFilter !== 'all' && transaction.status !== statusFilter) return false;
+      if (categoryFilter !== 'all' && transaction.categoryId !== categoryFilter) return false;
+      return true;
+    });
+  }, [transactions, monthBuckets, typeFilter, statusFilter, categoryFilter]);
+
+  const monthlySeries = useMemo(() => {
+    return monthBuckets.map((bucket) => {
+      const monthTransactions = filteredTransactions.filter((transaction) =>
+        isWithinInterval(parseISO(transaction.date), { start: bucket.start, end: bucket.end })
+      );
 
       const income = monthTransactions
         .filter((transaction) => transaction.type === 'income')
@@ -54,79 +102,66 @@ const Analytics: React.FC = () => {
         .reduce((total, transaction) => total + transaction.amount, 0);
 
       return {
-        label: format(monthDate, 'MMM', { locale: ptBR }),
-        fullLabel: format(monthDate, "MMMM 'de' yyyy", { locale: ptBR }),
+        label: bucket.label,
+        fullLabel: bucket.fullLabel,
         income,
         expense,
         balance: income - expense,
       };
     });
-  }, [transactions]);
+  }, [filteredTransactions, monthBuckets]);
 
-  const maxValue = useMemo(
-    () => Math.max(...monthlyData.flatMap((month) => [month.income, month.expense]), 1),
-    [monthlyData]
-  );
+  const totals = useMemo(() => {
+    const income = filteredTransactions
+      .filter((transaction) => transaction.type === 'income')
+      .reduce((total, transaction) => total + transaction.amount, 0);
+    const expense = filteredTransactions
+      .filter((transaction) => transaction.type === 'expense')
+      .reduce((total, transaction) => total + transaction.amount, 0);
+    return {
+      income,
+      expense,
+      balance: income - expense,
+    };
+  }, [filteredTransactions]);
 
-  const currentMonth = monthlyData[monthlyData.length - 1];
+  const highestExpenseMonth = useMemo(() => {
+    return [...monthlySeries].sort((a, b) => b.expense - a.expense)[0];
+  }, [monthlySeries]);
 
-  const totalBalance = useMemo(() => {
-    return transactions.reduce((total, transaction) => {
-      if (transaction.status !== 'completed') return total;
-      return transaction.type === 'income'
-        ? total + transaction.amount
-        : total - transaction.amount;
-    }, 0);
-  }, [transactions]);
+  const lowestExpenseMonth = useMemo(() => {
+    return [...monthlySeries].sort((a, b) => a.expense - b.expense)[0];
+  }, [monthlySeries]);
 
-  const topExpenseCategories = useMemo(() => {
-    const now = new Date();
-    const monthStart = startOfMonth(now);
-    const monthEnd = endOfMonth(now);
-    const categoryMap: Record<string, number> = {};
+  const topCategories = useMemo(() => {
+    const map: Record<string, number> = {};
 
-    transactions
-      .filter(
-        (transaction) =>
-          transaction.type === 'expense' &&
-          transaction.status === 'completed' &&
-          isWithinInterval(parseISO(transaction.date), { start: monthStart, end: monthEnd })
-      )
+    filteredTransactions
+      .filter((transaction) => transaction.type === 'expense')
       .forEach((transaction) => {
-        categoryMap[transaction.categoryId] =
-          (categoryMap[transaction.categoryId] || 0) + transaction.amount;
+        map[transaction.categoryId] = (map[transaction.categoryId] || 0) + transaction.amount;
       });
 
-    return Object.entries(categoryMap)
+    return Object.entries(map)
       .map(([categoryId, amount]) => ({
         category: categories.find((item) => item.id === categoryId),
         amount,
       }))
       .filter((item) => item.category)
-      .sort((first, second) => second.amount - first.amount)
+      .sort((a, b) => b.amount - a.amount)
       .slice(0, 5);
-  }, [transactions, categories]);
+  }, [filteredTransactions, categories]);
 
-  const pendingIncome = useMemo(
-    () =>
-      transactions
-        .filter((transaction) => transaction.type === 'income' && transaction.status === 'pending')
-        .reduce((total, transaction) => total + transaction.amount, 0),
-    [transactions]
-  );
-
-  const pendingExpense = useMemo(
-    () =>
-      transactions
-        .filter((transaction) => transaction.type === 'expense' && transaction.status === 'pending')
-        .reduce((total, transaction) => total + transaction.amount, 0),
-    [transactions]
-  );
+  const pendingReal = useMemo(() => {
+    return filteredTransactions
+      .filter((transaction) => transaction.status === 'pending')
+      .reduce((total, transaction) => total + transaction.amount, 0);
+  }, [filteredTransactions]);
 
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     );
   }
@@ -134,232 +169,217 @@ const Analytics: React.FC = () => {
   return (
     <AppShell>
       <PageIntro
-        eyebrow="Análise"
-        title="Tendências e leitura histórica"
-        description="Veja a evolução do seu dinheiro e entenda rapidamente onde o mês está apertando ou sobrando."
+        eyebrow="Dashboard"
+        title="Dados reais do seu financeiro"
+        description="Painel analitico em tempo real, puxando direto do que voce registrou no sistema."
       />
 
-      {transactions.length === 0 ? (
+      <SurfaceCard>
+        <div className="mb-4 flex items-center gap-2">
+          <Filter className="h-4 w-4 text-primary" />
+          <h2 className="text-lg font-semibold">Filtros do dashboard</h2>
+        </div>
+
+        <div className="grid gap-3 md:grid-cols-4">
+          <select
+            value={range}
+            onChange={(event) => setRange(event.target.value as RangeFilter)}
+            className="rounded-2xl border border-border bg-background px-4 py-3"
+          >
+            <option value="6m">Ultimos 6 meses</option>
+            <option value="12m">Ultimos 12 meses</option>
+            <option value="ytd">Ano atual</option>
+          </select>
+
+          <select
+            value={typeFilter}
+            onChange={(event) => setTypeFilter(event.target.value as 'all' | TransactionType)}
+            className="rounded-2xl border border-border bg-background px-4 py-3"
+          >
+            <option value="all">Todos os tipos</option>
+            <option value="income">Receitas</option>
+            <option value="expense">Despesas</option>
+          </select>
+
+          <select
+            value={statusFilter}
+            onChange={(event) => setStatusFilter(event.target.value as StatusFilter)}
+            className="rounded-2xl border border-border bg-background px-4 py-3"
+          >
+            <option value="all">Todos os status</option>
+            <option value="completed">Concluidos</option>
+            <option value="pending">Pendentes</option>
+          </select>
+
+          <select
+            value={categoryFilter}
+            onChange={(event) => setCategoryFilter(event.target.value)}
+            className="rounded-2xl border border-border bg-background px-4 py-3"
+          >
+            <option value="all">Todas as categorias</option>
+            {categories.map((category) => (
+              <option key={category.id} value={category.id}>
+                {category.name}
+              </option>
+            ))}
+          </select>
+        </div>
+      </SurfaceCard>
+
+      {filteredTransactions.length === 0 ? (
         <EmptyState
           icon={BarChart3}
-          title="Ainda não há dados para analisar"
-          description="Assim que receitas e despesas forem registradas, esta aba passa a mostrar evolução, categorias e tendências."
+          title="Sem dados para este filtro"
+          description="Ajuste o periodo ou os filtros para o dashboard exibir informacoes do sistema."
         />
       ) : (
         <>
-          <section className="grid gap-4 lg:grid-cols-3">
+          <section className="grid gap-4 lg:grid-cols-4">
+            <SurfaceCard>
+              <div className="mb-3 flex items-center gap-2">
+                <TrendingUp className="h-4 w-4 text-income" />
+                <span className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                  Receitas
+                </span>
+              </div>
+              <p className="text-2xl font-semibold text-income">{formatCurrency(totals.income)}</p>
+            </SurfaceCard>
+
+            <SurfaceCard>
+              <div className="mb-3 flex items-center gap-2">
+                <TrendingDown className="h-4 w-4 text-expense" />
+                <span className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                  Despesas
+                </span>
+              </div>
+              <p className="text-2xl font-semibold text-expense">{formatCurrency(totals.expense)}</p>
+            </SurfaceCard>
+
             <SurfaceCard>
               <div className="mb-3 flex items-center gap-2">
                 <Wallet className="h-4 w-4 text-primary" />
                 <span className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                  Saldo total
+                  Saldo
                 </span>
               </div>
-              <p className={`text-2xl font-semibold ${totalBalance >= 0 ? 'text-income' : 'text-expense'}`}>
-                {formatCurrency(totalBalance)}
+              <p className={`text-2xl font-semibold ${totals.balance >= 0 ? 'text-primary' : 'text-expense'}`}>
+                {formatCurrency(totals.balance)}
               </p>
             </SurfaceCard>
 
-            <SurfaceCard className="bg-income/10">
+            <SurfaceCard>
               <div className="mb-3 flex items-center gap-2">
-                <TrendingUp className="h-4 w-4 text-income" />
+                <BarChart3 className="h-4 w-4 text-primary" />
                 <span className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                  Receita do mês
+                  Pendente
                 </span>
               </div>
-              <p className="text-2xl font-semibold text-income">
-                {formatCurrency(currentMonth?.income || 0)}
-              </p>
-            </SurfaceCard>
-
-            <SurfaceCard className="bg-expense/10">
-              <div className="mb-3 flex items-center gap-2">
-                <TrendingDown className="h-4 w-4 text-expense" />
-                <span className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                  Despesa do mês
-                </span>
-              </div>
-              <p className="text-2xl font-semibold text-expense">
-                {formatCurrency(currentMonth?.expense || 0)}
-              </p>
+              <p className="text-2xl font-semibold">{formatCurrency(pendingReal)}</p>
             </SurfaceCard>
           </section>
 
-          <SurfaceCard>
-            <h2 className="text-lg font-semibold">O que merece atenção</h2>
-            <p className="mt-2 text-sm text-muted-foreground">
-              {pendingExpense > 0
-                ? `Você ainda tem ${formatCurrency(pendingExpense)} em despesas pendentes. Confirmar esses valores deixa o saldo do mês mais confiável.`
-                : topExpenseCategories[0]
-                ? `Seu maior gasto confirmado no mês está em ${topExpenseCategories[0].category!.name}. Vale acompanhar essa categoria mais de perto.`
-                : 'Assim que houver mais lançamentos, esta área começa a destacar padrões e possíveis excessos automaticamente.'}
-            </p>
-          </SurfaceCard>
-
-          {(pendingIncome > 0 || pendingExpense > 0) && (
-            <SurfaceCard className="bg-pending/10">
-              <div className="mb-4 flex items-center gap-2">
-                <span className="h-2 w-2 rounded-full bg-pending" />
-                <h2 className="text-lg font-semibold">Pendências abertas</h2>
-              </div>
-              <div className="grid gap-4 sm:grid-cols-2">
-                {pendingIncome > 0 ? (
-                  <div>
-                    <p className="text-sm text-muted-foreground">A receber</p>
-                    <p className="mt-1 font-mono text-lg font-semibold text-income">
-                      {formatCurrency(pendingIncome)}
-                    </p>
-                  </div>
-                ) : null}
-                {pendingExpense > 0 ? (
-                  <div>
-                    <p className="text-sm text-muted-foreground">A pagar</p>
-                    <p className="mt-1 font-mono text-lg font-semibold text-expense">
-                      {formatCurrency(pendingExpense)}
-                    </p>
-                  </div>
-                ) : null}
-              </div>
-            </SurfaceCard>
-          )}
-
-          <section className="grid gap-4 xl:grid-cols-[1.4fr_1fr]">
+          <section className="grid gap-4 xl:grid-cols-[1.3fr_1fr]">
             <SurfaceCard>
               <div className="mb-5">
                 <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                  Histórico recente
+                  Evolucao mensal
                 </p>
-                <h2 className="mt-1 text-lg font-semibold">Receitas vs despesas</h2>
+                <h2 className="mt-1 text-lg font-semibold">Receitas e despesas por mes</h2>
               </div>
-              <div className="space-y-4">
-                {monthlyData.map((month, index) => (
-                  <motion.div
-                    key={month.label}
-                    initial={{ opacity: 0, x: -12 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: index * 0.04 }}
-                  >
-                    <div className="mb-1 flex items-center justify-between">
-                      <span className="w-12 text-sm font-medium capitalize">{month.label}</span>
-                      <span
-                        className={`text-xs font-mono ${
-                          month.balance >= 0 ? 'text-income' : 'text-expense'
-                        }`}
-                      >
-                        {month.balance >= 0 ? '+' : ''}
-                        {formatCurrency(month.balance)}
-                      </span>
-                    </div>
 
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-2">
-                        <div className="h-2.5 w-full overflow-hidden rounded-full bg-muted">
-                          <motion.div
-                            initial={{ width: 0 }}
-                            animate={{ width: `${(month.income / maxValue) * 100}%` }}
-                            transition={{ duration: 0.45, delay: index * 0.05 }}
-                            className="h-full rounded-full bg-income"
-                          />
-                        </div>
-                        <span className="w-20 text-right text-xs font-mono text-muted-foreground">
-                          {formatCurrency(month.income)}
-                        </span>
-                      </div>
+              <ChartContainer config={chartConfig} className="h-[320px] w-full">
+                <BarChart data={monthlySeries}>
+                  <CartesianGrid vertical={false} />
+                  <XAxis dataKey="label" tickLine={false} axisLine={false} />
+                  <YAxis tickLine={false} axisLine={false} tickFormatter={(value) => `R$${Number(value) / 1000}k`} />
+                  <ChartTooltip content={<ChartTooltipContent />} />
+                  <Legend content={<ChartLegendContent />} />
+                  <Bar dataKey="income" fill="var(--color-income)" radius={[8, 8, 0, 0]} />
+                  <Bar dataKey="expense" fill="var(--color-expense)" radius={[8, 8, 0, 0]} />
+                </BarChart>
+              </ChartContainer>
+            </SurfaceCard>
 
-                      <div className="flex items-center gap-2">
-                        <div className="h-2.5 w-full overflow-hidden rounded-full bg-muted">
-                          <motion.div
-                            initial={{ width: 0 }}
-                            animate={{ width: `${(month.expense / maxValue) * 100}%` }}
-                            transition={{ duration: 0.45, delay: index * 0.05 + 0.04 }}
-                            className="h-full rounded-full bg-expense"
-                          />
-                        </div>
-                        <span className="w-20 text-right text-xs font-mono text-muted-foreground">
-                          {formatCurrency(month.expense)}
-                        </span>
-                      </div>
-                    </div>
-                  </motion.div>
-                ))}
+            <SurfaceCard>
+              <div className="mb-5">
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                  Saldo historico
+                </p>
+                <h2 className="mt-1 text-lg font-semibold">Mes a mes</h2>
+              </div>
+
+              <ChartContainer config={chartConfig} className="h-[320px] w-full">
+                <LineChart data={monthlySeries}>
+                  <CartesianGrid vertical={false} />
+                  <XAxis dataKey="label" tickLine={false} axisLine={false} />
+                  <YAxis tickLine={false} axisLine={false} tickFormatter={(value) => `R$${Number(value) / 1000}k`} />
+                  <ChartTooltip content={<ChartTooltipContent />} />
+                  <Line type="monotone" dataKey="balance" stroke="var(--color-balance)" strokeWidth={3} dot={false} />
+                </LineChart>
+              </ChartContainer>
+            </SurfaceCard>
+          </section>
+
+          <section className="grid gap-4 xl:grid-cols-[0.9fr_1.1fr]">
+            <SurfaceCard>
+              <h2 className="text-lg font-semibold">Leitura do periodo</h2>
+              <div className="mt-4 space-y-4">
+                <div className="rounded-2xl bg-muted/50 p-4">
+                  <p className="text-sm text-muted-foreground">Mes que mais gastou</p>
+                  <p className="mt-1 text-lg font-semibold">
+                    {highestExpenseMonth?.fullLabel || 'Sem dados'}
+                  </p>
+                  <p className="mt-1 text-sm text-expense">
+                    {formatCurrency(highestExpenseMonth?.expense || 0)}
+                  </p>
+                </div>
+
+                <div className="rounded-2xl bg-muted/50 p-4">
+                  <p className="text-sm text-muted-foreground">Mes que menos gastou</p>
+                  <p className="mt-1 text-lg font-semibold">
+                    {lowestExpenseMonth?.fullLabel || 'Sem dados'}
+                  </p>
+                  <p className="mt-1 text-sm text-primary">
+                    {formatCurrency(lowestExpenseMonth?.expense || 0)}
+                  </p>
+                </div>
               </div>
             </SurfaceCard>
 
-            <div className="grid gap-4">
-              <SurfaceCard>
-                <h2 className="text-lg font-semibold">Evolução mensal</h2>
-                <div className="mt-4 space-y-3">
-                  {monthlyData.map((month, index) => (
+            <SurfaceCard>
+              <h2 className="text-lg font-semibold">Top categorias de despesa</h2>
+              <div className="mt-4 space-y-4">
+                {topCategories.map((item, index) => {
+                  const total = topCategories.reduce((sum, current) => sum + current.amount, 0) || 1;
+                  const percentage = (item.amount / total) * 100;
+
+                  return (
                     <motion.div
-                      key={month.fullLabel}
-                      initial={{ opacity: 0, y: 8 }}
-                      animate={{ opacity: 1, y: 0 }}
+                      key={item.category!.id}
+                      initial={{ opacity: 0, x: -8 }}
+                      animate={{ opacity: 1, x: 0 }}
                       transition={{ delay: index * 0.04 }}
-                      className="flex items-center justify-between rounded-2xl bg-muted/50 px-4 py-3"
                     >
-                      <span className="text-sm capitalize">{month.fullLabel}</span>
-                      <span
-                        className={`font-mono text-sm font-semibold ${
-                          month.balance >= 0 ? 'text-income' : 'text-expense'
-                        }`}
-                      >
-                        {month.balance >= 0 ? '+' : ''}
-                        {formatCurrency(month.balance)}
-                      </span>
-                    </motion.div>
-                  ))}
-                </div>
-              </SurfaceCard>
-
-              {topExpenseCategories.length > 0 ? (
-                <SurfaceCard>
-                  <h2 className="text-lg font-semibold">Maiores gastos do mês</h2>
-                  <div className="mt-4 space-y-4">
-                    {topExpenseCategories.map((item, index) => {
-                      const total = topExpenseCategories.reduce(
-                        (sum, current) => sum + current.amount,
-                        0
-                      );
-                      const percentage = (item.amount / total) * 100;
-
-                      return (
+                      <div className="mb-2 flex items-center justify-between">
+                        <span className="text-sm">{item.category!.name}</span>
+                        <span className="text-xs font-mono text-muted-foreground">
+                          {formatCurrency(item.amount)}
+                        </span>
+                      </div>
+                      <div className="h-2 overflow-hidden rounded-full bg-muted">
                         <motion.div
-                          key={item.category!.id}
-                          initial={{ opacity: 0, x: -8 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          transition={{ delay: index * 0.04 }}
-                        >
-                          <div className="mb-2 flex items-center justify-between">
-                            <div className="flex items-center gap-2">
-                              <div
-                                className="h-3 w-3 rounded-full"
-                                style={{ backgroundColor: item.category!.color }}
-                              />
-                              <span className="text-sm">{item.category!.name}</span>
-                            </div>
-                            <span className="text-xs font-mono text-muted-foreground">
-                              {percentage.toFixed(0)}%
-                            </span>
-                          </div>
-                          <div className="h-2 overflow-hidden rounded-full bg-muted">
-                            <motion.div
-                              initial={{ width: 0 }}
-                              animate={{ width: `${percentage}%` }}
-                              transition={{ duration: 0.45, delay: index * 0.05 }}
-                              className="h-full rounded-full"
-                              style={{ backgroundColor: item.category!.color }}
-                            />
-                          </div>
-                          <p className="mt-2 text-right text-sm font-mono">
-                            {formatCurrency(item.amount)}
-                          </p>
-                        </motion.div>
-                      );
-                    })}
-                  </div>
-                </SurfaceCard>
-              ) : null}
-            </div>
+                          initial={{ width: 0 }}
+                          animate={{ width: `${percentage}%` }}
+                          transition={{ duration: 0.45, delay: index * 0.05 }}
+                          className="h-full rounded-full"
+                          style={{ backgroundColor: item.category!.color }}
+                        />
+                      </div>
+                    </motion.div>
+                  );
+                })}
+              </div>
+            </SurfaceCard>
           </section>
         </>
       )}

@@ -6,7 +6,6 @@ import { useFinanceStore, useCategoryById } from '@/stores/financeStore';
 import { formatCurrency } from '@/utils/currency';
 import { getRelativeDate } from '@/utils/dates';
 import type { Transaction } from '@/types/finance';
-import { useIsMobile } from '@/hooks/use-mobile';
 import { TransactionDeleteModal } from '@/components/TransactionDeleteModal';
 
 interface TransactionCardProps {
@@ -18,8 +17,6 @@ export const TransactionCard: React.FC<TransactionCardProps> = ({ transaction, o
   const [swipeOffset, setSwipeOffset] = React.useState(0);
   const [isDeleting, setIsDeleting] = React.useState(false);
   const [showDeleteModal, setShowDeleteModal] = React.useState(false);
-  const isMobile = useIsMobile();
-  
   const category = useCategoryById(transaction.categoryId);
   const { toggleTransactionStatus, deleteTransaction } = useFinanceStore();
 
@@ -184,7 +181,7 @@ export const TransactionCard: React.FC<TransactionCardProps> = ({ transaction, o
 
               <div className="mt-3 flex items-center justify-between gap-3">
                 <span
-                  className={`rounded-full px-2.5 py-1 text-xs font-medium ${
+                  className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${
                     isPending
                       ? 'bg-pending/15 text-pending'
                       : isIncome
@@ -198,22 +195,22 @@ export const TransactionCard: React.FC<TransactionCardProps> = ({ transaction, o
                 <button
                   onClick={handleStatusToggle}
                   aria-label={toggleLabel}
-                  className={`touch-btn relative flex h-8 w-[72px] flex-shrink-0 items-center rounded-full border px-1 transition-all duration-200 ${
+                  className={`touch-btn relative flex h-7 w-[54px] flex-shrink-0 items-center rounded-full border px-1 transition-all duration-200 ${
                     isPending
-                      ? 'border-border bg-muted/70'
+                      ? 'border-border/80 bg-muted/60'
                       : isIncome
-                      ? 'border-income/30 bg-income/15'
-                      : 'border-primary/30 bg-primary/15'
+                      ? 'border-income/20 bg-income/10'
+                      : 'border-primary/20 bg-primary/10'
                   }`}
                 >
                   <span
-                    className={`absolute left-1 flex h-6 w-6 items-center justify-center rounded-full shadow-sm transition-all duration-200 ${
+                    className={`absolute left-1 flex h-5 w-5 items-center justify-center rounded-full shadow-sm transition-all duration-200 ${
                       isPending
                         ? 'translate-x-0 bg-background text-muted-foreground'
-                        : 'translate-x-9 bg-background text-primary'
+                        : 'translate-x-6 bg-background text-primary'
                     }`}
                   >
-                    <Check className="h-3.5 w-3.5" />
+                    <Check className="h-3 w-3" />
                   </span>
                   <span className="sr-only">{toggleLabel}</span>
                 </button>
