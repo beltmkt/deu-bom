@@ -75,6 +75,25 @@ interface CalculatedItem {
   category: string;
 }
 
+const formatEventItems = (rows: any[] | null): EventItem[] =>
+  (rows || []).map((item) => ({
+    id: item.id,
+    name: item.name,
+    quantity: Number(item.quantity),
+    unitPrice: Number(item.unit_price),
+    category: item.category || 'outros',
+  }));
+
+const formatEventParticipants = (rows: any[] | null): Participant[] =>
+  (rows || []).map((participant) => ({
+    id: participant.id,
+    name: participant.name,
+    email: participant.email || undefined,
+    isChild: participant.is_child,
+    paid: participant.paid,
+    amountDue: Number(participant.amount_due),
+  }));
+
 const EVENT_TYPES = [
   { id: 'bbq' as EventType, label: 'Churrasco/BBQ', icon: ChefHat },
   { id: 'pizza' as EventType, label: 'Pizza Party', icon: Pizza },
@@ -217,6 +236,7 @@ const Leisure: React.FC = () => {
       
       if (formattedEvents.length > 0 && !selectedEvent) {
         setSelectedEvent(formattedEvents[0]);
+        setViewMode((current) => (current === 'calculator' ? 'events' : current));
       }
     } catch (error) {
       console.error('Failed to load events:', error);
@@ -231,14 +251,7 @@ const Leisure: React.FC = () => {
         .from('event_items')
         .select('*')
         .eq('event_id', eventId);
-
-      const formattedItems: EventItem[] = (itemsData || []).map(i => ({
-        id: i.id,
-        name: i.name,
-        quantity: Number(i.quantity),
-        unitPrice: Number(i.unit_price),
-        category: i.category || 'outros',
-      }));
+      const formattedItems = formatEventItems(itemsData);
 
       setItems(formattedItems);
 
@@ -246,20 +259,93 @@ const Leisure: React.FC = () => {
         .from('event_participants')
         .select('*')
         .eq('event_id', eventId);
-
-      const formattedParticipants: Participant[] = (participantsData || []).map(p => ({
-        id: p.id,
-        name: p.name,
-        email: (p as any).email || undefined,
-        isChild: p.is_child,
-        paid: p.paid,
-        amountDue: Number(p.amount_due),
-      }));
+      const formattedParticipants = formatEventParticipants(participantsData);
 
       setParticipants(formattedParticipants);
     } catch (error) {
       console.error('Failed to load event details:', error);
     }
+  };
+
+  const refreshEventDetails = async (eventId: string) => {
+    const [{ data: itemsData, error: itemsError }, { data: participantsData, error: participantsError }] =
+      await Promise.all([
+        supabase.from('event_items').select('*').eq('event_id', eventId),
+        supabase.from('event_participants').select('*').eq('event_id', eventId),
+      ]);
+
+    if (itemsError) throw itemsError;
+    if (participantsError) throw participantsError;
+
+    const formattedItems = formatEventItems(itemsData);
+    const formattedParticipants = formatEventParticipants(participantsData);
+
+    setItems(formattedItems);
+    setParticipants(formattedParticipants);
+
+    return {
+      formattedItems,
+      formattedParticipants,
+    };
+  };
+
+  const syncEventTotals = async (
+    eventId: string,
+    currentItems: EventItem[],
+    currentParticipants: Participant[],
+    childrenPercentageValue?: number
+  ) => {
+    const totalBudgetValue = currentItems.reduce(
+      (sum, item) => sum + item.quantity * item.unitPrice,
+      0
+    );
+    const adults = currentParticipants.filter((participant) => !participant.isChild);
+    const children = currentParticipants.filter((participant) => participant.isChild);
+    const effectiveChildrenPercentage =
+      childrenPercentageValue ?? selectedEvent?.childrenPercentage ?? childrenPercentage;
+
+    const { error: updateEventError } = await supabase
+      .from('events')
+      .update({
+        total_budget: totalBudgetValue,
+        adults_count: adults.length,
+        children_count: children.length,
+        children_percentage: effectiveChildrenPercentage,
+      })
+      .eq('id', eventId);
+
+    if (updateEventError) throw updateEventError;
+
+    if (currentParticipants.length > 0) {
+      const childMultiplier = effectiveChildrenPercentage / 100;
+      const totalUnits = adults.length + children.length * childMultiplier;
+
+      if (totalUnits > 0) {
+        const adultShare = totalBudgetValue / totalUnits;
+        const childShare = adultShare * childMultiplier;
+
+        for (const participant of currentParticipants) {
+          const amount = participant.isChild ? childShare : adultShare;
+          const { error: participantError } = await supabase
+            .from('event_participants')
+            .update({ amount_due: amount })
+            .eq('id', participant.id);
+
+          if (participantError) throw participantError;
+        }
+      }
+    }
+
+    await loadEvents();
+    const refreshedDetails = await refreshEventDetails(eventId);
+
+    if (selectedEvent?.id === eventId) {
+      setSelectedEvent((current) =>
+        current ? { ...current, totalBudget: totalBudgetValue, adultsCount: adults.length, childrenCount: children.length, childrenPercentage: effectiveChildrenPercentage } : current
+      );
+    }
+
+    return refreshedDetails;
   };
 
   // Calculator functions
@@ -517,8 +603,8 @@ const Leisure: React.FC = () => {
       setItemName('');
       setItemQuantity(1);
       setItemPrice(0);
-      await loadEventDetails(selectedEvent.id);
-      await updateEventTotals();
+      const { formattedItems, formattedParticipants } = await refreshEventDetails(selectedEvent.id);
+      await syncEventTotals(selectedEvent.id, formattedItems, formattedParticipants);
     } catch (error) {
       console.error('Failed to add item:', error);
       toast.error('Erro ao adicionar item');
@@ -534,11 +620,12 @@ const Leisure: React.FC = () => {
 
       toast.success('Item removido!');
       if (selectedEvent) {
-        await loadEventDetails(selectedEvent.id);
-        await updateEventTotals();
+        const { formattedItems, formattedParticipants } = await refreshEventDetails(selectedEvent.id);
+        await syncEventTotals(selectedEvent.id, formattedItems, formattedParticipants);
       }
     } catch (error) {
       console.error('Failed to remove item:', error);
+      toast.error('Erro ao remover item');
     }
   };
 
@@ -562,8 +649,8 @@ const Leisure: React.FC = () => {
       setParticipantName('');
       setParticipantEmail('');
       setParticipantIsChild(false);
-      await loadEventDetails(selectedEvent.id);
-      await updateEventTotals();
+      const { formattedItems, formattedParticipants } = await refreshEventDetails(selectedEvent.id);
+      await syncEventTotals(selectedEvent.id, formattedItems, formattedParticipants);
     } catch (error) {
       console.error('Failed to add participant:', error);
       toast.error('Erro ao adicionar participante');
@@ -579,87 +666,38 @@ const Leisure: React.FC = () => {
 
       toast.success('Participante removido!');
       if (selectedEvent) {
-        await loadEventDetails(selectedEvent.id);
-        await updateEventTotals();
+        const { formattedItems, formattedParticipants } = await refreshEventDetails(selectedEvent.id);
+        await syncEventTotals(selectedEvent.id, formattedItems, formattedParticipants);
       }
     } catch (error) {
       console.error('Failed to remove participant:', error);
+      toast.error('Erro ao remover participante');
     }
   };
 
   const toggleParticipantPaid = async (participant: Participant) => {
+    if (!canEdit) {
+      toast.error('Sem permissao para alterar pagamentos neste espaco');
+      return;
+    }
+
     try {
-      await supabase
+      const { error } = await supabase
         .from('event_participants')
         .update({ paid: !participant.paid })
         .eq('id', participant.id);
 
+      if (error) throw error;
+
       if (selectedEvent) {
         await loadEventDetails(selectedEvent.id);
       }
+
+      toast.success(participant.paid ? 'Pagamento marcado como pendente' : 'Pagamento confirmado');
     } catch (error) {
       console.error('Failed to toggle payment:', error);
+      toast.error('Erro ao atualizar pagamento');
     }
-  };
-
-  const updateEventTotals = async () => {
-    if (!selectedEvent) return;
-
-    const totalBudget = items.reduce((sum, item) => sum + (item.quantity * item.unitPrice), 0);
-    const adultsCount = participants.filter(p => !p.isChild).length;
-    const childrenCount = participants.filter(p => p.isChild).length;
-
-    await supabase
-      .from('events')
-      .update({
-        total_budget: totalBudget,
-        adults_count: adultsCount,
-        children_count: childrenCount,
-      })
-      .eq('id', selectedEvent.id);
-
-    await recalculateAmounts();
-    await loadEvents();
-  };
-
-  const recalculateAmounts = async () => {
-    if (!selectedEvent || participants.length === 0) return;
-
-    const totalBudget = items.reduce((sum, item) => sum + (item.quantity * item.unitPrice), 0);
-    const adults = participants.filter(p => !p.isChild);
-    const children = participants.filter(p => p.isChild);
-    
-    const childMultiplier = selectedEvent.childrenPercentage / 100;
-    const totalUnits = adults.length + (children.length * childMultiplier);
-    
-    if (totalUnits === 0) return;
-    
-    const adultShare = totalBudget / totalUnits;
-    const childShare = adultShare * childMultiplier;
-
-    for (const p of participants) {
-      const amount = p.isChild ? childShare : adultShare;
-      await supabase
-        .from('event_participants')
-        .update({ amount_due: amount })
-        .eq('id', p.id);
-    }
-
-    const { data: participantsData } = await supabase
-      .from('event_participants')
-      .select('*')
-      .eq('event_id', selectedEvent.id);
-
-    const formattedParticipants: Participant[] = (participantsData || []).map(p => ({
-      id: p.id,
-      name: p.name,
-      email: (p as any).email || undefined,
-      isChild: p.is_child,
-      paid: p.paid,
-      amountDue: Number(p.amount_due),
-    }));
-
-    setParticipants(formattedParticipants);
   };
 
   const deleteEvent = async (eventId: string) => {
@@ -699,14 +737,20 @@ const Leisure: React.FC = () => {
     if (!selectedEvent) return;
 
     setChildrenPercentage(percentage);
-
-    await supabase
-      .from('events')
-      .update({ children_percentage: percentage })
-      .eq('id', selectedEvent.id);
-
     setSelectedEvent({ ...selectedEvent, childrenPercentage: percentage });
-    await recalculateAmounts();
+
+    try {
+      const { formattedItems, formattedParticipants } = await refreshEventDetails(selectedEvent.id);
+      await syncEventTotals(
+        selectedEvent.id,
+        formattedItems,
+        formattedParticipants,
+        percentage
+      );
+    } catch (error) {
+      console.error('Failed to update children percentage:', error);
+      toast.error('Erro ao recalcular rateio');
+    }
   };
 
   const totalBudget = items.reduce((sum, item) => sum + (item.quantity * item.unitPrice), 0);
@@ -1254,8 +1298,36 @@ const Leisure: React.FC = () => {
 
             {selectedEvent && (
               <>
+                <div className="bg-card border border-border rounded-2xl p-4">
+                  <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                    <div>
+                      <p className="text-sm text-muted-foreground">Evento selecionado</p>
+                      <h2 className="text-xl font-semibold">{selectedEvent.name}</h2>
+                      <p className="text-sm text-muted-foreground">
+                        {selectedEvent.eventDate
+                          ? format(new Date(selectedEvent.eventDate), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })
+                          : 'Sem data definida'}
+                      </p>
+                    </div>
+                    <div className="grid grid-cols-3 gap-3 text-center">
+                      <div className="rounded-xl bg-muted/60 px-4 py-3">
+                        <p className="text-xs text-muted-foreground">Adultos</p>
+                        <p className="text-lg font-semibold">{participants.filter((p) => !p.isChild).length}</p>
+                      </div>
+                      <div className="rounded-xl bg-muted/60 px-4 py-3">
+                        <p className="text-xs text-muted-foreground">Criancas</p>
+                        <p className="text-lg font-semibold">{participants.filter((p) => p.isChild).length}</p>
+                      </div>
+                      <div className="rounded-xl bg-muted/60 px-4 py-3">
+                        <p className="text-xs text-muted-foreground">Itens</p>
+                        <p className="text-lg font-semibold">{items.length}</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
                 {/* Summary Cards */}
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
                   <div className="bg-card border border-border rounded-2xl p-4">
                     <p className="text-sm text-muted-foreground mb-1">Total Gasto</p>
                     <p className="text-2xl font-bold">{formatCurrency(totalBudget)}</p>
@@ -1301,12 +1373,18 @@ const Leisure: React.FC = () => {
                     value={selectedEvent.childrenPercentage}
                     onChange={(e) => updateChildrenPercentageForEvent(Number(e.target.value))}
                     className="w-full accent-primary"
+                    disabled={!canEdit}
                   />
                   <div className="flex justify-between text-xs text-muted-foreground mt-1">
                     <span>0%</span>
                     <span>50%</span>
                     <span>100%</span>
                   </div>
+                  {!canEdit && (
+                    <p className="mt-3 text-xs text-muted-foreground">
+                      Somente editores podem alterar esse rateio.
+                    </p>
+                  )}
                 </div>
 
                 {/* Participants Section */}
@@ -1355,9 +1433,11 @@ const Leisure: React.FC = () => {
                           </div>
                           <button
                             onClick={() => toggleParticipantPaid(participant)}
+                            disabled={!canEdit}
                             className={`w-8 h-8 rounded-full flex items-center justify-center ${
                               participant.paid ? 'bg-income/10' : 'bg-muted'
-                            }`}
+                            } ${!canEdit ? 'cursor-not-allowed opacity-50' : ''}`}
+                            title={canEdit ? 'Alterar pagamento' : 'Somente editores podem alterar pagamento'}
                           >
                             <Check className={`w-4 h-4 ${participant.paid ? 'text-income' : 'text-muted-foreground'}`} />
                           </button>

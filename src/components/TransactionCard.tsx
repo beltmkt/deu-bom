@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Check, Circle, Clock, Trash2, icons } from 'lucide-react';
+import { Check, Circle, Trash2, icons } from 'lucide-react';
 import { useSwipeable } from 'react-swipeable';
 import { useFinanceStore, useCategoryById } from '@/stores/financeStore';
 import { formatCurrency } from '@/utils/currency';
@@ -82,6 +82,20 @@ export const TransactionCard: React.FC<TransactionCardProps> = ({ transaction, o
 
   const isIncome = transaction.type === 'income';
   const isPending = transaction.status === 'pending';
+  const statusLabel = isIncome
+    ? isPending
+      ? 'Pendente'
+      : 'Recebido'
+    : isPending
+    ? 'Pendente'
+    : 'Pago';
+  const toggleLabel = isIncome
+    ? isPending
+      ? 'Marcar como recebido'
+      : 'Marcar como pendente'
+    : isPending
+    ? 'Marcar como pago'
+    : 'Marcar como pendente';
 
   return (
     <>
@@ -113,76 +127,98 @@ export const TransactionCard: React.FC<TransactionCardProps> = ({ transaction, o
             cursor-pointer group
           `}
         >
-          <div className="flex items-center gap-3">
-            {/* Status toggle */}
-            <button
-              onClick={handleStatusToggle}
-              className={`
-                touch-btn w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0
-                transition-all duration-200
-                ${isPending 
-                  ? 'bg-pending/20 border-2 border-pending' 
-                  : 'bg-income/20 border-2 border-income'
-                }
-              `}
-            >
-              {isPending ? (
-                <Clock className="w-4 h-4 text-pending" />
-              ) : (
-                <Check className="w-4 h-4 text-income" />
-              )}
-            </button>
-
-            {/* Category icon */}
+          <div className="flex items-start gap-3">
             <div
-              className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0"
+              className="mt-0.5 flex h-9 w-9 items-center justify-center rounded-full flex-shrink-0"
               style={{ backgroundColor: category?.color + '20' }}
             >
-              <IconComponent 
-                className="w-4 h-4" 
+              <IconComponent
+                className="h-4 w-4"
                 style={{ color: category?.color }}
               />
             </div>
 
-            {/* Transaction details */}
-            <div className="flex-1 min-w-0">
-              <h4 className="font-medium text-foreground truncate text-sm">
-                {transaction.title}
-              </h4>
-              <div className="flex items-center gap-2 mt-0.5">
-                <span className="text-xs text-muted-foreground">
-                  {category?.name}
+            <div className="min-w-0 flex-1">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <h4 className="truncate text-sm font-medium text-foreground">
+                    {transaction.title}
+                  </h4>
+                  <div className="mt-0.5 flex items-center gap-2">
+                    <span className="text-xs text-muted-foreground">
+                      {category?.name}
+                    </span>
+                    {transaction.installmentNumber && (
+                      <span className="rounded-full bg-muted px-1.5 py-0.5 text-xs text-muted-foreground">
+                        {transaction.installmentNumber}/{transaction.totalInstallments}
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-1">
+                  <div className="text-right flex-shrink-0">
+                    <p
+                      className={`
+                        font-mono text-sm font-semibold
+                        ${isIncome ? 'text-income' : 'text-expense'}
+                        ${isPending ? 'opacity-60' : ''}
+                      `}
+                    >
+                      {isIncome ? '+' : '-'} {formatCurrency(transaction.amount)}
+                    </p>
+                    <p className="mt-0.5 text-xs text-muted-foreground">
+                      {getRelativeDate(transaction.date)}
+                    </p>
+                  </div>
+
+                  <button
+                    onClick={handleDeleteClick}
+                    className="ml-1 flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full opacity-0 transition-all hover:bg-destructive/10 group-hover:opacity-100 sm:opacity-40"
+                    title="Excluir"
+                  >
+                    <Trash2 className="h-3.5 w-3.5 text-muted-foreground hover:text-destructive" />
+                  </button>
+                </div>
+              </div>
+
+              <div className="mt-3 flex items-center justify-between gap-3">
+                <span
+                  className={`rounded-full px-2.5 py-1 text-xs font-medium ${
+                    isPending
+                      ? 'bg-pending/15 text-pending'
+                      : isIncome
+                      ? 'bg-income/15 text-income'
+                      : 'bg-primary/15 text-primary'
+                  }`}
+                >
+                  {statusLabel}
                 </span>
-                {transaction.installmentNumber && (
-                  <span className="text-xs text-muted-foreground bg-muted px-1.5 py-0.5 rounded-full">
-                    {transaction.installmentNumber}/{transaction.totalInstallments}
+
+                <button
+                  onClick={handleStatusToggle}
+                  aria-label={toggleLabel}
+                  className={`touch-btn relative flex h-8 w-[72px] flex-shrink-0 items-center rounded-full border px-1 transition-all duration-200 ${
+                    isPending
+                      ? 'border-border bg-muted/70'
+                      : isIncome
+                      ? 'border-income/30 bg-income/15'
+                      : 'border-primary/30 bg-primary/15'
+                  }`}
+                >
+                  <span
+                    className={`absolute left-1 flex h-6 w-6 items-center justify-center rounded-full shadow-sm transition-all duration-200 ${
+                      isPending
+                        ? 'translate-x-0 bg-background text-muted-foreground'
+                        : 'translate-x-9 bg-background text-primary'
+                    }`}
+                  >
+                    <Check className="h-3.5 w-3.5" />
                   </span>
-                )}
+                  <span className="sr-only">{toggleLabel}</span>
+                </button>
               </div>
             </div>
-
-            {/* Amount and date */}
-            <div className="text-right flex-shrink-0">
-              <p className={`
-                font-mono font-semibold text-sm
-                ${isIncome ? 'text-income' : 'text-expense'}
-                ${isPending ? 'opacity-60' : ''}
-              `}>
-                {isIncome ? '+' : '-'} {formatCurrency(transaction.amount)}
-              </p>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                {getRelativeDate(transaction.date)}
-              </p>
-            </div>
-
-            {/* Discrete delete button */}
-            <button
-              onClick={handleDeleteClick}
-              className="ml-1 w-7 h-7 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 hover:bg-destructive/10 transition-all flex-shrink-0 sm:opacity-40"
-              title="Excluir"
-            >
-              <Trash2 className="w-3.5 h-3.5 text-muted-foreground hover:text-destructive" />
-            </button>
           </div>
         </div>
       </motion.div>
