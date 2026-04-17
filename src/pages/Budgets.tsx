@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
   CalendarClock,
@@ -98,7 +98,7 @@ const Budgets: React.FC = () => {
     }
   }, [initialize, initialized]);
 
-  const loadGoals = async () => {
+  const loadGoals = useCallback(async () => {
     if (!user) {
       setGoals([]);
       setGoalsLoading(false);
@@ -108,8 +108,10 @@ const Budgets: React.FC = () => {
     setGoalsLoading(true);
 
     try {
-      const db = supabase as any;
-      let query = db.from('purchase_goals').select('*').order('created_at', { ascending: false });
+      let query = supabase
+        .from('purchase_goals')
+        .select('*')
+        .order('created_at', { ascending: false });
 
       if (currentWorkspace?.id) {
         query = query.eq('workspace_id', currentWorkspace.id);
@@ -127,13 +129,13 @@ const Budgets: React.FC = () => {
     } finally {
       setGoalsLoading(false);
     }
-  };
+  }, [currentWorkspace?.id, user]);
 
   useEffect(() => {
     if (!workspaceLoading) {
       loadGoals();
     }
-  }, [workspaceLoading, currentWorkspace?.id, user?.id]);
+  }, [workspaceLoading, loadGoals]);
 
   const monthlyBalances = useMemo(() => {
     return Array.from({ length: 6 }, (_, index) => {
@@ -187,8 +189,7 @@ const Budgets: React.FC = () => {
     if (!user || !title.trim() || targetAmount <= 0) return;
 
     try {
-      const db = supabase as any;
-      const { error } = await db.from('purchase_goals').insert({
+      const { error } = await supabase.from('purchase_goals').insert({
         user_id: user.id,
         workspace_id: currentWorkspace?.id || null,
         title: title.trim(),
@@ -216,8 +217,7 @@ const Budgets: React.FC = () => {
 
   const handleDeleteGoal = async (goalId: string) => {
     try {
-      const db = supabase as any;
-      const { error } = await db.from('purchase_goals').delete().eq('id', goalId);
+      const { error } = await supabase.from('purchase_goals').delete().eq('id', goalId);
       if (error) throw error;
 
       toast.success('Meta removida');

@@ -67,8 +67,6 @@ export const WorkspaceProvider = ({ children }: { children: ReactNode }) => {
 
   const loadWorkspaceDetails = useCallback(async (workspaceId: string, workspacesList: Workspace[], userId: string) => {
     try {
-      console.log('[Workspace] Loading details for workspace:', workspaceId, 'user:', userId);
-      
       // Load members
       const { data: membersData, error: membersError } = await supabase
         .from('workspace_members')
@@ -78,7 +76,6 @@ export const WorkspaceProvider = ({ children }: { children: ReactNode }) => {
       if (membersError) {
         console.error('[Workspace] Error loading members:', membersError);
       }
-      console.log('[Workspace] Members data:', membersData);
 
       // Load profiles for members
       const memberIds = membersData?.map(m => m.user_id) || [];
@@ -102,20 +99,15 @@ export const WorkspaceProvider = ({ children }: { children: ReactNode }) => {
           displayName: profile?.display_name || undefined,
         };
       });
-
-      console.log('[Workspace] Formatted members:', formattedMembers);
       setMembers(formattedMembers);
 
       // Determine user's role - first check if user is workspace owner
       const workspace = workspacesList.find(w => w.id === workspaceId);
-      console.log('[Workspace] Found workspace:', workspace);
       
       if (workspace?.ownerId === userId) {
-        console.log('[Workspace] User is owner of workspace');
         setUserRole('owner');
       } else {
         const userMember = formattedMembers.find(m => m.userId === userId);
-        console.log('[Workspace] User member record:', userMember);
         setUserRole(userMember?.role || null);
       }
 
@@ -147,8 +139,6 @@ export const WorkspaceProvider = ({ children }: { children: ReactNode }) => {
 
   const loadWorkspaces = useCallback(async (userId: string) => {
     try {
-      console.log('[Workspace] Loading workspaces for user:', userId);
-      
       // Get user's profile with current workspace
       const { data: profile, error: profileError } = await supabase
         .from('profiles')
@@ -159,7 +149,6 @@ export const WorkspaceProvider = ({ children }: { children: ReactNode }) => {
       if (profileError) {
         console.error('[Workspace] Error loading profile:', profileError);
       }
-      console.log('[Workspace] Profile loaded:', profile);
 
       // Get workspaces where user is owner
       const { data: ownedWorkspaces, error: ownedError } = await supabase
@@ -170,7 +159,6 @@ export const WorkspaceProvider = ({ children }: { children: ReactNode }) => {
       if (ownedError) {
         console.error('[Workspace] Error loading owned workspaces:', ownedError);
       }
-      console.log('[Workspace] Owned workspaces:', ownedWorkspaces);
 
       // Get workspaces where user is member
       const { data: memberWorkspaces, error: memberError } = await supabase
@@ -182,7 +170,6 @@ export const WorkspaceProvider = ({ children }: { children: ReactNode }) => {
       if (memberError) {
         console.error('[Workspace] Error loading member workspaces:', memberError);
       }
-      console.log('[Workspace] Member workspaces:', memberWorkspaces);
 
       const memberWorkspaceIds = memberWorkspaces?.map(m => m.workspace_id) || [];
       
@@ -206,8 +193,6 @@ export const WorkspaceProvider = ({ children }: { children: ReactNode }) => {
         ownerId: w.owner_id,
         createdAt: w.created_at,
       }));
-
-      console.log('[Workspace] All workspaces:', formattedWorkspaces);
       setWorkspaces(formattedWorkspaces);
 
       // Set current workspace
@@ -221,13 +206,11 @@ export const WorkspaceProvider = ({ children }: { children: ReactNode }) => {
       }
 
       const current = formattedWorkspaces.find(w => w.id === currentWsId) || formattedWorkspaces[0];
-      console.log('[Workspace] Current workspace:', current);
       setCurrentWorkspace(current || null);
 
       if (current) {
         await loadWorkspaceDetails(current.id, formattedWorkspaces, userId);
       } else {
-        console.log('[Workspace] No current workspace found');
         setLoading(false);
       }
     } catch (error) {
@@ -265,10 +248,14 @@ export const WorkspaceProvider = ({ children }: { children: ReactNode }) => {
   const switchWorkspace = useCallback(async (workspaceId: string) => {
     if (!user) return;
 
-    await supabase
+    const { error } = await supabase
       .from('profiles')
       .update({ current_workspace_id: workspaceId })
       .eq('id', user.id);
+
+    if (error) {
+      throw error;
+    }
 
     const workspace = workspaces.find(w => w.id === workspaceId);
     setCurrentWorkspace(workspace || null);
@@ -293,7 +280,7 @@ export const WorkspaceProvider = ({ children }: { children: ReactNode }) => {
     }
 
     // Add owner as member
-    await supabase
+    const { error: memberError } = await supabase
       .from('workspace_members')
       .insert({
         workspace_id: newWorkspace.id,
@@ -301,6 +288,10 @@ export const WorkspaceProvider = ({ children }: { children: ReactNode }) => {
         role: 'owner',
         accepted_at: new Date().toISOString(),
       });
+
+    if (memberError) {
+      throw memberError;
+    }
 
     hasLoadedRef.current = false;
     await loadWorkspaces(user.id);
@@ -327,10 +318,14 @@ export const WorkspaceProvider = ({ children }: { children: ReactNode }) => {
       .maybeSingle();
 
     if (existingInvitation) {
-      await supabase
+      const { error: deleteExistingError } = await supabase
         .from('workspace_invitations')
         .delete()
         .eq('id', existingInvitation.id);
+
+      if (deleteExistingError) {
+        throw deleteExistingError;
+      }
     }
 
     // Insert new invitation
@@ -376,10 +371,14 @@ export const WorkspaceProvider = ({ children }: { children: ReactNode }) => {
   const removeInvitation = useCallback(async (invitationId: string) => {
     if (!user || !currentWorkspace) return;
     
-    await supabase
+    const { error } = await supabase
       .from('workspace_invitations')
       .delete()
       .eq('id', invitationId);
+
+    if (error) {
+      throw error;
+    }
 
     await loadWorkspaceDetails(currentWorkspace.id, workspaces, user.id);
   }, [user, currentWorkspace, workspaces, loadWorkspaceDetails]);
@@ -387,10 +386,14 @@ export const WorkspaceProvider = ({ children }: { children: ReactNode }) => {
   const removeMember = useCallback(async (memberId: string) => {
     if (!user || !currentWorkspace) return;
     
-    await supabase
+    const { error } = await supabase
       .from('workspace_members')
       .delete()
       .eq('id', memberId);
+
+    if (error) {
+      throw error;
+    }
 
     await loadWorkspaceDetails(currentWorkspace.id, workspaces, user.id);
   }, [user, currentWorkspace, workspaces, loadWorkspaceDetails]);
@@ -398,10 +401,14 @@ export const WorkspaceProvider = ({ children }: { children: ReactNode }) => {
   const updateMemberRole = useCallback(async (memberId: string, role: 'editor' | 'viewer') => {
     if (!user || !currentWorkspace) return;
     
-    await supabase
+    const { error } = await supabase
       .from('workspace_members')
       .update({ role })
       .eq('id', memberId);
+
+    if (error) {
+      throw error;
+    }
 
     await loadWorkspaceDetails(currentWorkspace.id, workspaces, user.id);
   }, [user, currentWorkspace, workspaces, loadWorkspaceDetails]);

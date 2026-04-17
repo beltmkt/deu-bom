@@ -1,10 +1,10 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
+  AlertTriangle,
   Bell,
   Check,
-  ChevronRight,
+  Cloud,
   Download,
-  Edit,
   Edit2,
   Eye,
   FileSpreadsheet,
@@ -13,14 +13,15 @@ import {
   Mail,
   Monitor,
   Moon,
+  RefreshCw,
   ShieldCheck,
   Sun,
+  Trash2,
   Upload,
   User,
   UserPlus,
   Users,
   X,
-  PartyPopper,
 } from 'lucide-react';
 import { AppShell } from '@/components/AppShell';
 import { BottomNav } from '@/components/BottomNav';
@@ -28,19 +29,41 @@ import { PageIntro } from '@/components/PageIntro';
 import { ProfileEditModal } from '@/components/ProfileEditModal';
 import { SurfaceCard } from '@/components/SurfaceCard';
 import { WorkspaceInviteModal } from '@/components/WorkspaceInviteModal';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useFinanceStore, useSettings } from '@/stores/financeStore';
 import { useAuth } from '@/hooks/useAuth';
 import { useTheme } from '@/hooks/useTheme';
 import { useWorkspace } from '@/hooks/useWorkspace';
-import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
-import { Link } from 'react-router-dom';
+import { getErrorMessage } from '@/utils/errors';
+import { toast } from 'sonner';
+
+type ConnectionStatus = 'checking' | 'connected' | 'error';
+
+const themeOptions = [
+  { id: 'light' as const, label: 'Claro', icon: Sun },
+  { id: 'dark' as const, label: 'Escuro', icon: Moon },
+  { id: 'system' as const, label: 'Sistema', icon: Monitor },
+];
 
 const Settings: React.FC = () => {
   const settings = useSettings();
-  const { exportData, importData, updateSettings, initialize, initialized } = useFinanceStore();
+  const {
+    exportData,
+    importData,
+    updateSettings,
+    initialize,
+    initialized,
+    refreshData,
+  } = useFinanceStore();
   const { user, signOut } = useAuth();
-  const { currentWorkspace, members, userRole, inviteUser, refreshWorkspace } = useWorkspace();
+  const {
+    currentWorkspace,
+    members,
+    userRole,
+    inviteUser,
+    refreshWorkspace,
+  } = useWorkspace();
   const { theme, setTheme } = useTheme();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -54,6 +77,19 @@ const Settings: React.FC = () => {
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviteRole, setInviteRole] = useState<'editor' | 'viewer'>('viewer');
   const [isInviting, setIsInviting] = useState(false);
+  const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>('checking');
+  const [connectionMessage, setConnectionMessage] = useState('Validando sincronizacao...');
+  const [lastConnectionCheck, setLastConnectionCheck] = useState<string | null>(null);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [deleteConfirmation, setDeleteConfirmation] = useState('');
+  const [isDeletingData, setIsDeletingData] = useState(false);
+
+  const canManageWorkspace = userRole === 'owner';
+  const canDeleteScopeData = !currentWorkspace || userRole === 'owner';
+  const deleteScopeLabel = currentWorkspace ? currentWorkspace.name : 'EXCLUIR';
+  const envConfigured =
+    Boolean(import.meta.env.VITE_SUPABASE_URL) &&
+    Boolean(import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY);
 
   useEffect(() => {
     if (!initialized) {
@@ -61,34 +97,108 @@ const Settings: React.FC = () => {
     }
   }, [initialize, initialized]);
 
-  useEffect(() => {
-    const loadProfile = async () => {
-      if (!user) return;
+  const loadProfile = useCallback(async () => {
+    if (!user) return;
 
-      const { data } = await supabase
+    const { data } = await supabase
+      .from('profiles')
+      .select('display_name, email')
+      .eq('id', user.id)
+      .maybeSingle();
+
+    if (data) {
+      setProfileData({
+        displayName: data.display_name || '',
+        email: data.email || user.email || '',
+      });
+    }
+  }, [user]);
+
+  useEffect(() => {
+    loadProfile();
+  }, [loadProfile]);
+
+  const runConnectionCheck = useCallback(async () => {
+    if (!user) return;
+
+    if (!envConfigured) {
+      setConnectionStatus('error');
+      setConnectionMessage('As variaveis do Supabase nao estao configuradas no frontend.');
+      setLastConnectionCheck(new Date().toLocaleTimeString('pt-BR'));
+      return;
+    }
+
+    setConnectionStatus('checking');
+    setConnectionMessage('Validando sincronizacao com o banco...');
+
+    try {
+      const { error } = await supabase
         .from('profiles')
-        .select('display_name, email')
+        .select('id')
         .eq('id', user.id)
         .maybeSingle();
 
-      if (data) {
-        setProfileData({
-          displayName: data.display_name || '',
-          email: data.email || user.email || '',
-        });
-      }
-    };
+      if (error) throw error;
 
-    loadProfile();
-  }, [user]);
+      setConnectionStatus('connected');
+      setConnectionMessage(
+        currentWorkspace
+          ? `Supabase conectado e sincronizando o workspace ${currentWorkspace.name}.`
+          : 'Supabase conectado e sincronizando seus dados pessoais.'
+      );
+    } catch (error: unknown) {
+      setConnectionStatus('error');
+      setConnectionMessage(
+        getErrorMessage(error, 'Nao foi possivel validar a conexao com o Supabase.')
+      );
+    } finally {
+      setLastConnectionCheck(new Date().toLocaleTimeString('pt-BR'));
+    }
+  }, [currentWorkspace, envConfigured, user]);
+
+  useEffect(() => {
+    runConnectionCheck();
+  }, [runConnectionCheck]);
+
+  const connectionTone =
+    connectionStatus === 'connected'
+      ? 'border-primary/20 bg-primary/10 text-primary'
+      : connectionStatus === 'error'
+      ? 'border-expense/20 bg-expense/10 text-expense'
+      : 'border-border/70 bg-muted/40 text-foreground';
+
+  const stats = useMemo(
+    () => [
+      {
+        label: 'Usuario',
+        value: profileData.displayName || user?.email || 'Sem identificacao',
+      },
+      {
+        label: 'Workspace',
+        value: currentWorkspace?.name || 'Sem workspace ativo',
+      },
+      {
+        label: 'Acesso',
+        value:
+          userRole === 'owner'
+            ? 'Proprietario'
+            : userRole === 'editor'
+            ? 'Editor'
+            : userRole === 'viewer'
+            ? 'Visualizador'
+            : 'Usuario',
+      },
+    ],
+    [currentWorkspace?.name, profileData.displayName, user?.email, userRole]
+  );
 
   const handleSignOut = async () => {
     setIsLoggingOut(true);
     try {
       await signOut();
-      toast.success('Logout realizado com sucesso!');
+      toast.success('Logout realizado com sucesso.');
     } catch {
-      toast.error('Erro ao fazer logout');
+      toast.error('Erro ao fazer logout.');
     } finally {
       setIsLoggingOut(false);
     }
@@ -105,7 +215,7 @@ const Settings: React.FC = () => {
     anchor.click();
     document.body.removeChild(anchor);
     URL.revokeObjectURL(url);
-    toast.success('Dados exportados com sucesso!');
+    toast.success('Dados exportados com sucesso.');
   };
 
   const handleExportCSV = () => {
@@ -134,7 +244,7 @@ const Settings: React.FC = () => {
     anchor.click();
     document.body.removeChild(anchor);
     URL.revokeObjectURL(url);
-    toast.success('Dados exportados em CSV!');
+    toast.success('CSV exportado com sucesso.');
   };
 
   const handleImport = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -146,7 +256,7 @@ const Settings: React.FC = () => {
       const content = loadEvent.target?.result as string;
       const success = await importData(content);
       if (success) {
-        toast.success('Dados importados com sucesso!');
+        toast.success('Dados importados com sucesso.');
       } else {
         toast.error('Erro ao importar dados. Verifique o formato do arquivo.');
       }
@@ -177,20 +287,7 @@ const Settings: React.FC = () => {
     anchor.click();
     document.body.removeChild(anchor);
     URL.revokeObjectURL(url);
-    toast.success('Modelo baixado! Preencha e importe.');
-  };
-
-  const getRoleLabel = (role: string | null) => {
-    switch (role) {
-      case 'owner':
-        return 'Proprietario';
-      case 'editor':
-        return 'Editor';
-      case 'viewer':
-        return 'Visualizador';
-      default:
-        return 'Usuario';
-    }
+    toast.success('Modelo baixado com sucesso.');
   };
 
   const handleStartEditWorkspaceName = () => {
@@ -210,11 +307,11 @@ const Settings: React.FC = () => {
 
       if (error) throw error;
 
-      toast.success('Nome do espaco atualizado!');
+      toast.success('Nome do workspace atualizado.');
       setIsEditingWorkspaceName(false);
       await refreshWorkspace();
-    } catch (error: any) {
-      toast.error(error.message || 'Erro ao atualizar nome');
+    } catch (error: unknown) {
+      toast.error(getErrorMessage(error, 'Erro ao atualizar o nome do workspace.'));
     } finally {
       setIsSavingWorkspaceName(false);
     }
@@ -226,312 +323,488 @@ const Settings: React.FC = () => {
     setIsInviting(true);
     try {
       await inviteUser(inviteEmail.trim(), inviteRole);
-      toast.success('Convite enviado!');
+      toast.success('Convite enviado com sucesso.');
       setInviteEmail('');
-    } catch (error: any) {
-      toast.error(error.message || 'Erro ao enviar convite');
+    } catch (error: unknown) {
+      toast.error(getErrorMessage(error, 'Erro ao enviar convite.'));
     } finally {
       setIsInviting(false);
+    }
+  };
+
+  const runDeleteStep = async (
+    operation: PromiseLike<{ error: { message?: string } | null }>,
+    fallbackMessage: string
+  ) => {
+    const { error } = await operation;
+    if (error) {
+      throw new Error(error.message || fallbackMessage);
+    }
+  };
+
+  const handleDeleteAllData = async () => {
+    if (!user) return;
+
+    if (!canDeleteScopeData) {
+      toast.error('Somente o proprietario pode limpar todos os dados do workspace.');
+      return;
+    }
+
+    if (deleteConfirmation.trim() !== deleteScopeLabel) {
+      toast.error(`Digite ${deleteScopeLabel} para confirmar.`);
+      return;
+    }
+
+    setIsDeletingData(true);
+
+    try {
+      if (currentWorkspace?.id) {
+        const { data: eventsData, error: eventsError } = await supabase
+          .from('events')
+          .select('id')
+          .eq('workspace_id', currentWorkspace.id);
+
+        if (eventsError) throw new Error(eventsError.message || 'Erro ao listar eventos.');
+
+        const eventIds = (eventsData || []).map((event) => event.id);
+
+        if (eventIds.length > 0) {
+          await runDeleteStep(
+            supabase.from('event_items').delete().in('event_id', eventIds),
+            'Erro ao limpar itens de eventos.'
+          );
+          await runDeleteStep(
+            supabase.from('event_participants').delete().in('event_id', eventIds),
+            'Erro ao limpar participantes de eventos.'
+          );
+          await runDeleteStep(
+            supabase.from('events').delete().in('id', eventIds),
+            'Erro ao limpar eventos.'
+          );
+        }
+
+        await runDeleteStep(
+          supabase.from('purchase_goals').delete().eq('workspace_id', currentWorkspace.id),
+          'Erro ao limpar metas.'
+        );
+        await runDeleteStep(
+          supabase.from('transactions').delete().eq('workspace_id', currentWorkspace.id),
+          'Erro ao limpar transacoes.'
+        );
+        await runDeleteStep(
+          supabase.from('budgets').delete().eq('workspace_id', currentWorkspace.id),
+          'Erro ao limpar orcamentos.'
+        );
+        await runDeleteStep(
+          supabase.from('categories').delete().eq('workspace_id', currentWorkspace.id),
+          'Erro ao limpar categorias.'
+        );
+      } else {
+        await runDeleteStep(
+          supabase
+            .from('purchase_goals')
+            .delete()
+            .eq('user_id', user.id)
+            .is('workspace_id', null),
+          'Erro ao limpar metas pessoais.'
+        );
+        await runDeleteStep(
+          supabase
+            .from('transactions')
+            .delete()
+            .eq('user_id', user.id)
+            .is('workspace_id', null),
+          'Erro ao limpar transacoes pessoais.'
+        );
+        await runDeleteStep(
+          supabase
+            .from('budgets')
+            .delete()
+            .eq('user_id', user.id)
+            .is('workspace_id', null),
+          'Erro ao limpar orcamentos pessoais.'
+        );
+        await runDeleteStep(
+          supabase
+            .from('categories')
+            .delete()
+            .eq('user_id', user.id)
+            .is('workspace_id', null),
+          'Erro ao limpar categorias pessoais.'
+        );
+      }
+
+      await refreshData();
+      await refreshWorkspace();
+      await runConnectionCheck();
+
+      toast.success(
+        currentWorkspace
+          ? 'Todos os dados do workspace foram limpos. As categorias padrao serao recriadas automaticamente.'
+          : 'Todos os seus dados pessoais foram limpos.'
+      );
+
+      setDeleteConfirmation('');
+      setShowDeleteDialog(false);
+    } catch (error: unknown) {
+      toast.error(getErrorMessage(error, 'Nao foi possivel limpar os dados.'));
+    } finally {
+      setIsDeletingData(false);
     }
   };
 
   return (
     <AppShell>
       <PageIntro
-        eyebrow="Configurações"
-        title="Conta, equipe e preferências"
-        description="Ajuste conta, equipe, dados e extras sem poluir o fluxo principal do controle financeiro."
-      />
+        eyebrow="Configuracoes"
+        title="Conta, equipe e sincronizacao"
+        description="Uma area mais limpa para gerenciar workspace, aparencia, integracoes e os dados do app."
+      >
+        <div className="grid gap-3 sm:grid-cols-3">
+          {stats.map((item) => (
+            <div key={item.label} className="rounded-2xl border border-border/60 bg-background/60 p-4">
+              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+                {item.label}
+              </p>
+              <p className="mt-2 text-sm font-medium text-foreground">{item.value}</p>
+            </div>
+          ))}
+        </div>
+      </PageIntro>
 
-      <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
+      <div className="grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
         <div className="space-y-6">
           <SurfaceCard className="overflow-hidden p-0">
-            <h3 className="border-b border-border p-4 font-semibold">Equipe</h3>
-            <div className="space-y-4 p-4">
-              <div className="rounded-2xl bg-muted p-4">
-                <p className="mb-1 text-sm text-muted-foreground">Espaço atual</p>
-                {isEditingWorkspaceName ? (
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="text"
-                      value={workspaceNameInput}
-                      onChange={(event) => setWorkspaceNameInput(event.target.value)}
-                      className="flex-1 rounded-lg border border-border bg-input px-3 py-2 text-foreground"
-                      autoFocus
-                    />
-                    <button
-                      onClick={handleSaveWorkspaceName}
-                      disabled={isSavingWorkspaceName}
-                      className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary"
-                    >
-                      {isSavingWorkspaceName ? (
-                        <Loader2 className="h-5 w-5 animate-spin text-primary-foreground" />
-                      ) : (
-                        <Check className="h-5 w-5 text-primary-foreground" />
-                      )}
-                    </button>
-                    <button
-                      onClick={() => setIsEditingWorkspaceName(false)}
-                      className="flex h-10 w-10 items-center justify-center rounded-lg bg-muted-foreground/20"
-                    >
-                      <X className="h-5 w-5" />
-                    </button>
+            <div className="border-b border-border/70 p-5">
+              <h3 className="text-lg font-semibold">Workspace e equipe</h3>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Ajuste o nome do espaco, convide pessoas e acompanhe o nivel de acesso.
+              </p>
+            </div>
+
+            <div className="space-y-5 p-5">
+              <div className="rounded-[24px] border border-border/70 bg-background/60 p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+                      Workspace atual
+                    </p>
+                    {isEditingWorkspaceName ? (
+                      <div className="mt-3 flex items-center gap-2">
+                        <input
+                          type="text"
+                          value={workspaceNameInput}
+                          onChange={(event) => setWorkspaceNameInput(event.target.value)}
+                          className="flex-1 rounded-xl border border-border bg-input px-3 py-3 text-sm text-foreground"
+                          autoFocus
+                        />
+                        <button
+                          onClick={handleSaveWorkspaceName}
+                          disabled={isSavingWorkspaceName}
+                          className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary text-primary-foreground disabled:opacity-60"
+                        >
+                          {isSavingWorkspaceName ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Check className="h-4 w-4" />
+                          )}
+                        </button>
+                        <button
+                          onClick={() => setIsEditingWorkspaceName(false)}
+                          className="flex h-11 w-11 items-center justify-center rounded-xl bg-muted text-muted-foreground"
+                        >
+                          <X className="h-4 w-4" />
+                        </button>
+                      </div>
+                    ) : (
+                      <>
+                        <p className="mt-2 text-lg font-semibold text-foreground">
+                          {currentWorkspace?.name || 'Sem workspace ativo'}
+                        </p>
+                        <p className="mt-1 text-sm text-muted-foreground">
+                          Seu nivel de acesso: {stats[2].value}
+                        </p>
+                      </>
+                    )}
                   </div>
-                ) : (
-                  <div className="flex items-center justify-between gap-3">
-                    <p className="font-medium">{currentWorkspace?.name || 'Carregando...'}</p>
-                    {userRole === 'owner' ? (
-                      <button
-                        onClick={handleStartEditWorkspaceName}
-                        className="rounded-lg p-2 transition-colors hover:bg-background/50"
-                      >
-                        <Edit2 className="h-4 w-4 text-muted-foreground" />
-                      </button>
-                    ) : null}
-                  </div>
-                )}
-                <p className="mt-2 text-xs text-muted-foreground">
-                  Seu nível de acesso:{' '}
-                  <span className="font-medium text-primary">{getRoleLabel(userRole)}</span>
-                </p>
+
+                  {canManageWorkspace && !isEditingWorkspaceName ? (
+                    <button
+                      onClick={handleStartEditWorkspaceName}
+                      className="flex h-10 w-10 items-center justify-center rounded-xl bg-muted/70 text-muted-foreground transition-colors hover:text-foreground"
+                    >
+                      <Edit2 className="h-4 w-4" />
+                    </button>
+                  ) : null}
+                </div>
               </div>
 
-              {userRole === 'owner' ? (
-                <div className="space-y-3 rounded-2xl border border-primary/10 bg-primary/5 p-4">
-                  <h4 className="flex items-center gap-2 font-medium">
+              <div className="grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
+                <div className="rounded-[24px] border border-primary/10 bg-primary/5 p-4">
+                  <div className="mb-3 flex items-center gap-2">
                     <UserPlus className="h-4 w-4 text-primary" />
-                    Convidar membro
-                  </h4>
-                  <div className="relative">
-                    <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                    <input
-                      type="email"
-                      value={inviteEmail}
-                      onChange={(event) => setInviteEmail(event.target.value)}
-                      placeholder="email@exemplo.com"
-                      className="w-full rounded-xl border border-border bg-input py-3 pl-10 pr-4 text-sm text-foreground placeholder:text-muted-foreground"
-                    />
+                    <h4 className="font-medium text-foreground">Convite rapido</h4>
                   </div>
-                  <div className="grid grid-cols-2 gap-2 rounded-xl bg-muted p-1">
-                    <button
-                      onClick={() => setInviteRole('viewer')}
-                      className={`flex items-center justify-center gap-1 rounded-lg py-2 text-xs font-medium transition-all ${
-                        inviteRole === 'viewer'
-                          ? 'bg-card text-foreground shadow-[var(--shadow-sm)]'
-                          : 'text-muted-foreground'
-                      }`}
-                    >
-                      <Eye className="h-3 w-3" />
-                      Visualizador
-                    </button>
-                    <button
-                      onClick={() => setInviteRole('editor')}
-                      className={`flex items-center justify-center gap-1 rounded-lg py-2 text-xs font-medium transition-all ${
-                        inviteRole === 'editor'
-                          ? 'bg-card text-foreground shadow-[var(--shadow-sm)]'
-                          : 'text-muted-foreground'
-                      }`}
-                    >
-                      <Edit className="h-3 w-3" />
-                      Editor
-                    </button>
+
+                  {canManageWorkspace ? (
+                    <div className="space-y-3">
+                      <div className="relative">
+                        <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                        <input
+                          type="email"
+                          value={inviteEmail}
+                          onChange={(event) => setInviteEmail(event.target.value)}
+                          placeholder="email@exemplo.com"
+                          className="w-full rounded-xl border border-border bg-input py-3 pl-10 pr-4 text-sm text-foreground placeholder:text-muted-foreground"
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-2 rounded-xl bg-background/70 p-1">
+                        <button
+                          onClick={() => setInviteRole('viewer')}
+                          className={`rounded-lg py-2 text-xs font-medium transition-all ${
+                            inviteRole === 'viewer'
+                              ? 'bg-card text-foreground shadow-[var(--shadow-sm)]'
+                              : 'text-muted-foreground'
+                          }`}
+                        >
+                          <span className="inline-flex items-center gap-1">
+                            <Eye className="h-3 w-3" />
+                            Visualizador
+                          </span>
+                        </button>
+                        <button
+                          onClick={() => setInviteRole('editor')}
+                          className={`rounded-lg py-2 text-xs font-medium transition-all ${
+                            inviteRole === 'editor'
+                              ? 'bg-card text-foreground shadow-[var(--shadow-sm)]'
+                              : 'text-muted-foreground'
+                          }`}
+                        >
+                          <span className="inline-flex items-center gap-1">
+                            <Edit2 className="h-3 w-3" />
+                            Editor
+                          </span>
+                        </button>
+                      </div>
+
+                      <button
+                        onClick={handleQuickInvite}
+                        disabled={!inviteEmail || isInviting}
+                        className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary py-3 text-sm font-semibold text-primary-foreground disabled:opacity-50"
+                      >
+                        {isInviting ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <UserPlus className="h-4 w-4" />
+                        )}
+                        Enviar convite
+                      </button>
+                    </div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">
+                      Apenas o proprietario pode convidar novos membros.
+                    </p>
+                  )}
+                </div>
+
+                <div className="rounded-[24px] border border-border/70 bg-background/60 p-4">
+                  <div className="mb-3 flex items-center gap-2">
+                    <Users className="h-4 w-4 text-primary" />
+                    <h4 className="font-medium text-foreground">Equipe</h4>
                   </div>
+                  <p className="text-2xl font-semibold">{members.length}</p>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    membro{members.length !== 1 ? 's' : ''} com acesso ao workspace atual
+                  </p>
                   <button
-                    onClick={handleQuickInvite}
-                    disabled={!inviteEmail || isInviting}
-                    className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary py-3 text-sm font-semibold text-primary-foreground disabled:opacity-50"
+                    onClick={() => setShowInviteModal(true)}
+                    className="mt-4 w-full rounded-xl border border-border/70 bg-card px-4 py-3 text-sm font-medium text-foreground transition-colors hover:bg-muted/60"
                   >
-                    {isInviting ? <Loader2 className="h-4 w-4 animate-spin" /> : <UserPlus className="h-4 w-4" />}
-                    Enviar convite
+                    Gerenciar equipe
                   </button>
                 </div>
-              ) : null}
+              </div>
+            </div>
+          </SurfaceCard>
 
-              <button
-                onClick={() => setShowInviteModal(true)}
-                className="flex w-full items-center justify-between rounded-2xl bg-muted p-4"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
-                    <Users className="h-5 w-5 text-primary" />
-                  </div>
-                  <div className="text-left">
-                    <p className="font-medium">{members.length} membro{members.length !== 1 ? 's' : ''}</p>
-                    <p className="text-sm text-muted-foreground">
-                      {userRole === 'owner' ? 'Gerenciar equipe' : 'Ver membros'}
-                    </p>
-                  </div>
-                </div>
-                <ChevronRight className="h-5 w-5 text-muted-foreground" />
-              </button>
+          <SurfaceCard className="overflow-hidden p-0">
+            <div className="border-b border-border/70 p-5">
+              <h3 className="text-lg font-semibold">Aparencia e alertas</h3>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Ajuste o tema da interface e o comportamento dos lembretes.
+              </p>
+            </div>
 
-              <div className="rounded-2xl bg-muted/50 p-3">
-                <p className="text-xs text-muted-foreground">
-                  {userRole === 'owner'
-                    ? 'Como proprietário, você tem acesso total ao ambiente e pode definir permissões da equipe.'
-                    : `Você participa deste espaço como ${getRoleLabel(userRole).toLowerCase()}.`}
+            <div className="grid gap-5 p-5 lg:grid-cols-[1fr_0.9fr]">
+              <div className="rounded-[24px] border border-border/70 bg-background/60 p-4">
+                <p className="mb-3 text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+                  Tema
                 </p>
+                <div className="grid grid-cols-3 gap-2 rounded-2xl bg-muted/70 p-1">
+                  {themeOptions.map((option) => (
+                    <button
+                      key={option.id}
+                      onClick={() => setTheme(option.id)}
+                      className={`rounded-xl py-3 text-sm font-medium transition-all ${
+                        theme === option.id
+                          ? 'bg-card text-foreground shadow-[var(--shadow-sm)]'
+                          : 'text-muted-foreground'
+                      }`}
+                    >
+                      <span className="inline-flex items-center gap-2">
+                        <option.icon className="h-4 w-4" />
+                        {option.label}
+                      </span>
+                    </button>
+                  ))}
+                </div>
               </div>
-            </div>
-          </SurfaceCard>
 
-          <SurfaceCard className="overflow-hidden p-0">
-            <h3 className="border-b border-border p-4 font-semibold">Aparência</h3>
-            <div className="p-4">
-              <div className="grid grid-cols-3 gap-2 rounded-xl bg-muted p-1">
-                <button
-                  onClick={() => setTheme('light')}
-                  className={`flex items-center justify-center gap-2 rounded-lg py-3 text-sm font-medium transition-all ${
-                    theme === 'light'
-                      ? 'bg-card text-foreground shadow-[var(--shadow-sm)]'
-                      : 'text-muted-foreground'
-                  }`}
-                >
-                  <Sun className="h-4 w-4" />
-                  Claro
-                </button>
-                <button
-                  onClick={() => setTheme('dark')}
-                  className={`flex items-center justify-center gap-2 rounded-lg py-3 text-sm font-medium transition-all ${
-                    theme === 'dark'
-                      ? 'bg-card text-foreground shadow-[var(--shadow-sm)]'
-                      : 'text-muted-foreground'
-                  }`}
-                >
-                  <Moon className="h-4 w-4" />
-                  Escuro
-                </button>
-                <button
-                  onClick={() => setTheme('system')}
-                  className={`flex items-center justify-center gap-2 rounded-lg py-3 text-sm font-medium transition-all ${
-                    theme === 'system'
-                      ? 'bg-card text-foreground shadow-[var(--shadow-sm)]'
-                      : 'text-muted-foreground'
-                  }`}
-                >
-                  <Monitor className="h-4 w-4" />
-                  Sistema
-                </button>
-              </div>
-            </div>
-          </SurfaceCard>
-
-          <SurfaceCard className="overflow-hidden p-0">
-            <h3 className="border-b border-border p-4 font-semibold">Notificações</h3>
-            <div className="p-4">
-              <div className="flex items-center justify-between gap-4">
-                <div className="flex items-center gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
-                    <Bell className="h-5 w-5 text-primary" />
-                  </div>
+              <div className="rounded-[24px] border border-border/70 bg-background/60 p-4">
+                <div className="flex items-center justify-between gap-4">
                   <div>
-                    <p className="font-medium">Lembretes</p>
-                    <p className="text-sm text-muted-foreground">
-                      Receber alertas sobre transações e pendências
+                    <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+                      Lembretes
+                    </p>
+                    <p className="mt-2 font-medium text-foreground">Notificacoes de pendencias</p>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      Ative ou pause alertas para acompanhar movimentacoes abertas.
                     </p>
                   </div>
-                </div>
-                <button
-                  onClick={() =>
-                    updateSettings({ notificationsEnabled: !settings.notificationsEnabled })
-                  }
-                  className={`relative h-7 w-12 rounded-full transition-all ${
-                    settings.notificationsEnabled ? 'bg-primary' : 'bg-muted-foreground/30'
-                  }`}
-                >
-                  <div
-                    className={`absolute top-1 h-5 w-5 rounded-full bg-card shadow-md transition-all ${
-                      settings.notificationsEnabled ? 'left-6' : 'left-1'
+
+                  <button
+                    onClick={() =>
+                      updateSettings({
+                        notificationsEnabled: !settings.notificationsEnabled,
+                      })
+                    }
+                    className={`relative h-7 w-12 rounded-full transition-all ${
+                      settings.notificationsEnabled ? 'bg-primary' : 'bg-muted-foreground/30'
                     }`}
-                  />
-                </button>
+                  >
+                    <div
+                      className={`absolute top-1 h-5 w-5 rounded-full bg-card shadow-md transition-all ${
+                        settings.notificationsEnabled ? 'left-6' : 'left-1'
+                      }`}
+                    />
+                  </button>
+                </div>
               </div>
             </div>
           </SurfaceCard>
         </div>
 
         <div className="space-y-6">
-          <SurfaceCard>
-            <div className="flex items-start gap-3">
-              <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-primary/10">
-                <ShieldCheck className="h-5 w-5 text-primary" />
+          <SurfaceCard className="overflow-hidden p-0">
+            <div className="border-b border-border/70 p-5">
+              <h3 className="text-lg font-semibold">Supabase e sincronizacao</h3>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Status da conexao, variaveis configuradas e validacao do banco em tempo real.
+              </p>
+            </div>
+
+            <div className="space-y-4 p-5">
+              <div className={`rounded-[24px] border p-4 ${connectionTone}`}>
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <Cloud className="h-4 w-4" />
+                      <p className="text-sm font-semibold">
+                        {connectionStatus === 'connected'
+                          ? 'Conectado'
+                          : connectionStatus === 'error'
+                          ? 'Com problema'
+                          : 'Verificando'}
+                      </p>
+                    </div>
+                    <p className="mt-2 text-sm">{connectionMessage}</p>
+                  </div>
+
+                  <button
+                    onClick={runConnectionCheck}
+                    className="flex h-10 w-10 items-center justify-center rounded-xl bg-background/60 text-foreground transition-colors hover:bg-background"
+                  >
+                    {connectionStatus === 'checking' ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <RefreshCw className="h-4 w-4" />
+                    )}
+                  </button>
+                </div>
               </div>
-              <div className="w-full">
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                  Panorama
-                </p>
-                <h3 className="mt-1 text-lg font-semibold">Status do ambiente</h3>
-                <div className="mt-4 grid gap-3">
-                  <div className="rounded-2xl bg-muted/50 p-4">
-                    <p className="text-sm text-muted-foreground">Usuário</p>
-                    <p className="mt-1 font-medium">
-                      {profileData.displayName || user?.email || 'Sem identificação'}
-                    </p>
-                  </div>
-                  <div className="rounded-2xl bg-muted/50 p-4">
-                    <p className="text-sm text-muted-foreground">Workspace</p>
-                    <p className="mt-1 font-medium">
-                      {currentWorkspace?.name || 'Sem workspace ativo'}
-                    </p>
-                  </div>
-                  <div className="rounded-2xl bg-muted/50 p-4">
-                    <p className="text-sm text-muted-foreground">Perfil de acesso</p>
-                    <p className="mt-1 font-medium">{getRoleLabel(userRole)}</p>
-                  </div>
+
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="rounded-2xl bg-muted/50 p-4">
+                  <p className="text-sm text-muted-foreground">Frontend</p>
+                  <p className="mt-1 font-medium">
+                    {envConfigured ? 'Variaveis configuradas' : 'Variaveis ausentes'}
+                  </p>
+                </div>
+                <div className="rounded-2xl bg-muted/50 p-4">
+                  <p className="text-sm text-muted-foreground">Ultima verificacao</p>
+                  <p className="mt-1 font-medium">{lastConnectionCheck || 'Agora mesmo'}</p>
+                </div>
+                <div className="rounded-2xl bg-muted/50 p-4 sm:col-span-2">
+                  <p className="text-sm text-muted-foreground">Projeto vinculado</p>
+                  <p className="mt-1 break-all font-medium">
+                    {import.meta.env.VITE_SUPABASE_URL || 'URL do Supabase nao encontrada'}
+                  </p>
                 </div>
               </div>
             </div>
           </SurfaceCard>
 
           <SurfaceCard className="overflow-hidden p-0">
-            <h3 className="border-b border-border p-4 font-semibold">Dados</h3>
-            <div className="space-y-3 p-4">
-              <button
-                onClick={handleExport}
-                className="flex w-full items-center justify-between rounded-2xl bg-muted p-4"
-              >
-                <div className="flex items-center gap-3">
-                  <Download className="h-5 w-5 text-muted-foreground" />
-                  <span>Exportar JSON</span>
-                </div>
-                <ChevronRight className="h-5 w-5 text-muted-foreground" />
-              </button>
+            <div className="border-b border-border/70 p-5">
+              <h3 className="text-lg font-semibold">Dados</h3>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Exporte, importe e limpe dados com mais previsibilidade.
+              </p>
+            </div>
 
-              <button
-                onClick={handleExportCSV}
-                className="flex w-full items-center justify-between rounded-2xl bg-muted p-4"
-              >
-                <div className="flex items-center gap-3">
-                  <Download className="h-5 w-5 text-muted-foreground" />
-                  <span>Exportar CSV</span>
-                </div>
-                <ChevronRight className="h-5 w-5 text-muted-foreground" />
-              </button>
-
-              <button
-                onClick={handleDownloadTemplate}
-                className="flex w-full items-center justify-between rounded-2xl border border-primary/10 bg-primary/5 p-4"
-              >
-                <div className="flex items-center gap-3">
-                  <FileSpreadsheet className="h-5 w-5 text-primary" />
-                  <div className="text-left">
-                    <span className="block">Baixar modelo de planilha</span>
-                    <span className="text-xs text-muted-foreground">Para importar seus dados</span>
+            <div className="space-y-3 p-5">
+              {[
+                {
+                  label: 'Exportar JSON',
+                  description: 'Baixa um snapshot completo do seu financeiro.',
+                  icon: Download,
+                  onClick: handleExport,
+                },
+                {
+                  label: 'Exportar CSV',
+                  description: 'Leva os lancamentos para planilha em formato tabular.',
+                  icon: Download,
+                  onClick: handleExportCSV,
+                },
+                {
+                  label: 'Baixar modelo',
+                  description: 'Arquivo base para importar seus dados com menos erro.',
+                  icon: FileSpreadsheet,
+                  onClick: handleDownloadTemplate,
+                },
+                {
+                  label: 'Importar dados',
+                  description: 'Traz um arquivo JSON ja estruturado para dentro do app.',
+                  icon: Upload,
+                  onClick: () => fileInputRef.current?.click(),
+                },
+              ].map((action) => (
+                <button
+                  key={action.label}
+                  onClick={action.onClick}
+                  className="flex w-full items-start gap-3 rounded-2xl border border-border/70 bg-background/60 p-4 text-left transition-colors hover:bg-muted/50"
+                >
+                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                    <action.icon className="h-4 w-4" />
                   </div>
-                </div>
-                <ChevronRight className="h-5 w-5 text-muted-foreground" />
-              </button>
+                  <div>
+                    <p className="font-medium text-foreground">{action.label}</p>
+                    <p className="mt-1 text-sm text-muted-foreground">{action.description}</p>
+                  </div>
+                </button>
+              ))}
 
-              <button
-                onClick={() => fileInputRef.current?.click()}
-                className="flex w-full items-center justify-between rounded-2xl bg-muted p-4"
-              >
-                <div className="flex items-center gap-3">
-                  <Upload className="h-5 w-5 text-muted-foreground" />
-                  <span>Importar dados</span>
-                </div>
-                <ChevronRight className="h-5 w-5 text-muted-foreground" />
-              </button>
               <input
                 ref={fileInputRef}
                 type="file"
@@ -539,74 +812,96 @@ const Settings: React.FC = () => {
                 onChange={handleImport}
                 className="hidden"
               />
-            </div>
-          </SurfaceCard>
 
-          <SurfaceCard className="overflow-hidden p-0">
-            <h3 className="border-b border-border p-4 font-semibold">Extras</h3>
-            <div className="space-y-3 p-4">
-              <Link
-                to="/festometro"
-                className="flex w-full items-center justify-between rounded-2xl border border-primary/10 bg-primary/5 p-4"
-              >
-                <div className="flex items-center gap-3">
-                  <PartyPopper className="h-5 w-5 text-primary" />
-                  <div className="text-left">
-                    <span className="block">Festometro</span>
-                    <span className="text-xs text-muted-foreground">
-                      Organize festas e leve o total para suas finanças
-                    </span>
+              <div className="rounded-[24px] border border-expense/20 bg-expense/10 p-4">
+                <div className="flex items-start gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-background/70 text-expense">
+                    <AlertTriangle className="h-4 w-4" />
+                  </div>
+                  <div className="flex-1">
+                    <p className="font-medium text-expense">Exclusao em massa</p>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      Remove transacoes, categorias, orcamentos, metas e eventos do escopo atual.
+                      {currentWorkspace
+                        ? ' No workspace, isso afeta todos os membros.'
+                        : ' No modo pessoal, afeta apenas seus dados.'}
+                    </p>
+                    {!canDeleteScopeData ? (
+                      <p className="mt-3 text-sm text-expense">
+                        Somente o proprietario pode executar essa limpeza no workspace.
+                      </p>
+                    ) : (
+                      <button
+                        onClick={() => setShowDeleteDialog(true)}
+                        className="mt-4 inline-flex items-center gap-2 rounded-xl border border-expense/30 bg-background/80 px-4 py-3 text-sm font-semibold text-expense transition-colors hover:bg-background"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                        Limpar todos os dados
+                      </button>
+                    )}
                   </div>
                 </div>
-                <ChevronRight className="h-5 w-5 text-muted-foreground" />
-              </Link>
+              </div>
             </div>
           </SurfaceCard>
 
           <SurfaceCard className="overflow-hidden p-0">
-            <h3 className="border-b border-border p-4 font-semibold">Minha conta</h3>
-            <div className="space-y-3 p-4">
+            <div className="border-b border-border/70 p-5">
+              <h3 className="text-lg font-semibold">Minha conta</h3>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Perfil, seguranca basica e saida da sessao.
+              </p>
+            </div>
+
+            <div className="space-y-3 p-5">
               <button
                 onClick={() => setShowProfileModal(true)}
-                className="flex w-full items-center justify-between rounded-2xl bg-muted p-4"
+                className="flex w-full items-center justify-between rounded-2xl border border-border/70 bg-background/60 p-4 text-left transition-colors hover:bg-muted/50"
               >
                 <div className="flex items-center gap-3">
                   <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
                     <User className="h-5 w-5 text-primary" />
                   </div>
-                  <div className="text-left">
-                    <p className="font-medium">{profileData.displayName || 'Sem nome'}</p>
-                    <p className="max-w-[220px] truncate text-sm text-muted-foreground">
+                  <div>
+                    <p className="font-medium text-foreground">
+                      {profileData.displayName || 'Sem nome'}
+                    </p>
+                    <p className="max-w-[240px] truncate text-sm text-muted-foreground">
                       {user?.email}
                     </p>
                   </div>
                 </div>
-                <Edit2 className="h-5 w-5 text-muted-foreground" />
+                <Edit2 className="h-4 w-4 text-muted-foreground" />
               </button>
+
+              <div className="rounded-2xl border border-border/70 bg-background/60 p-4">
+                <div className="flex items-start gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10">
+                    <ShieldCheck className="h-4 w-4 text-primary" />
+                  </div>
+                  <div>
+                    <p className="font-medium text-foreground">Sincronizacao protegida</p>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      Seus dados ficam vinculados ao usuario autenticado e ao workspace ativo.
+                    </p>
+                  </div>
+                </div>
+              </div>
 
               <button
                 onClick={handleSignOut}
                 disabled={isLoggingOut}
-                className="flex w-full items-center justify-between rounded-2xl border border-expense/20 bg-expense/10 p-4 text-expense"
+                className="flex w-full items-center justify-center gap-2 rounded-2xl border border-expense/20 bg-expense/10 p-4 text-sm font-semibold text-expense disabled:opacity-50"
               >
-                <div className="flex items-center gap-3">
-                  {isLoggingOut ? (
-                    <Loader2 className="h-5 w-5 animate-spin" />
-                  ) : (
-                    <LogOut className="h-5 w-5" />
-                  )}
-                  <span>Sair da conta</span>
-                </div>
+                {isLoggingOut ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <LogOut className="h-4 w-4" />
+                )}
+                Sair da conta
               </button>
             </div>
           </SurfaceCard>
-
-          <section className="py-2 text-center">
-            <p className="text-sm text-muted-foreground">DEU BOM!! v1.0</p>
-            <p className="mt-1 text-xs text-muted-foreground">
-              Dados sincronizados com a nuvem
-            </p>
-          </section>
         </div>
       </div>
 
@@ -625,23 +920,65 @@ const Settings: React.FC = () => {
         initialEmail={profileData.email}
         isOwnProfile
         onSaved={async () => {
-          if (user) {
-            const { data } = await supabase
-              .from('profiles')
-              .select('display_name, email')
-              .eq('id', user.id)
-              .maybeSingle();
-
-            if (data) {
-              setProfileData({
-                displayName: data.display_name || '',
-                email: data.email || user.email || '',
-              });
-            }
-          }
-          refreshWorkspace();
+          await loadProfile();
+          await refreshWorkspace();
+          await runConnectionCheck();
         }}
       />
+
+      <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Excluir dados em massa</DialogTitle>
+            <DialogDescription>
+              Essa acao limpa o escopo atual de uma vez.
+              {currentWorkspace
+                ? ` Para confirmar, digite exatamente ${deleteScopeLabel}.`
+                : ' Para confirmar, digite exatamente EXCLUIR.'}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div className="rounded-2xl border border-expense/20 bg-expense/10 p-4 text-sm text-muted-foreground">
+              {currentWorkspace
+                ? 'O workspace mantera a estrutura e os membros, mas perdera transacoes, categorias, orcamentos, metas e eventos.'
+                : 'Seu perfil sera mantido, mas os dados financeiros pessoais serao apagados.'}
+            </div>
+
+            <div>
+              <label className="mb-2 block text-sm font-medium text-foreground">
+                Confirmacao
+              </label>
+              <input
+                type="text"
+                value={deleteConfirmation}
+                onChange={(event) => setDeleteConfirmation(event.target.value)}
+                placeholder={`Digite ${deleteScopeLabel}`}
+                className="w-full rounded-xl border border-border bg-input px-4 py-3 text-sm text-foreground"
+              />
+            </div>
+          </div>
+
+          <DialogFooter className="gap-2">
+            <button
+              onClick={() => {
+                setDeleteConfirmation('');
+                setShowDeleteDialog(false);
+              }}
+              className="rounded-xl border border-border/70 bg-background px-4 py-3 text-sm font-medium text-foreground"
+            >
+              Cancelar
+            </button>
+            <button
+              onClick={handleDeleteAllData}
+              disabled={isDeletingData || deleteConfirmation.trim() !== deleteScopeLabel}
+              className="rounded-xl bg-expense px-4 py-3 text-sm font-semibold text-expense-foreground disabled:opacity-50"
+            >
+              {isDeletingData ? 'Limpando...' : 'Excluir tudo'}
+            </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </AppShell>
   );
 };

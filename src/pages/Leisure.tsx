@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Plus,
@@ -26,6 +26,7 @@ import { CurrencyInput } from '@/components/CurrencyInput';
 import { PageIntro } from '@/components/PageIntro';
 import { formatCurrency } from '@/utils/currency';
 import { supabase } from '@/integrations/supabase/client';
+import type { Database } from '@/integrations/supabase/types';
 import { useAuth } from '@/hooks/useAuth';
 import { useWorkspace } from '@/hooks/useWorkspace';
 import { toast } from 'sonner';
@@ -75,7 +76,10 @@ interface CalculatedItem {
   category: string;
 }
 
-const formatEventItems = (rows: any[] | null): EventItem[] =>
+type EventItemRow = Database['public']['Tables']['event_items']['Row'];
+type EventParticipantRow = Database['public']['Tables']['event_participants']['Row'];
+
+const formatEventItems = (rows: EventItemRow[] | null): EventItem[] =>
   (rows || []).map((item) => ({
     id: item.id,
     name: item.name,
@@ -84,7 +88,7 @@ const formatEventItems = (rows: any[] | null): EventItem[] =>
     category: item.category || 'outros',
   }));
 
-const formatEventParticipants = (rows: any[] | null): Participant[] =>
+const formatEventParticipants = (rows: EventParticipantRow[] | null): Participant[] =>
   (rows || []).map((participant) => ({
     id: participant.id,
     name: participant.name,
@@ -195,19 +199,7 @@ const Leisure: React.FC = () => {
   const [newItemUnit, setNewItemUnit] = useState('un');
   const [newItemPrice, setNewItemPrice] = useState(0);
 
-  useEffect(() => {
-    if (!workspaceLoading && currentWorkspace) {
-      loadEvents();
-    }
-  }, [currentWorkspace, workspaceLoading]);
-
-  useEffect(() => {
-    if (selectedEvent?.id) {
-      loadEventDetails(selectedEvent.id);
-    }
-  }, [selectedEvent?.id]);
-
-  const loadEvents = async () => {
+  const loadEvents = useCallback(async () => {
     if (!currentWorkspace) return;
     
     setLoading(true);
@@ -243,9 +235,15 @@ const Leisure: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [currentWorkspace, selectedEvent]);
 
-  const loadEventDetails = async (eventId: string) => {
+  useEffect(() => {
+    if (!workspaceLoading && currentWorkspace) {
+      loadEvents();
+    }
+  }, [currentWorkspace, workspaceLoading, loadEvents]);
+
+  const loadEventDetails = useCallback(async (eventId: string) => {
     try {
       const { data: itemsData } = await supabase
         .from('event_items')
@@ -265,7 +263,13 @@ const Leisure: React.FC = () => {
     } catch (error) {
       console.error('Failed to load event details:', error);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    if (selectedEvent?.id) {
+      loadEventDetails(selectedEvent.id);
+    }
+  }, [selectedEvent?.id, loadEventDetails]);
 
   const refreshEventDetails = async (eventId: string) => {
     const [{ data: itemsData, error: itemsError }, { data: participantsData, error: participantsError }] =
@@ -640,7 +644,7 @@ const Leisure: React.FC = () => {
           name: participantName,
           is_child: participantIsChild,
           email: participantEmail || null,
-        } as any);
+        });
 
       if (error) throw error;
 

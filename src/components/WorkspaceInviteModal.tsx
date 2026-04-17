@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { X, Mail, UserPlus, Trash2, Users, Eye, Edit, Edit2, User } from 'lucide-react';
 import { useWorkspace } from '@/hooks/useWorkspace';
 import { useAuth } from '@/hooks/useAuth';
+import { getErrorMessage } from '@/utils/errors';
 import { toast } from 'sonner';
 import { ProfileEditModal } from './ProfileEditModal';
 
@@ -46,8 +47,8 @@ export const WorkspaceInviteModal: React.FC<WorkspaceInviteModalProps> = ({
       await inviteUser(email, role);
       toast.success('Convite enviado!');
       setEmail('');
-    } catch (error: any) {
-      toast.error(error.message || 'Erro ao enviar convite');
+    } catch (error: unknown) {
+      toast.error(getErrorMessage(error, 'Erro ao enviar convite'));
     } finally {
       setLoading(false);
     }

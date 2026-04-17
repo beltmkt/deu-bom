@@ -285,6 +285,65 @@ export type Database = {
           },
         ]
       }
+      purchase_goals: {
+        Row: {
+          category: string | null
+          created_at: string
+          current_amount: number
+          id: string
+          monthly_target: number | null
+          notes: string | null
+          priority: string
+          status: string
+          target_amount: number
+          target_date: string | null
+          title: string
+          updated_at: string
+          user_id: string
+          workspace_id: string | null
+        }
+        Insert: {
+          category?: string | null
+          created_at?: string
+          current_amount?: number
+          id?: string
+          monthly_target?: number | null
+          notes?: string | null
+          priority?: string
+          status?: string
+          target_amount: number
+          target_date?: string | null
+          title: string
+          updated_at?: string
+          user_id: string
+          workspace_id?: string | null
+        }
+        Update: {
+          category?: string | null
+          created_at?: string
+          current_amount?: number
+          id?: string
+          monthly_target?: number | null
+          notes?: string | null
+          priority?: string
+          status?: string
+          target_amount?: number
+          target_date?: string | null
+          title?: string
+          updated_at?: string
+          user_id?: string
+          workspace_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "purchase_goals_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       transactions: {
         Row: {
           amount: number

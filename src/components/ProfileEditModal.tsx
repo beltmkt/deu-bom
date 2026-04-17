@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, User, Mail, Loader2, Check } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import { getErrorMessage } from '@/utils/errors';
 import { toast } from 'sonner';
 
 interface ProfileEditModalProps {
@@ -52,9 +53,9 @@ export const ProfileEditModal: React.FC<ProfileEditModalProps> = ({
       toast.success('Perfil atualizado com sucesso!');
       onSaved?.();
       onClose();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error updating profile:', error);
-      toast.error(error.message || 'Erro ao atualizar perfil');
+      toast.error(getErrorMessage(error, 'Erro ao atualizar perfil'));
     } finally {
       setIsSaving(false);
     }

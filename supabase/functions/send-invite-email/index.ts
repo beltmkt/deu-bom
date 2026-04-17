@@ -22,6 +22,16 @@ interface InviteEmailRequest {
   emailId?: string;
 }
 
+interface ResendEmailResponse {
+  data?: {
+    id?: string;
+  } | null;
+}
+
+interface ResendEmailStatusResponse {
+  last_event?: string | null;
+}
+
 const DEFAULT_APP_URL = "https://deu-bom-financas-sem-erro.vercel.app";
 
 const normalizeAppUrl = (value?: string | null) => {
@@ -145,7 +155,7 @@ const handler = async (req: Request): Promise<Response> => {
     let lastEvent: string | null = null;
 
     try {
-      const emailId = (emailResponse as any)?.data?.id as string | undefined;
+      const emailId = (emailResponse as ResendEmailResponse)?.data?.id;
       if (resendApiKey && emailId) {
         const statusRes = await fetch(`https://api.resend.com/emails/${emailId}`, {
           headers: {
@@ -154,8 +164,8 @@ const handler = async (req: Request): Promise<Response> => {
         });
 
         if (statusRes.ok) {
-          const statusJson = await statusRes.json();
-          lastEvent = (statusJson as any)?.last_event ?? null;
+          const statusJson = (await statusRes.json()) as ResendEmailStatusResponse;
+          lastEvent = statusJson.last_event ?? null;
           console.log("Resend last_event:", lastEvent);
         } else {
           console.log("Resend status fetch failed:", await statusRes.text());
@@ -179,10 +189,12 @@ const handler = async (req: Request): Promise<Response> => {
         },
       }
     );
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error sending invite email:", error);
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({
+        error: error instanceof Error ? error.message : "Unknown error",
+      }),
       {
         status: 500,
         headers: { "Content-Type": "application/json", ...corsHeaders },
