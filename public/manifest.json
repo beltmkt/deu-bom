@@ -1,12 +1,17 @@
 {
-  "name": "DEU BOM!! FINANÇAS SEM ERRO",
-  "short_name": "DEU BOM!!",
-  "description": "DEU BOM!! FINANÇAS SEM ERRO - Controle financeiro inteligente",
+  "id": "/",
+  "name": "Deu Bom Financas sem Erro",
+  "short_name": "Deu Bom",
+  "description": "Controle financeiro inteligente com experiencia de app instalada",
   "start_url": "/",
   "display": "standalone",
+  "display_override": ["standalone", "minimal-ui"],
   "background_color": "#141820",
-  "theme_color": "#22c55e",
+  "theme_color": "#141820",
   "orientation": "portrait-primary",
+  "scope": "/",
+  "prefer_related_applications": false,
+  "categories": ["finance", "productivity", "business"],
   "icons": [
     {
       "src": "/icon-192.png",

@@ -87,6 +87,7 @@ export const BottomNav: React.FC = () => {
         onClick={() => setIsMobileOpen((current) => !current)}
         className="fixed left-4 top-4 z-[70] flex h-11 w-11 items-center justify-center rounded-2xl border border-border/70 bg-card/95 text-foreground shadow-[var(--shadow-sm)] backdrop-blur-xl md:hidden"
         aria-label="Abrir menu"
+        style={{ top: 'max(1rem, env(safe-area-inset-top, 0px))' }}
       >
         <Menu className="h-5 w-5" />
       </button>
@@ -102,7 +103,7 @@ export const BottomNav: React.FC = () => {
       <aside
         ref={asideRef}
         className={cn(
-          'fixed inset-y-0 left-0 z-[60] flex flex-col border-r border-border/70 bg-card/96 shadow-[var(--shadow-md)] backdrop-blur-xl transition-all duration-200',
+          'fixed inset-y-0 left-0 z-[60] flex flex-col border-r border-border/70 bg-card/96 pb-[env(safe-area-inset-bottom,0px)] pt-[env(safe-area-inset-top,0px)] shadow-[var(--shadow-md)] backdrop-blur-xl transition-all duration-200',
           isMobile
             ? cn(
                 'w-[280px]',

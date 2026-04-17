@@ -7,6 +7,7 @@ import { AuthProvider } from "@/hooks/useAuth";
 import { WorkspaceProvider } from "@/hooks/useWorkspace";
 import { ThemeProvider } from "@/hooks/useTheme";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
+import { PWAInstallHint } from "@/components/PWAInstallHint";
 import Dashboard from "./pages/Dashboard";
 import Transactions from "./pages/Transactions";
 import Budgets from "./pages/Budgets";
@@ -28,6 +29,7 @@ const App = () => (
           <WorkspaceProvider>
             <Toaster />
             <Sonner position="top-center" />
+            <PWAInstallHint />
             <BrowserRouter>
               <Routes>
               <Route path="/auth" element={<Auth />} />

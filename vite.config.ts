@@ -4,7 +4,6 @@ import path from "path";
 import { componentTagger } from "lovable-tagger";
 import { VitePWA } from "vite-plugin-pwa";
 
-// https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
   server: {
     host: "::",
@@ -17,14 +16,19 @@ export default defineConfig(({ mode }) => ({
       registerType: "autoUpdate",
       includeAssets: ["favicon.ico", "icon-192.png", "icon-512.png"],
       manifest: {
-        name: "DeuBom!!",
-        short_name: "DeuBom!!",
-        description: "Gerencie suas finanças pessoais e eventos",
-        theme_color: "#22c55e",
+        id: "/",
+        name: "Deu Bom Financas sem Erro",
+        short_name: "Deu Bom",
+        description: "Gerencie suas financas pessoais e eventos com experiencia de app.",
+        theme_color: "#141820",
         background_color: "#141820",
         display: "standalone",
+        display_override: ["standalone", "minimal-ui"],
         orientation: "portrait-primary",
         start_url: "/",
+        scope: "/",
+        prefer_related_applications: false,
+        categories: ["finance", "productivity", "business"],
         icons: [
           {
             src: "/icon-192.png",
@@ -50,7 +54,7 @@ export default defineConfig(({ mode }) => ({
               cacheName: "supabase-cache",
               expiration: {
                 maxEntries: 100,
-                maxAgeSeconds: 60 * 60 * 24, // 24 hours
+                maxAgeSeconds: 60 * 60 * 24,
               },
             },
           },

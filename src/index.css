@@ -159,6 +159,21 @@
     font-family: 'Inter', system-ui, sans-serif;
     -webkit-tap-highlight-color: transparent;
     -webkit-touch-callout: none;
+    min-height: 100dvh;
+    overscroll-behavior-y: none;
+  }
+
+  body,
+  #root {
+    min-height: 100dvh;
+  }
+
+  html.app-standalone {
+    background-color: hsl(var(--background));
+  }
+
+  html.app-standalone body {
+    background-color: hsl(var(--background));
   }
 
   /* Custom scrollbar for dark theme */
