@@ -546,13 +546,13 @@ const Settings: React.FC = () => {
             <h3 className="border-b border-border p-4 font-semibold">Extras</h3>
             <div className="space-y-3 p-4">
               <Link
-                to="/leisure"
+                to="/festometro"
                 className="flex w-full items-center justify-between rounded-2xl border border-primary/10 bg-primary/5 p-4"
               >
                 <div className="flex items-center gap-3">
                   <PartyPopper className="h-5 w-5 text-primary" />
                   <div className="text-left">
-                    <span className="block">Planejador de eventos</span>
+                    <span className="block">Festometro</span>
                     <span className="text-xs text-muted-foreground">
                       Organize festas e leve o total para suas finanças
                     </span>

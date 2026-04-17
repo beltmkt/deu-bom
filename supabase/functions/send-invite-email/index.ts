@@ -16,10 +16,42 @@ interface InviteEmailRequest {
   inviterName?: string;
   token?: string;
   role?: string;
+  appUrl?: string;
 
   // Status mode
   emailId?: string;
 }
+
+const DEFAULT_APP_URL = "https://deu-bom-financas-sem-erro.vercel.app";
+
+const normalizeAppUrl = (value?: string | null) => {
+  if (!value) return null;
+
+  try {
+    return new URL(value).origin;
+  } catch {
+    return null;
+  }
+};
+
+const resolveAppUrl = (appUrl?: string) => {
+  const candidates = [
+    appUrl,
+    Deno.env.get("APP_URL"),
+    Deno.env.get("SITE_URL"),
+    Deno.env.get("PUBLIC_APP_URL"),
+    DEFAULT_APP_URL,
+  ];
+
+  for (const candidate of candidates) {
+    const normalized = normalizeAppUrl(candidate);
+    if (normalized) {
+      return normalized;
+    }
+  }
+
+  return DEFAULT_APP_URL;
+};
 
 const handler = async (req: Request): Promise<Response> => {
   console.log("Send invite email function called");
@@ -31,7 +63,7 @@ const handler = async (req: Request): Promise<Response> => {
 
   try {
     const body = (await req.json()) as InviteEmailRequest;
-    const { email, workspaceName, inviterName, token, role, emailId } = body;
+    const { email, workspaceName, inviterName, token, role, emailId, appUrl } = body;
 
     // Status-only mode: check delivery state for a previously sent email
     if (emailId && !email) {
@@ -63,9 +95,7 @@ const handler = async (req: Request): Promise<Response> => {
     
     console.log(`Sending invite to ${email} for workspace ${workspaceName}`);
 
-
-    const appUrl = Deno.env.get("SUPABASE_URL")?.replace('.supabase.co', '.lovable.app') || 'https://nkacvkedlxkmbuitizqx.lovable.app';
-    const acceptUrl = `${appUrl}/accept-invite?token=${token}`;
+    const acceptUrl = `${resolveAppUrl(appUrl)}/accept-invite?token=${token}`;
     
     const roleLabel = role === 'editor' ? 'Editor' : 'Visualizador';
 

@@ -1,16 +1,14 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
-  Calendar,
   Filter,
   Loader2,
   Plus,
   Search,
   Settings2,
   SlidersHorizontal,
+  WalletCards,
 } from 'lucide-react';
-import { format, parseISO } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
 import { BottomNav } from '@/components/BottomNav';
 import { MonthSwitcher } from '@/components/MonthSwitcher';
 import { TransactionCard } from '@/components/TransactionCard';
@@ -24,11 +22,24 @@ import {
 } from '@/stores/financeStore';
 import {
   filterTransactionsByMonth,
-  groupTransactionsByDate,
+  sortTransactionsByDateDesc,
   summarizeTransactions,
 } from '@/utils/transactionInsights';
 import { formatCurrency } from '@/utils/currency';
 import type { Transaction, TransactionType } from '@/types/finance';
+
+type ColumnId = 'pay' | 'receive' | 'done';
+
+interface KanbanColumn {
+  id: ColumnId;
+  title: string;
+  description: string;
+  total: number;
+  count: number;
+  empty: string;
+  tone: string;
+  items: Transaction[];
+}
 
 const Transactions: React.FC = () => {
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -40,6 +51,7 @@ const Transactions: React.FC = () => {
   const [showFilters, setShowFilters] = useState(false);
   const [selectedMonth, setSelectedMonth] = useState(new Date());
   const [showCycleSettings, setShowCycleSettings] = useState(false);
+  const [defaultType, setDefaultType] = useState<TransactionType>('expense');
 
   const transactions = useTransactions();
   const categories = useCategories();
@@ -61,39 +73,83 @@ const Transactions: React.FC = () => {
   );
 
   const filteredTransactions = useMemo(() => {
-    return monthTransactions
-      .filter((transaction) => {
+    return sortTransactionsByDateDesc(
+      monthTransactions.filter((transaction) => {
         if (filterType !== 'all' && transaction.type !== filterType) return false;
         if (filterStatus !== 'all' && transaction.status !== filterStatus) return false;
         if (filterCategoryId !== 'all' && transaction.categoryId !== filterCategoryId) return false;
 
         if (!searchQuery) return true;
 
-        const category = categories.find(
-          (item) => item.id === transaction.categoryId
-        );
+        const category = categories.find((item) => item.id === transaction.categoryId);
         const term = searchQuery.toLowerCase();
 
         return (
           transaction.title.toLowerCase().includes(term) ||
-          category?.name.toLowerCase().includes(term)
+          category?.name.toLowerCase().includes(term) ||
+          transaction.notes?.toLowerCase().includes(term)
         );
       })
-      .sort(
-        (first, second) =>
-          new Date(second.date).getTime() - new Date(first.date).getTime()
-      );
+    );
   }, [categories, filterCategoryId, filterStatus, filterType, monthTransactions, searchQuery]);
-
-  const groupedTransactions = useMemo(
-    () => groupTransactionsByDate(filteredTransactions),
-    [filteredTransactions]
-  );
 
   const summary = useMemo(
     () => summarizeTransactions(filteredTransactions),
     [filteredTransactions]
   );
+
+  const kanbanColumns = useMemo<KanbanColumn[]>(() => {
+    const buildColumn = (
+      id: ColumnId,
+      title: string,
+      description: string,
+      empty: string,
+      tone: string,
+      predicate: (transaction: Transaction) => boolean
+    ) => {
+      const items = filteredTransactions.filter(predicate);
+
+      return {
+        id,
+        title,
+        description,
+        empty,
+        tone,
+        items,
+        count: items.length,
+        total: items.reduce((total, transaction) => total + transaction.amount, 0),
+      };
+    };
+
+    return [
+      buildColumn(
+        'pay',
+        'A pagar',
+        'Despesas pendentes para voce fechar.',
+        'Nenhuma despesa pendente nesse filtro.',
+        'border-expense/20 bg-expense/10',
+        (transaction) =>
+          transaction.type === 'expense' && transaction.status === 'pending'
+      ),
+      buildColumn(
+        'receive',
+        'A receber',
+        'Receitas ainda abertas no periodo.',
+        'Nenhuma receita aguardando entrada.',
+        'border-income/20 bg-income/10',
+        (transaction) =>
+          transaction.type === 'income' && transaction.status === 'pending'
+      ),
+      buildColumn(
+        'done',
+        'Concluido',
+        'Tudo que ja foi confirmado.',
+        'Nada concluido com os filtros atuais.',
+        'border-primary/20 bg-primary/10',
+        (transaction) => transaction.status === 'completed'
+      ),
+    ];
+  }, [filteredTransactions]);
 
   const handleMonthChange = (direction: number) => {
     setSelectedMonth(
@@ -102,12 +158,18 @@ const Transactions: React.FC = () => {
     );
   };
 
+  const openForm = (type: TransactionType) => {
+    setDefaultType(type);
+    setEditTransaction(null);
+    setIsFormOpen(true);
+  };
+
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
         <div className="text-center">
           <Loader2 className="mx-auto mb-4 h-8 w-8 animate-spin text-primary" />
-          <p className="text-muted-foreground">Carregando transacoes...</p>
+          <p className="text-muted-foreground">Carregando financas...</p>
         </div>
       </div>
     );
@@ -115,56 +177,107 @@ const Transactions: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-background pb-24">
-      <header className="sticky top-0 z-30 border-b border-border/50 bg-background/88 px-4 py-4 backdrop-blur-xl sm:px-6 lg:px-8">
+      <header className="sticky top-0 z-30 border-b border-border/50 bg-background/90 px-4 py-4 backdrop-blur-xl sm:px-6 lg:px-8">
         <div className="mx-auto max-w-7xl rounded-[28px] border border-border/60 bg-card p-5 shadow-[var(--shadow-sm)]">
-          <div className="mb-5 flex items-start justify-between gap-4">
-            <div>
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+            <div className="max-w-xl">
               <p className="mb-2 text-xs font-semibold uppercase tracking-[0.24em] text-primary">
-                Organização
+                Financas
               </p>
-              <h1 className="text-2xl font-semibold">Central de transacoes</h1>
-              <p className="mt-1 max-w-sm text-sm text-muted-foreground">
-                Encontre rápido o que entrou, o que saiu e o que ainda precisa de confirmação.
+              <h1 className="text-2xl font-semibold">Fluxo em Kanban</h1>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Organize o mes em colunas simples: o que pagar, o que receber e o que ja foi concluido.
               </p>
             </div>
 
-            <button
-              onClick={() => setShowCycleSettings((current) => !current)}
-              className={`touch-btn h-12 rounded-2xl border px-4 ${
-                showCycleSettings
-                  ? 'border-primary bg-primary text-primary-foreground'
-                  : 'border-border bg-muted/60 text-muted-foreground'
-              }`}
-            >
-              <Settings2 className="h-5 w-5" />
-            </button>
+            <div className="flex gap-2">
+              <button
+                onClick={() => openForm('income')}
+                className="rounded-2xl border border-income/20 bg-income/10 px-4 py-3 text-sm font-medium text-income"
+              >
+                Nova receita
+              </button>
+              <button
+                onClick={() => openForm('expense')}
+                className="rounded-2xl border border-expense/20 bg-expense/10 px-4 py-3 text-sm font-medium text-expense"
+              >
+                Nova despesa
+              </button>
+              <button
+                onClick={() => setShowCycleSettings((current) => !current)}
+                className={`rounded-2xl border px-4 ${
+                  showCycleSettings
+                    ? 'border-primary bg-primary text-primary-foreground'
+                    : 'border-border bg-muted/60 text-muted-foreground'
+                }`}
+              >
+                <Settings2 className="h-5 w-5" />
+              </button>
+            </div>
           </div>
 
           <MonthSwitcher
             selectedMonth={selectedMonth}
             onChange={handleMonthChange}
-            className="mb-4"
+            className="mt-5"
           />
 
-          <div className="relative">
-            <Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(event) => setSearchQuery(event.target.value)}
-              placeholder="Buscar por descricao ou categoria"
-              className="w-full rounded-2xl border border-border bg-background pl-12 pr-14 py-3 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-            />
-            <button
-              onClick={() => setShowFilters((current) => !current)}
-              className={`absolute right-2 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-xl ${
-                showFilters
-                  ? 'bg-primary text-primary-foreground'
-                  : 'text-muted-foreground'
-              }`}
-            >
-              <Filter className="h-5 w-5" />
-            </button>
+          <div className="mt-4 grid gap-3 md:grid-cols-[1fr_auto]">
+            <div className="relative">
+              <Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(event) => setSearchQuery(event.target.value)}
+                placeholder="Buscar por nome, categoria ou anotacao"
+                className="w-full rounded-2xl border border-border bg-background py-3 pl-12 pr-14 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+              />
+              <button
+                onClick={() => setShowFilters((current) => !current)}
+                className={`absolute right-2 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-xl ${
+                  showFilters ? 'bg-primary text-primary-foreground' : 'text-muted-foreground'
+                }`}
+              >
+                <Filter className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="grid grid-cols-3 gap-3">
+              <div className="rounded-2xl border border-income/20 bg-income/10 px-4 py-3 text-center">
+                <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
+                  Entradas
+                </p>
+                <p className="mt-2 text-sm font-semibold text-income">
+                  {formatCurrency(summary.income)}
+                </p>
+              </div>
+              <div className="rounded-2xl border border-expense/20 bg-expense/10 px-4 py-3 text-center">
+                <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
+                  Saidas
+                </p>
+                <p className="mt-2 text-sm font-semibold text-expense">
+                  {formatCurrency(summary.expense)}
+                </p>
+              </div>
+              <div
+                className={`rounded-2xl border px-4 py-3 text-center ${
+                  summary.balance >= 0
+                    ? 'border-primary/20 bg-primary/10'
+                    : 'border-expense/20 bg-expense/10'
+                }`}
+              >
+                <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
+                  Saldo
+                </p>
+                <p
+                  className={`mt-2 text-sm font-semibold ${
+                    summary.balance >= 0 ? 'text-primary' : 'text-expense'
+                  }`}
+                >
+                  {formatCurrency(summary.balance)}
+                </p>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -182,7 +295,7 @@ const Transactions: React.FC = () => {
                   <div>
                     <h2 className="text-sm font-semibold">Ciclo financeiro</h2>
                     <p className="text-xs text-muted-foreground">
-                      Ajuste o dia de virada para refletir cartao ou fechamento.
+                      Ajuste o dia de virada para acompanhar seu fechamento real.
                     </p>
                   </div>
                 </div>
@@ -208,45 +321,6 @@ const Transactions: React.FC = () => {
       </header>
 
       <main className="mx-auto max-w-7xl space-y-6 px-4 py-6 sm:px-6 lg:px-8">
-        <section className="grid grid-cols-3 gap-3">
-          <div className="rounded-2xl border border-income/20 bg-income/10 p-4 text-center">
-            <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
-              Receitas
-            </p>
-            <p className="mt-2 font-mono text-sm font-semibold text-income">
-              {formatCurrency(summary.income)}
-            </p>
-          </div>
-
-          <div className="rounded-2xl border border-expense/20 bg-expense/10 p-4 text-center">
-            <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
-              Despesas
-            </p>
-            <p className="mt-2 font-mono text-sm font-semibold text-expense">
-              {formatCurrency(summary.expense)}
-            </p>
-          </div>
-
-          <div
-            className={`rounded-2xl border p-4 text-center ${
-              summary.balance >= 0
-                ? 'border-primary/20 bg-primary/10'
-                : 'border-expense/20 bg-expense/10'
-            }`}
-          >
-            <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
-              Saldo
-            </p>
-            <p
-              className={`mt-2 font-mono text-sm font-semibold ${
-                summary.balance >= 0 ? 'text-primary' : 'text-expense'
-              }`}
-            >
-              {formatCurrency(summary.balance)}
-            </p>
-          </div>
-        </section>
-
         <AnimatePresence>
           {showFilters && (
             <motion.section
@@ -259,11 +333,11 @@ const Transactions: React.FC = () => {
                 <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
                   Filtros
                 </p>
-                <h2 className="mt-1 text-lg font-semibold">Refinar visualizacao</h2>
+                <h2 className="mt-1 text-lg font-semibold">Refinar quadro</h2>
               </div>
 
-                <div className="space-y-3">
-                  <div className="flex gap-2">
+              <div className="space-y-3">
+                <div className="flex gap-2">
                   {(['all', 'income', 'expense'] as const).map((type) => (
                     <button
                       key={type}
@@ -279,33 +353,33 @@ const Transactions: React.FC = () => {
                       }`}
                     >
                       {type === 'all'
-                        ? 'Todos'
+                        ? 'Tudo'
                         : type === 'income'
                         ? 'Receitas'
                         : 'Despesas'}
                     </button>
                   ))}
-                  </div>
+                </div>
 
-                  <div>
-                    <label className="mb-2 block text-sm font-medium text-muted-foreground">
-                      Categoria
-                    </label>
-                    <select
-                      value={filterCategoryId}
-                      onChange={(event) => setFilterCategoryId(event.target.value)}
-                      className="w-full rounded-xl border border-border bg-background px-4 py-3 text-sm text-foreground"
-                    >
-                      <option value="all">Todas as categorias</option>
-                      {categories.map((category) => (
-                        <option key={category.id} value={category.id}>
-                          {category.name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
+                <div>
+                  <label className="mb-2 block text-sm font-medium text-muted-foreground">
+                    Categoria
+                  </label>
+                  <select
+                    value={filterCategoryId}
+                    onChange={(event) => setFilterCategoryId(event.target.value)}
+                    className="w-full rounded-xl border border-border bg-background px-4 py-3 text-sm text-foreground"
+                  >
+                    <option value="all">Todas as categorias</option>
+                    {categories.map((category) => (
+                      <option key={category.id} value={category.id}>
+                        {category.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
 
-                  <div className="flex gap-2">
+                <div className="flex gap-2">
                   {(['all', 'completed', 'pending'] as const).map((status) => (
                     <button
                       key={status}
@@ -329,55 +403,63 @@ const Transactions: React.FC = () => {
           )}
         </AnimatePresence>
 
-        {groupedTransactions.length === 0 ? (
+        {filteredTransactions.length === 0 ? (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             className="rounded-[28px] border border-dashed border-border bg-card p-8 text-center"
           >
-            <Calendar className="mx-auto mb-4 h-12 w-12 text-muted-foreground" />
-            <h3 className="text-lg font-semibold">Nenhuma transacao encontrada</h3>
+            <WalletCards className="mx-auto mb-4 h-12 w-12 text-muted-foreground" />
+            <h3 className="text-lg font-semibold">Quadro vazio</h3>
             <p className="mt-2 text-sm text-muted-foreground">
-              {searchQuery
-                ? 'Tente outro termo, troque a categoria ou remova alguns filtros.'
-                : 'Este período ainda não possui lançamentos visíveis. Você pode registrar uma nova movimentação agora.'}
+              Ajuste os filtros ou cadastre uma nova movimentacao para preencher o Kanban.
             </p>
-            <div className="mt-5 flex justify-center">
-              <button
-                onClick={() => {
-                  setEditTransaction(null);
-                  setIsFormOpen(true);
-                }}
-                className="rounded-2xl border border-primary/20 bg-primary/10 px-4 py-2 text-sm font-medium text-primary"
-              >
-                Adicionar transação
-              </button>
-            </div>
           </motion.div>
         ) : (
-          <div className="space-y-6">
-            {groupedTransactions.map(([date, dayTransactions], index) => (
+          <section className="flex gap-4 overflow-x-auto pb-2 lg:grid lg:grid-cols-3 lg:overflow-visible">
+            {kanbanColumns.map((column, index) => (
               <motion.div
-                key={date}
+                key={column.id}
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.04 }}
+                transition={{ delay: index * 0.05 }}
+                className="min-h-[420px] min-w-[285px] rounded-[28px] border border-border bg-card p-4 lg:min-w-0"
               >
-                <h3 className="mb-3 text-sm font-medium capitalize text-muted-foreground">
-                  {format(parseISO(date), "EEEE, dd 'de' MMMM", { locale: ptBR })}
-                </h3>
-                <div className="space-y-3">
-                  {dayTransactions.map((transaction) => (
-                    <TransactionCard
-                      key={transaction.id}
-                      transaction={transaction}
-                      onEdit={setEditTransaction}
-                    />
-                  ))}
+                <div className={`rounded-2xl border px-4 py-4 ${column.tone}`}>
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <p className="text-lg font-semibold text-foreground">{column.title}</p>
+                      <p className="mt-1 text-sm text-muted-foreground">
+                        {column.description}
+                      </p>
+                    </div>
+                    <span className="rounded-full bg-background/70 px-3 py-1 text-sm font-medium text-foreground">
+                      {column.count}
+                    </span>
+                  </div>
+                  <p className="mt-4 text-xl font-semibold text-foreground">
+                    {formatCurrency(column.total)}
+                  </p>
+                </div>
+
+                <div className="mt-4 space-y-3">
+                  {column.items.length === 0 ? (
+                    <div className="rounded-2xl border border-dashed border-border bg-muted/20 p-6 text-center text-sm text-muted-foreground">
+                      {column.empty}
+                    </div>
+                  ) : (
+                    column.items.map((transaction) => (
+                      <TransactionCard
+                        key={transaction.id}
+                        transaction={transaction}
+                        onEdit={setEditTransaction}
+                      />
+                    ))
+                  )}
                 </div>
               </motion.div>
             ))}
-          </div>
+          </section>
         )}
       </main>
 
@@ -385,10 +467,7 @@ const Transactions: React.FC = () => {
         initial={{ scale: 0 }}
         animate={{ scale: 1 }}
         whileTap={{ scale: 0.95 }}
-        onClick={() => {
-          setEditTransaction(null);
-          setIsFormOpen(true);
-        }}
+        onClick={() => openForm('expense')}
         className="fixed bottom-24 right-4 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg shadow-primary/30"
       >
         <Plus className="h-6 w-6" />
@@ -403,6 +482,7 @@ const Transactions: React.FC = () => {
           setEditTransaction(null);
         }}
         editTransaction={editTransaction}
+        defaultType={defaultType}
       />
     </div>
   );

@@ -733,14 +733,14 @@ const Leisure: React.FC = () => {
     <AppShell>
       {/* Header */}
       <PageIntro
-        eyebrow="Extra"
+        eyebrow="Festometro"
         title="Planejamento e rateio de eventos"
         description="Uma área prática para estimar consumo, organizar participantes e acompanhar custos do começo ao fim."
       >
         <div className="grid gap-3 lg:grid-cols-[1fr_auto] lg:items-center">
           <div>
-            <h1 className="text-2xl font-bold">Planejador de eventos</h1>
-            <p className="text-sm text-muted-foreground">Calcule e organize seus eventos</p>
+            <h1 className="text-2xl font-bold">Festometro</h1>
+            <p className="text-sm text-muted-foreground">Calcule, salve e acompanhe cada evento</p>
           </div>
         </div>
         

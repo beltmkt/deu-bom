@@ -2,7 +2,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Navigate, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/hooks/useAuth";
 import { WorkspaceProvider } from "@/hooks/useWorkspace";
 import { ThemeProvider } from "@/hooks/useTheme";
@@ -66,13 +66,14 @@ const App = () => (
                 }
               />
               <Route
-                path="/leisure"
+                path="/festometro"
                 element={
                   <ProtectedRoute>
                     <Leisure />
                   </ProtectedRoute>
                 }
               />
+              <Route path="/leisure" element={<Navigate to="/festometro" replace />} />
               <Route
                 path="/settings"
                 element={

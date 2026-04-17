@@ -25,6 +25,14 @@ interface WorkspaceInvitation {
   createdAt: string;
 }
 
+const getAppUrl = () => {
+  if (typeof window !== 'undefined' && window.location.origin) {
+    return window.location.origin;
+  }
+
+  return 'https://deu-bom-financas-sem-erro.vercel.app';
+};
+
 interface WorkspaceContextType {
   currentWorkspace: Workspace | null;
   workspaces: Workspace[];
@@ -350,6 +358,7 @@ export const WorkspaceProvider = ({ children }: { children: ReactNode }) => {
           inviterName,
           token: invitation.token,
           role,
+          appUrl: getAppUrl(),
         },
       });
 
