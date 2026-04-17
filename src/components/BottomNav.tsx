@@ -31,6 +31,8 @@ export const BottomNav: React.FC = () => {
   const isMobile = useIsMobile();
   const [isCollapsed, setIsCollapsed] = React.useState(false);
   const [isMobileOpen, setIsMobileOpen] = React.useState(false);
+  const asideRef = React.useRef<HTMLElement | null>(null);
+  const mobileTriggerRef = React.useRef<HTMLButtonElement | null>(null);
 
   React.useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -47,12 +49,41 @@ export const BottomNav: React.FC = () => {
   }, [isCollapsed]);
 
   React.useEffect(() => {
+    if (typeof document === 'undefined') return;
+
+    const sidebarWidth = isMobile ? '0px' : isCollapsed ? '88px' : '272px';
+    document.documentElement.style.setProperty('--app-sidebar-width', sidebarWidth);
+
+    return () => {
+      document.documentElement.style.setProperty('--app-sidebar-width', '88px');
+    };
+  }, [isCollapsed, isMobile]);
+
+  React.useEffect(() => {
     setIsMobileOpen(false);
   }, [location.pathname]);
+
+  React.useEffect(() => {
+    if (isMobile || isCollapsed) return;
+
+    const handlePointerDown = (event: MouseEvent) => {
+      const target = event.target as Node | null;
+      if (!target) return;
+
+      if (asideRef.current?.contains(target)) return;
+      if (mobileTriggerRef.current?.contains(target)) return;
+
+      setIsCollapsed(true);
+    };
+
+    document.addEventListener('mousedown', handlePointerDown);
+    return () => document.removeEventListener('mousedown', handlePointerDown);
+  }, [isCollapsed, isMobile]);
 
   return (
     <>
       <button
+        ref={mobileTriggerRef}
         onClick={() => setIsMobileOpen((current) => !current)}
         className="fixed left-4 top-4 z-[70] flex h-11 w-11 items-center justify-center rounded-2xl border border-border/70 bg-card/95 text-foreground shadow-[var(--shadow-sm)] backdrop-blur-xl md:hidden"
         aria-label="Abrir menu"
@@ -69,6 +100,7 @@ export const BottomNav: React.FC = () => {
       />
 
       <aside
+        ref={asideRef}
         className={cn(
           'fixed inset-y-0 left-0 z-[60] flex flex-col border-r border-border/70 bg-card/96 shadow-[var(--shadow-md)] backdrop-blur-xl transition-all duration-200',
           isMobile
