@@ -251,13 +251,13 @@ const loadFinanceSnapshot = async (): Promise<FinanceSnapshot | null> => {
   let budgetsQuery = supabase.from('budgets').select('*');
 
   if (workspaceId) {
-    categoriesQuery = categoriesQuery.or(`user_id.eq.${user.id},workspace_id.eq.${workspaceId}`);
-    transactionsQuery = transactionsQuery.or(`user_id.eq.${user.id},workspace_id.eq.${workspaceId}`);
-    budgetsQuery = budgetsQuery.or(`user_id.eq.${user.id},workspace_id.eq.${workspaceId}`);
+    categoriesQuery = categoriesQuery.eq('workspace_id', workspaceId);
+    transactionsQuery = transactionsQuery.eq('workspace_id', workspaceId);
+    budgetsQuery = budgetsQuery.eq('workspace_id', workspaceId);
   } else {
-    categoriesQuery = categoriesQuery.eq('user_id', user.id);
-    transactionsQuery = transactionsQuery.eq('user_id', user.id);
-    budgetsQuery = budgetsQuery.eq('user_id', user.id);
+    categoriesQuery = categoriesQuery.eq('user_id', user.id).is('workspace_id', null);
+    transactionsQuery = transactionsQuery.eq('user_id', user.id).is('workspace_id', null);
+    budgetsQuery = budgetsQuery.eq('user_id', user.id).is('workspace_id', null);
   }
 
   let { data: categories } = await categoriesQuery;
@@ -567,6 +567,12 @@ export const useFinanceStore = create<FinanceState>((set, get) => ({
     } = await supabase.auth.getUser();
     if (!user) return;
 
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('current_workspace_id')
+      .eq('id', user.id)
+      .maybeSingle();
+
     const existingBudget = get().budgets.find((budget) => budget.categoryId === categoryId);
 
     if (existingBudget) {
@@ -583,6 +589,7 @@ export const useFinanceStore = create<FinanceState>((set, get) => ({
     } else {
       const { error } = await supabase.from('budgets').insert({
         user_id: user.id,
+        workspace_id: profile?.current_workspace_id || null,
         category_id: categoryId,
         limit_amount: limit,
         period: 'monthly',
