@@ -177,35 +177,35 @@ const Transactions: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-background pb-8 md:pl-[var(--app-sidebar-width,88px)]">
-      <header className="sticky top-0 z-30 border-b border-border/50 bg-background/90 px-4 py-4 backdrop-blur-xl sm:px-6 lg:px-8">
-        <div className="mx-auto max-w-7xl rounded-[28px] border border-border/60 bg-card p-5 shadow-[var(--shadow-sm)]">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-            <div className="max-w-xl">
-              <p className="mb-2 text-xs font-semibold uppercase tracking-[0.24em] text-primary">
+      <header className="sticky top-0 z-30 border-b border-border/50 bg-background/90 px-4 py-3 backdrop-blur-xl sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-7xl rounded-[24px] border border-border/60 bg-card p-4 shadow-[var(--shadow-sm)]">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+            <div className="max-w-lg">
+              <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-[0.22em] text-primary">
                 Financas
               </p>
-              <h1 className="text-2xl font-semibold">Fluxo em Kanban</h1>
+              <h1 className="text-xl font-semibold sm:text-2xl">Fluxo em Kanban</h1>
               <p className="mt-1 text-sm text-muted-foreground">
-                Organize o mes em colunas simples: o que pagar, o que receber e o que ja foi concluido.
+                Veja o que pagar, receber e concluir sem deixar o topo tomar a tela.
               </p>
             </div>
 
-            <div className="flex gap-2">
+            <div className="grid grid-cols-2 gap-2 sm:flex">
               <button
                 onClick={() => openForm('income')}
-                className="rounded-2xl border border-income/20 bg-income/10 px-4 py-3 text-sm font-medium text-income"
+                className="rounded-xl border border-income/20 bg-income/10 px-4 py-2.5 text-sm font-medium text-income"
               >
                 Nova receita
               </button>
               <button
                 onClick={() => openForm('expense')}
-                className="rounded-2xl border border-expense/20 bg-expense/10 px-4 py-3 text-sm font-medium text-expense"
+                className="rounded-xl border border-expense/20 bg-expense/10 px-4 py-2.5 text-sm font-medium text-expense"
               >
                 Nova despesa
               </button>
               <button
                 onClick={() => setShowCycleSettings((current) => !current)}
-                className={`rounded-2xl border px-4 ${
+                className={`col-span-2 flex items-center justify-center rounded-xl border px-4 py-2.5 sm:col-span-1 ${
                   showCycleSettings
                     ? 'border-primary bg-primary text-primary-foreground'
                     : 'border-border bg-muted/60 text-muted-foreground'
@@ -219,10 +219,10 @@ const Transactions: React.FC = () => {
           <MonthSwitcher
             selectedMonth={selectedMonth}
             onChange={handleMonthChange}
-            className="mt-5"
+            className="mt-4"
           />
 
-          <div className="mt-4 grid gap-3 md:grid-cols-[1fr_auto]">
+          <div className="mt-3 grid gap-3 md:grid-cols-[1fr_auto]">
             <div className="relative">
               <Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" />
               <input
@@ -230,11 +230,11 @@ const Transactions: React.FC = () => {
                 value={searchQuery}
                 onChange={(event) => setSearchQuery(event.target.value)}
                 placeholder="Buscar por nome, categoria ou anotacao"
-                className="w-full rounded-2xl border border-border bg-background py-3 pl-12 pr-14 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                className="w-full rounded-xl border border-border bg-background py-2.5 pl-12 pr-14 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
               />
               <button
                 onClick={() => setShowFilters((current) => !current)}
-                className={`absolute right-2 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-xl ${
+                className={`absolute right-2 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-lg ${
                   showFilters ? 'bg-primary text-primary-foreground' : 'text-muted-foreground'
                 }`}
               >
@@ -242,8 +242,8 @@ const Transactions: React.FC = () => {
               </button>
             </div>
 
-            <div className="grid grid-cols-3 gap-3">
-              <div className="rounded-2xl border border-income/20 bg-income/10 px-4 py-3 text-center">
+            <div className="grid grid-cols-3 gap-2">
+              <div className="rounded-xl border border-income/20 bg-income/10 px-3 py-2.5 text-center">
                 <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
                   Entradas
                 </p>
@@ -251,7 +251,7 @@ const Transactions: React.FC = () => {
                   {formatCurrency(summary.income)}
                 </p>
               </div>
-              <div className="rounded-2xl border border-expense/20 bg-expense/10 px-4 py-3 text-center">
+              <div className="rounded-xl border border-expense/20 bg-expense/10 px-3 py-2.5 text-center">
                 <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
                   Saidas
                 </p>
@@ -260,7 +260,7 @@ const Transactions: React.FC = () => {
                 </p>
               </div>
               <div
-                className={`rounded-2xl border px-4 py-3 text-center ${
+                className={`rounded-xl border px-3 py-2.5 text-center ${
                   summary.balance >= 0
                     ? 'border-primary/20 bg-primary/10'
                     : 'border-expense/20 bg-expense/10'
@@ -289,7 +289,7 @@ const Transactions: React.FC = () => {
               exit={{ opacity: 0, height: 0 }}
               className="overflow-hidden px-1 pt-3"
             >
-              <div className="rounded-[24px] border border-border bg-card p-4">
+              <div className="rounded-[20px] border border-border bg-card p-3.5">
                 <div className="mb-3 flex items-center gap-2">
                   <SlidersHorizontal className="h-4 w-4 text-primary" />
                   <div>
@@ -320,14 +320,14 @@ const Transactions: React.FC = () => {
         </AnimatePresence>
       </header>
 
-      <main className="mx-auto max-w-7xl space-y-6 px-4 py-6 sm:px-6 lg:px-8">
+      <main className="mx-auto max-w-7xl space-y-5 px-4 py-5 sm:px-6 lg:px-8">
         <AnimatePresence>
           {showFilters && (
             <motion.section
               initial={{ opacity: 0, y: -12 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -12 }}
-              className="rounded-[28px] border border-border bg-card p-5"
+              className="rounded-[24px] border border-border bg-card p-4"
             >
               <div className="mb-4">
                 <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
@@ -423,13 +423,13 @@ const Transactions: React.FC = () => {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: index * 0.05 }}
-                className="min-h-[420px] min-w-[285px] rounded-[28px] border border-border bg-card p-4 lg:min-w-0"
+                className="min-h-[360px] min-w-[272px] rounded-[24px] border border-border bg-card p-3.5 lg:min-w-0"
               >
-                <div className={`rounded-2xl border px-4 py-4 ${column.tone}`}>
+                <div className={`rounded-[20px] border px-3.5 py-3.5 ${column.tone}`}>
                   <div className="flex items-start justify-between gap-4">
                     <div>
-                      <p className="text-lg font-semibold text-foreground">{column.title}</p>
-                      <p className="mt-1 text-sm text-muted-foreground">
+                      <p className="text-base font-semibold text-foreground">{column.title}</p>
+                      <p className="mt-1 text-xs leading-5 text-muted-foreground sm:text-sm">
                         {column.description}
                       </p>
                     </div>
@@ -442,9 +442,9 @@ const Transactions: React.FC = () => {
                   </p>
                 </div>
 
-                <div className="mt-4 space-y-3">
+                <div className="mt-3 space-y-2.5">
                   {column.items.length === 0 ? (
-                    <div className="rounded-2xl border border-dashed border-border bg-muted/20 p-6 text-center text-sm text-muted-foreground">
+                    <div className="rounded-[20px] border border-dashed border-border bg-muted/20 p-5 text-center text-sm text-muted-foreground">
                       {column.empty}
                     </div>
                   ) : (

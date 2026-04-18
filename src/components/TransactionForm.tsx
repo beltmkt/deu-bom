@@ -301,15 +301,15 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
           className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50"
           onClick={handleClose}
         >
-          <motion.div
-            initial={{ y: '100%' }}
-            animate={{ y: 0 }}
-            exit={{ y: '100%' }}
-            transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-            onClick={(e) => e.stopPropagation()}
-            className="absolute bottom-0 left-0 right-0 bg-card rounded-t-3xl overflow-hidden"
-          >
-            <div className="p-6 text-center">
+        <motion.div
+          initial={{ opacity: 0, y: 24, scale: 0.98 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          exit={{ opacity: 0, y: 24, scale: 0.98 }}
+          transition={{ type: 'spring', damping: 24, stiffness: 280 }}
+          onClick={(e) => e.stopPropagation()}
+          className="absolute bottom-0 left-0 right-0 overflow-hidden rounded-t-3xl bg-card sm:bottom-auto sm:left-1/2 sm:top-1/2 sm:w-[min(28rem,calc(100vw-1.5rem))] sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-3xl"
+        >
+          <div className="p-5 text-center sm:p-6">
               <div className="w-16 h-16 rounded-full bg-income/20 flex items-center justify-center mx-auto mb-4">
                 <Check className="w-8 h-8 text-income" />
               </div>
@@ -357,28 +357,28 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
         onClick={handleClose}
       >
         <motion.div
-          initial={{ y: '100%' }}
-          animate={{ y: 0 }}
-          exit={{ y: '100%' }}
-          transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+          initial={{ opacity: 0, y: 24, scale: 0.98 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          exit={{ opacity: 0, y: 24, scale: 0.98 }}
+          transition={{ type: 'spring', damping: 24, stiffness: 280 }}
           onClick={(e) => e.stopPropagation()}
-          className="absolute bottom-0 left-0 right-0 max-h-[90vh] bg-card rounded-t-3xl overflow-hidden flex flex-col"
+          className="absolute bottom-0 left-0 right-0 flex max-h-[88vh] flex-col overflow-hidden rounded-t-3xl bg-card sm:bottom-auto sm:left-1/2 sm:top-1/2 sm:max-h-[86vh] sm:w-[min(42rem,calc(100vw-1.5rem))] sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-3xl"
         >
           {/* Header */}
-          <div className="sticky top-0 bg-card border-b border-border p-4 flex items-center justify-between z-10 flex-shrink-0">
-            <h2 className="text-lg font-semibold">
+          <div className="sticky top-0 z-10 flex flex-shrink-0 items-center justify-between border-b border-border bg-card px-4 py-3 sm:px-5">
+            <h2 className="text-base font-semibold sm:text-lg">
               {editTransaction ? 'Editar Transação' : 'Nova Transação'}
             </h2>
             <button
               onClick={handleClose}
-              className="touch-btn w-10 h-10 rounded-full bg-muted flex items-center justify-center"
+              className="touch-btn flex h-9 w-9 items-center justify-center rounded-full bg-muted"
             >
               <X className="w-5 h-5" />
             </button>
           </div>
 
           {/* Scrollable content */}
-          <div className="overflow-y-auto flex-1 px-4 pt-4 pb-32">
+          <div className="flex-1 overflow-y-auto px-4 pb-28 pt-4 sm:px-5 sm:pb-24">
             {/* Type toggle */}
             <div className="grid grid-cols-2 gap-2 p-1 bg-muted rounded-xl mb-6">
               <button
@@ -526,11 +526,11 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
               </div>
             </div>
 
-            <div className="mb-6 rounded-2xl border border-border/70 bg-muted/30">
+            <div className="mb-6 rounded-[20px] border border-border/70 bg-muted/30">
               <button
                 type="button"
                 onClick={() => setShowAdvancedFields((current) => !current)}
-                className="flex w-full items-center justify-between px-4 py-4 text-left"
+                className="flex w-full items-center justify-between gap-4 px-4 py-3.5 text-left"
               >
                 <div>
                   <p className="text-sm font-medium">Mais opções</p>
@@ -553,7 +553,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
                     exit={{ height: 0, opacity: 0 }}
                     className="overflow-hidden border-t border-border/70"
                   >
-                    <div className="px-4 pb-4 pt-4">
+                    <div className="px-4 pb-4 pt-3.5">
                       {!editTransaction && (
                         <div className="mb-6">
                           <label className="block text-sm font-medium text-muted-foreground mb-2">
@@ -807,12 +807,12 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
           </div>
 
           {/* Sticky footer */}
-          <div className="modal-footer-sticky">
+          <div className="modal-footer-sticky sm:px-5 sm:pb-5">
             <button
               onClick={() => handleSubmit()}
               disabled={!title || !amount || !categoryId}
               className={`
-                w-full py-4 rounded-xl font-semibold text-lg
+                w-full rounded-xl py-3.5 text-base font-semibold
                 transition-all disabled:opacity-50 disabled:cursor-not-allowed
                 ${type === 'income'
                   ? 'bg-income text-income-foreground shadow-glow-income'

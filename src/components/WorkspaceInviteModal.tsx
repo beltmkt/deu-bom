@@ -85,29 +85,29 @@ export const WorkspaceInviteModal: React.FC<WorkspaceInviteModalProps> = ({
         onClick={onClose}
       >
         <motion.div
-          initial={{ y: '100%' }}
-          animate={{ y: 0 }}
-          exit={{ y: '100%' }}
-          transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+          initial={{ opacity: 0, y: 24, scale: 0.98 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          exit={{ opacity: 0, y: 24, scale: 0.98 }}
+          transition={{ type: 'spring', damping: 24, stiffness: 280 }}
           onClick={(e) => e.stopPropagation()}
-          className="absolute bottom-0 left-0 right-0 max-h-[80vh] bg-card rounded-t-3xl overflow-hidden flex flex-col safe-area-bottom"
+          className="safe-area-bottom absolute bottom-0 left-0 right-0 flex max-h-[80vh] flex-col overflow-hidden rounded-t-3xl bg-card sm:bottom-auto sm:left-1/2 sm:top-1/2 sm:max-h-[82vh] sm:w-[min(42rem,calc(100vw-1.5rem))] sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-3xl"
         >
           {/* Header */}
-          <div className="sticky top-0 bg-card border-b border-border p-4 flex items-center justify-between z-10 flex-shrink-0">
+          <div className="sticky top-0 z-10 flex flex-shrink-0 items-center justify-between border-b border-border bg-card px-4 py-3 sm:px-5">
             <div className="flex items-center gap-3">
               <Users className="w-5 h-5 text-primary" />
               <h2 className="text-lg font-semibold">Gerenciar Equipe</h2>
             </div>
             <button
               onClick={onClose}
-              className="w-10 h-10 rounded-full bg-muted flex items-center justify-center"
+              className="flex h-9 w-9 items-center justify-center rounded-full bg-muted"
             >
               <X className="w-5 h-5" />
             </button>
           </div>
 
           {/* Content */}
-          <div className="overflow-y-auto flex-1 p-4 space-y-6">
+          <div className="flex-1 overflow-y-auto space-y-5 p-4 sm:p-5">
             {/* Invite Form */}
             {canManageMembers && (
               <section>

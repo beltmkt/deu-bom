@@ -195,7 +195,7 @@ export const TransactionCard: React.FC<TransactionCardProps> = ({ transaction, o
                 <button
                   onClick={handleStatusToggle}
                   aria-label={toggleLabel}
-                  className={`touch-btn relative flex h-6 w-11 flex-shrink-0 items-center rounded-full border px-1 transition-all duration-200 ${
+                  className={`touch-btn relative flex h-5 w-9 flex-shrink-0 items-center rounded-full border px-1 transition-all duration-200 ${
                     isPending
                       ? 'border-border/70 bg-muted/40'
                       : isIncome
@@ -204,13 +204,13 @@ export const TransactionCard: React.FC<TransactionCardProps> = ({ transaction, o
                   }`}
                 >
                   <span
-                    className={`absolute left-1 flex h-4 w-4 items-center justify-center rounded-full shadow-sm transition-all duration-200 ${
+                    className={`absolute left-1 flex h-3 w-3 items-center justify-center rounded-full shadow-sm transition-all duration-200 ${
                       isPending
                         ? 'translate-x-0 bg-background text-muted-foreground'
-                        : 'translate-x-5 bg-background text-primary'
+                        : 'translate-x-3 bg-background text-primary'
                     }`}
                   >
-                    <Check className="h-2.5 w-2.5" />
+                    <Check className="h-2 w-2" />
                   </span>
                   <span className="sr-only">{toggleLabel}</span>
                 </button>

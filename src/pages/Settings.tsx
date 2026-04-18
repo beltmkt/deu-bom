@@ -1,9 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   AlertTriangle,
-  Bell,
   Check,
-  Cloud,
   Download,
   Edit2,
   Eye,
@@ -13,7 +11,6 @@ import {
   Mail,
   Monitor,
   Moon,
-  RefreshCw,
   ShieldCheck,
   Sun,
   Trash2,
@@ -37,8 +34,6 @@ import { useWorkspace } from '@/hooks/useWorkspace';
 import { supabase } from '@/integrations/supabase/client';
 import { getErrorMessage } from '@/utils/errors';
 import { toast } from 'sonner';
-
-type ConnectionStatus = 'checking' | 'connected' | 'error';
 
 const themeOptions = [
   { id: 'light' as const, label: 'Claro', icon: Sun },
@@ -77,9 +72,6 @@ const Settings: React.FC = () => {
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviteRole, setInviteRole] = useState<'editor' | 'viewer'>('viewer');
   const [isInviting, setIsInviting] = useState(false);
-  const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>('checking');
-  const [connectionMessage, setConnectionMessage] = useState('Validando sincronizacao...');
-  const [lastConnectionCheck, setLastConnectionCheck] = useState<string | null>(null);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [deleteConfirmation, setDeleteConfirmation] = useState('');
   const [isDeletingData, setIsDeletingData] = useState(false);
@@ -87,9 +79,6 @@ const Settings: React.FC = () => {
   const canManageWorkspace = userRole === 'owner';
   const canDeleteScopeData = !currentWorkspace || userRole === 'owner';
   const deleteScopeLabel = currentWorkspace ? currentWorkspace.name : 'EXCLUIR';
-  const envConfigured =
-    Boolean(import.meta.env.VITE_SUPABASE_URL) &&
-    Boolean(import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY);
 
   useEffect(() => {
     if (!initialized) {
@@ -117,55 +106,6 @@ const Settings: React.FC = () => {
   useEffect(() => {
     loadProfile();
   }, [loadProfile]);
-
-  const runConnectionCheck = useCallback(async () => {
-    if (!user) return;
-
-    if (!envConfigured) {
-      setConnectionStatus('error');
-      setConnectionMessage('As variaveis do Supabase nao estao configuradas no frontend.');
-      setLastConnectionCheck(new Date().toLocaleTimeString('pt-BR'));
-      return;
-    }
-
-    setConnectionStatus('checking');
-    setConnectionMessage('Validando sincronizacao com o banco...');
-
-    try {
-      const { error } = await supabase
-        .from('profiles')
-        .select('id')
-        .eq('id', user.id)
-        .maybeSingle();
-
-      if (error) throw error;
-
-      setConnectionStatus('connected');
-      setConnectionMessage(
-        currentWorkspace
-          ? `Supabase conectado e sincronizando o workspace ${currentWorkspace.name}.`
-          : 'Supabase conectado e sincronizando seus dados pessoais.'
-      );
-    } catch (error: unknown) {
-      setConnectionStatus('error');
-      setConnectionMessage(
-        getErrorMessage(error, 'Nao foi possivel validar a conexao com o Supabase.')
-      );
-    } finally {
-      setLastConnectionCheck(new Date().toLocaleTimeString('pt-BR'));
-    }
-  }, [currentWorkspace, envConfigured, user]);
-
-  useEffect(() => {
-    runConnectionCheck();
-  }, [runConnectionCheck]);
-
-  const connectionTone =
-    connectionStatus === 'connected'
-      ? 'border-primary/20 bg-primary/10 text-primary'
-      : connectionStatus === 'error'
-      ? 'border-expense/20 bg-expense/10 text-expense'
-      : 'border-border/70 bg-muted/40 text-foreground';
 
   const stats = useMemo(
     () => [
@@ -436,7 +376,6 @@ const Settings: React.FC = () => {
 
       await refreshData();
       await refreshWorkspace();
-      await runConnectionCheck();
 
       toast.success(
         currentWorkspace
@@ -457,8 +396,8 @@ const Settings: React.FC = () => {
     <AppShell>
       <PageIntro
         eyebrow="Configuracoes"
-        title="Conta, equipe e sincronizacao"
-        description="Uma area mais limpa para gerenciar workspace, aparencia, integracoes e os dados do app."
+        title="Conta, equipe e preferencias"
+        description="Uma area mais limpa para gerenciar workspace, aparencia e os dados do app sem excesso de informacao."
       >
         <div className="grid gap-3 sm:grid-cols-3">
           {stats.map((item) => (
@@ -679,13 +618,15 @@ const Settings: React.FC = () => {
                         notificationsEnabled: !settings.notificationsEnabled,
                       })
                     }
-                    className={`relative h-7 w-12 rounded-full transition-all ${
-                      settings.notificationsEnabled ? 'bg-primary' : 'bg-muted-foreground/30'
+                    className={`relative h-5 w-10 rounded-full border transition-all ${
+                      settings.notificationsEnabled
+                        ? 'border-primary/30 bg-primary/80'
+                        : 'border-border/70 bg-muted/70'
                     }`}
                   >
                     <div
-                      className={`absolute top-1 h-5 w-5 rounded-full bg-card shadow-md transition-all ${
-                        settings.notificationsEnabled ? 'left-6' : 'left-1'
+                      className={`absolute top-[2px] h-3.5 w-3.5 rounded-full bg-card shadow-sm transition-all ${
+                        settings.notificationsEnabled ? 'left-[20px]' : 'left-[2px]'
                       }`}
                     />
                   </button>
@@ -696,65 +637,6 @@ const Settings: React.FC = () => {
         </div>
 
         <div className="space-y-6">
-          <SurfaceCard className="overflow-hidden p-0">
-            <div className="border-b border-border/70 p-5">
-              <h3 className="text-lg font-semibold">Supabase e sincronizacao</h3>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Status da conexao, variaveis configuradas e validacao do banco em tempo real.
-              </p>
-            </div>
-
-            <div className="space-y-4 p-5">
-              <div className={`rounded-[24px] border p-4 ${connectionTone}`}>
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <Cloud className="h-4 w-4" />
-                      <p className="text-sm font-semibold">
-                        {connectionStatus === 'connected'
-                          ? 'Conectado'
-                          : connectionStatus === 'error'
-                          ? 'Com problema'
-                          : 'Verificando'}
-                      </p>
-                    </div>
-                    <p className="mt-2 text-sm">{connectionMessage}</p>
-                  </div>
-
-                  <button
-                    onClick={runConnectionCheck}
-                    className="flex h-10 w-10 items-center justify-center rounded-xl bg-background/60 text-foreground transition-colors hover:bg-background"
-                  >
-                    {connectionStatus === 'checking' ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <RefreshCw className="h-4 w-4" />
-                    )}
-                  </button>
-                </div>
-              </div>
-
-              <div className="grid gap-3 sm:grid-cols-2">
-                <div className="rounded-2xl bg-muted/50 p-4">
-                  <p className="text-sm text-muted-foreground">Frontend</p>
-                  <p className="mt-1 font-medium">
-                    {envConfigured ? 'Variaveis configuradas' : 'Variaveis ausentes'}
-                  </p>
-                </div>
-                <div className="rounded-2xl bg-muted/50 p-4">
-                  <p className="text-sm text-muted-foreground">Ultima verificacao</p>
-                  <p className="mt-1 font-medium">{lastConnectionCheck || 'Agora mesmo'}</p>
-                </div>
-                <div className="rounded-2xl bg-muted/50 p-4 sm:col-span-2">
-                  <p className="text-sm text-muted-foreground">Projeto vinculado</p>
-                  <p className="mt-1 break-all font-medium">
-                    {import.meta.env.VITE_SUPABASE_URL || 'URL do Supabase nao encontrada'}
-                  </p>
-                </div>
-              </div>
-            </div>
-          </SurfaceCard>
-
           <SurfaceCard className="overflow-hidden p-0">
             <div className="border-b border-border/70 p-5">
               <h3 className="text-lg font-semibold">Dados</h3>
@@ -922,7 +804,6 @@ const Settings: React.FC = () => {
         onSaved={async () => {
           await loadProfile();
           await refreshWorkspace();
-          await runConnectionCheck();
         }}
       />
 
