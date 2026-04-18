@@ -176,7 +176,7 @@ const Transactions: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background pb-8 md:pl-[var(--app-sidebar-width,88px)]">
+    <div className="min-h-screen bg-background pb-[calc(var(--app-bottom-nav-height,0px)+1rem+env(safe-area-inset-bottom,0px))] md:pl-[var(--app-sidebar-width,88px)]">
       <header className="sticky top-0 z-30 border-b border-border/50 bg-background/90 px-4 py-3 backdrop-blur-xl sm:px-6 lg:px-8">
         <div className="mx-auto max-w-7xl rounded-[24px] border border-border/60 bg-card p-4 shadow-[var(--shadow-sm)]">
           <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">

@@ -234,7 +234,7 @@
 
   /* Sticky modal footer */
   .modal-footer-sticky {
-    @apply fixed bottom-0 left-0 right-0 p-4 bg-card border-t border-border z-50;
+    @apply fixed bottom-0 left-0 right-0 z-50 border-t border-border bg-card p-4 sm:sticky sm:bottom-0 sm:left-auto sm:right-auto sm:z-10 sm:w-full;
     padding-bottom: max(1rem, env(safe-area-inset-bottom));
   }
 
