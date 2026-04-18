@@ -135,7 +135,7 @@ export const ProfileEditModal: React.FC<ProfileEditModalProps> = ({
             <button
               onClick={handleSave}
               disabled={isSaving || !displayName.trim()}
-              className="w-full py-4 rounded-xl bg-primary text-primary-foreground font-semibold flex items-center justify-center gap-2 disabled:opacity-50"
+              className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary py-3 text-sm font-semibold text-primary-foreground disabled:opacity-50"
             >
               {isSaving ? (
                 <Loader2 className="w-5 h-5 animate-spin" />

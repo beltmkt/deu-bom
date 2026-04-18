@@ -812,7 +812,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
               onClick={() => handleSubmit()}
               disabled={!title || !amount || !categoryId}
               className={`
-                w-full rounded-xl py-3.5 text-base font-semibold
+                w-full rounded-xl py-3 text-sm font-semibold
                 transition-all disabled:opacity-50 disabled:cursor-not-allowed
                 ${type === 'income'
                   ? 'bg-income text-income-foreground shadow-glow-income'

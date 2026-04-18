@@ -45,14 +45,14 @@ export const BudgetForm: React.FC<BudgetFormProps> = ({ isOpen, onClose }) => {
         onClick={onClose}
       >
         <motion.div
-          initial={{ y: '100%' }}
-          animate={{ y: 0 }}
-          exit={{ y: '100%' }}
-          transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+          initial={{ opacity: 0, y: 24, scale: 0.98 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          exit={{ opacity: 0, y: 24, scale: 0.98 }}
+          transition={{ type: 'spring', damping: 24, stiffness: 280 }}
           onClick={(event) => event.stopPropagation()}
-          className="absolute bottom-0 left-0 right-0 mx-auto max-h-[90vh] max-w-2xl overflow-hidden rounded-t-[28px] bg-card"
+          className="absolute bottom-0 left-0 right-0 mx-auto flex max-h-[88vh] flex-col overflow-hidden rounded-t-[28px] bg-card sm:bottom-auto sm:left-1/2 sm:top-1/2 sm:w-[min(40rem,calc(100vw-1.5rem))] sm:max-h-[82vh] sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-[28px]"
         >
-          <div className="flex items-center justify-between border-b border-border p-4">
+          <div className="flex items-center justify-between border-b border-border px-4 py-3 sm:px-5">
             <div className="flex items-center gap-3">
               <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-primary/10">
                 <PiggyBank className="h-5 w-5 text-primary" />
@@ -67,13 +67,13 @@ export const BudgetForm: React.FC<BudgetFormProps> = ({ isOpen, onClose }) => {
 
             <button
               onClick={onClose}
-              className="touch-btn h-10 rounded-full bg-muted px-3 text-muted-foreground"
+              className="touch-btn h-9 rounded-full bg-muted px-3 text-muted-foreground"
             >
               <X className="h-5 w-5" />
             </button>
           </div>
 
-          <div className="space-y-6 px-4 pt-4 pb-32">
+          <div className="space-y-6 overflow-y-auto px-4 pb-28 pt-4 sm:px-5 sm:pb-24">
             <div>
               <label className="mb-2 block text-sm font-medium text-muted-foreground">
                 Categoria
@@ -161,7 +161,7 @@ export const BudgetForm: React.FC<BudgetFormProps> = ({ isOpen, onClose }) => {
             <button
               onClick={handleSubmit}
               disabled={!categoryId || !limit}
-              className="w-full rounded-2xl bg-primary py-4 text-lg font-semibold text-primary-foreground disabled:cursor-not-allowed disabled:opacity-50"
+              className="w-full rounded-xl bg-primary py-3 text-sm font-semibold text-primary-foreground disabled:cursor-not-allowed disabled:opacity-50"
             >
               Salvar orçamento
             </button>

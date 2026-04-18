@@ -234,8 +234,21 @@
 
   /* Sticky modal footer */
   .modal-footer-sticky {
-    @apply fixed bottom-0 left-0 right-0 z-50 border-t border-border bg-card p-4 sm:sticky sm:bottom-0 sm:left-auto sm:right-auto sm:z-10 sm:w-full;
+    @apply fixed bottom-0 left-0 right-0 z-50 border-t border-border bg-card p-4;
     padding-bottom: max(1rem, env(safe-area-inset-bottom));
+  }
+
+  @media (min-width: 640px) {
+    .modal-footer-sticky {
+      position: sticky;
+      left: auto;
+      right: auto;
+      bottom: 0;
+      z-index: 10;
+      width: 100%;
+      margin-top: auto;
+      padding-bottom: 1rem;
+    }
   }
 
   /* Safe area bottom padding */
