@@ -41,7 +41,7 @@ export const BudgetForm: React.FC<BudgetFormProps> = ({ isOpen, onClose }) => {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm"
+        className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm sm:flex sm:items-center sm:justify-center sm:p-4"
         onClick={onClose}
       >
         <motion.div
@@ -50,7 +50,7 @@ export const BudgetForm: React.FC<BudgetFormProps> = ({ isOpen, onClose }) => {
           exit={{ opacity: 0, y: 24, scale: 0.98 }}
           transition={{ type: 'spring', damping: 24, stiffness: 280 }}
           onClick={(event) => event.stopPropagation()}
-          className="absolute bottom-0 left-0 right-0 mx-auto flex max-h-[88vh] flex-col overflow-hidden rounded-t-[28px] bg-card sm:bottom-auto sm:left-1/2 sm:top-1/2 sm:w-[min(40rem,calc(100vw-1.5rem))] sm:max-h-[82vh] sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-[28px]"
+          className="absolute bottom-0 left-0 right-0 mx-auto flex max-h-[88vh] flex-col overflow-hidden rounded-t-[28px] bg-card sm:static sm:w-[min(40rem,calc(100vw-1.5rem))] sm:max-h-[82vh] sm:rounded-[28px]"
         >
           <div className="flex items-center justify-between border-b border-border px-4 py-3 sm:px-5">
             <div className="flex items-center gap-3">
@@ -73,7 +73,7 @@ export const BudgetForm: React.FC<BudgetFormProps> = ({ isOpen, onClose }) => {
             </button>
           </div>
 
-          <div className="space-y-6 overflow-y-auto px-4 pb-28 pt-4 sm:px-5 sm:pb-24">
+          <div className="space-y-6 overflow-y-auto px-4 pb-20 pt-4 sm:px-5 sm:pb-6">
             <div>
               <label className="mb-2 block text-sm font-medium text-muted-foreground">
                 Categoria
@@ -157,7 +157,7 @@ export const BudgetForm: React.FC<BudgetFormProps> = ({ isOpen, onClose }) => {
             </div>
           </div>
 
-          <div className="modal-footer-sticky">
+          <div className="sticky bottom-0 z-10 border-t border-border bg-card p-4 sm:mt-auto sm:p-5">
             <button
               onClick={handleSubmit}
               disabled={!categoryId || !limit}

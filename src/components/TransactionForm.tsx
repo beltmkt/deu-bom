@@ -353,7 +353,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50"
+        className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm sm:flex sm:items-center sm:justify-center sm:p-4"
         onClick={handleClose}
       >
         <motion.div
@@ -362,7 +362,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
           exit={{ opacity: 0, y: 24, scale: 0.98 }}
           transition={{ type: 'spring', damping: 24, stiffness: 280 }}
           onClick={(e) => e.stopPropagation()}
-          className="absolute bottom-0 left-0 right-0 flex max-h-[88vh] flex-col overflow-hidden rounded-t-3xl bg-card sm:bottom-auto sm:left-1/2 sm:top-1/2 sm:max-h-[86vh] sm:w-[min(42rem,calc(100vw-1.5rem))] sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-3xl"
+          className="absolute bottom-0 left-0 right-0 flex max-h-[88vh] flex-col overflow-hidden rounded-t-3xl bg-card sm:static sm:max-h-[86vh] sm:w-[min(42rem,calc(100vw-1.5rem))] sm:rounded-3xl"
         >
           {/* Header */}
           <div className="sticky top-0 z-10 flex flex-shrink-0 items-center justify-between border-b border-border bg-card px-4 py-3 sm:px-5">
@@ -378,7 +378,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
           </div>
 
           {/* Scrollable content */}
-          <div className="flex-1 overflow-y-auto px-4 pb-28 pt-4 sm:px-5 sm:pb-24">
+          <div className="flex-1 overflow-y-auto px-4 pb-20 pt-4 sm:px-5 sm:pb-6">
             {/* Type toggle */}
             <div className="grid grid-cols-2 gap-2 p-1 bg-muted rounded-xl mb-6">
               <button
@@ -807,7 +807,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
           </div>
 
           {/* Sticky footer */}
-          <div className="modal-footer-sticky sm:px-5 sm:pb-5">
+          <div className="sticky bottom-0 z-10 border-t border-border bg-card p-4 sm:mt-auto sm:p-5">
             <button
               onClick={() => handleSubmit()}
               disabled={!title || !amount || !categoryId}
