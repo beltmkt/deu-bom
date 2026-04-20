@@ -1,24 +1,27 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { AnimatePresence, motion } from 'framer-motion';
 import {
-  X,
   Calendar,
-  ChevronDown,
-  Sparkles,
   CalendarPlus,
-  Download,
   Check,
+  ChevronDown,
   Circle,
   Clock,
+  Sparkles,
+  X,
   icons,
 } from 'lucide-react';
-import { format, addMonths, addWeeks, addYears, parseISO } from 'date-fns';
-import { useFinanceStore, useCategories, useTransactions } from '@/stores/financeStore';
+import { addMonths, addWeeks, addYears, format, parseISO } from 'date-fns';
+import { useCategories, useFinanceStore, useTransactions } from '@/stores/financeStore';
 import { CurrencyInput } from './CurrencyInput';
 import { openGoogleCalendar } from '@/utils/googleCalendar';
-import { downloadCalendarFile } from '@/utils/calendarFile';
 import { toast } from 'sonner';
-import type { Transaction, TransactionType, RecurrenceType, RecurrenceInterval } from '@/types/finance';
+import type {
+  RecurrenceInterval,
+  RecurrenceType,
+  Transaction,
+  TransactionType,
+} from '@/types/finance';
 import { TransactionUpdateModal } from '@/components/TransactionDeleteModal';
 
 type EndConditionType = 'never' | 'date' | 'occurrences';
@@ -48,32 +51,23 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
   const [notes, setNotes] = useState('');
   const [status, setStatus] = useState<'pending' | 'completed'>('pending');
   const [recurrenceType, setRecurrenceType] = useState<RecurrenceType>('none');
-  
-  // Recurrence settings
-  const [recurrenceInterval, setRecurrenceInterval] = useState<RecurrenceInterval>('monthly');
+  const [recurrenceInterval, setRecurrenceInterval] =
+    useState<RecurrenceInterval>('monthly');
   const [endCondition, setEndCondition] = useState<EndConditionType>('occurrences');
   const [occurrences, setOccurrences] = useState(12);
-  const [endDate, setEndDate] = useState(format(addMonths(new Date(), 12), 'yyyy-MM-dd'));
-  
-  // For installments
+  const [endDate, setEndDate] = useState(
+    format(addMonths(new Date(), 12), 'yyyy-MM-dd')
+  );
   const [installments, setInstallments] = useState(2);
-  
   const [showCategoryPicker, setShowCategoryPicker] = useState(false);
   const [showAdvancedFields, setShowAdvancedFields] = useState(false);
   const [showUpdateScopeModal, setShowUpdateScopeModal] = useState(false);
-  const [pendingUpdateData, setPendingUpdateData] = useState<Record<string, unknown> | null>(null);
-  const [showSuccessActions, setShowSuccessActions] = useState(false);
+  const [pendingUpdateData, setPendingUpdateData] =
+    useState<Record<string, unknown> | null>(null);
   const [suggestedCategoryId, setSuggestedCategoryId] = useState<string | null>(null);
-  const [lastSavedTransaction, setLastSavedTransaction] = useState<{
-    title: string;
-    date: string;
-    amount: number;
-    type: TransactionType;
-    notes?: string;
-  } | null>(null);
 
-  const filteredCategories = categories.filter(c => c.type === type);
-  const selectedCategory = categories.find(c => c.id === categoryId);
+  const filteredCategories = categories.filter((category) => category.type === type);
+  const selectedCategory = categories.find((category) => category.id === categoryId);
 
   const resetForm = useCallback(() => {
     setType(defaultType);
@@ -89,10 +83,9 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
     setEndCondition('occurrences');
     setOccurrences(12);
     setEndDate(format(addMonths(new Date(), 12), 'yyyy-MM-dd'));
+    setShowCategoryPicker(false);
     setShowAdvancedFields(false);
     setSuggestedCategoryId(null);
-    setShowSuccessActions(false);
-    setLastSavedTransaction(null);
   }, [defaultType]);
 
   useEffect(() => {
@@ -112,6 +105,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
         editTransaction.recurrenceType !== 'none' || Boolean(editTransaction.notes)
       );
       setSuggestedCategoryId(null);
+      setShowCategoryPicker(false);
     } else {
       resetForm();
     }
@@ -121,7 +115,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
     if (!editTransaction && filteredCategories.length > 0 && !categoryId) {
       setCategoryId(filteredCategories[0].id);
     }
-  }, [type, filteredCategories, categoryId, editTransaction]);
+  }, [categoryId, editTransaction, filteredCategories]);
 
   useEffect(() => {
     if (editTransaction || !title.trim()) {
@@ -163,9 +157,9 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
     const end = parseISO(endDate);
     let count = 0;
     let current = start;
-    
+
     while (current <= end) {
-      count++;
+      count += 1;
       if (recurrenceInterval === 'weekly') {
         current = addWeeks(current, 1);
       } else if (recurrenceInterval === 'monthly') {
@@ -174,11 +168,16 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
         current = addYears(current, 1);
       }
     }
-    
+
     return Math.max(1, count);
   };
 
-  const isRecurringEdit = !!(editTransaction && (editTransaction.groupId || editTransaction.parentTransactionId || (editTransaction.totalInstallments && editTransaction.totalInstallments > 1)));
+  const isRecurringEdit = Boolean(
+    editTransaction &&
+      (editTransaction.groupId ||
+        editTransaction.parentTransactionId ||
+        (editTransaction.totalInstallments && editTransaction.totalInstallments > 1))
+  );
 
   const handleSubmit = async (updateFuture = false, updateAll = false) => {
     if (!title || !amount || !categoryId) return;
@@ -187,7 +186,9 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
       title,
       amount,
       type,
-      status: editTransaction ? status : (type === 'expense' ? 'completed' as const : 'pending' as const),
+      status: editTransaction
+        ? status
+        : ((type === 'expense' ? 'completed' : 'pending') as const),
       categoryId,
       date,
       notes,
@@ -202,17 +203,25 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
         setShowUpdateScopeModal(true);
         return;
       }
+
       await updateTransaction(editTransaction.id, transactionData, updateFuture, updateAll);
-      toast.success('Transação atualizada!');
+      toast.success('Transacao atualizada!');
       onClose();
       resetForm();
-    } else if (recurrenceType === 'installment' && installments > 1) {
+      return;
+    }
+
+    if (recurrenceType === 'installment' && installments > 1) {
       await generateRecurringTransactions(transactionData, installments, 'monthly', true);
       toast.success(`${installments} parcelas criadas!`);
-      setLastSavedTransaction(transactionData);
-      setShowSuccessActions(true);
-    } else if (recurrenceType === 'subscription') {
+      onClose();
+      resetForm();
+      return;
+    }
+
+    if (recurrenceType === 'subscription') {
       let count: number;
+
       if (endCondition === 'never') {
         count = 24;
       } else if (endCondition === 'date') {
@@ -220,27 +229,36 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
       } else {
         count = occurrences;
       }
-      
+
       await generateRecurringTransactions(transactionData, count, recurrenceInterval, false);
-      toast.success(`${count} transações recorrentes criadas!`);
-      setLastSavedTransaction(transactionData);
-      setShowSuccessActions(true);
-    } else {
-      await addTransaction(transactionData);
-      toast.success('Transação adicionada!');
-      setLastSavedTransaction(transactionData);
-      setShowSuccessActions(true);
+      toast.success(`${count} transacoes recorrentes criadas!`);
+      onClose();
+      resetForm();
+      return;
     }
+
+    await addTransaction(transactionData);
+    toast.success('Transacao adicionada!');
+    onClose();
+    resetForm();
   };
 
   const handleUpdateScopeConfirm = async (scope: 'single' | 'future' | 'all') => {
     setShowUpdateScopeModal(false);
     if (!editTransaction || !pendingUpdateData) return;
-    
+
     if (scope === 'single') {
-      await updateTransaction(editTransaction.id, pendingUpdateData as Partial<Transaction>, false);
+      await updateTransaction(
+        editTransaction.id,
+        pendingUpdateData as Partial<Transaction>,
+        false
+      );
     } else if (scope === 'future') {
-      await updateTransaction(editTransaction.id, pendingUpdateData as Partial<Transaction>, true);
+      await updateTransaction(
+        editTransaction.id,
+        pendingUpdateData as Partial<Transaction>,
+        true
+      );
     } else {
       await updateTransaction(
         editTransaction.id,
@@ -249,29 +267,32 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
         true
       );
     }
-    toast.success('Transação atualizada!');
+
+    toast.success('Transacao atualizada!');
     setPendingUpdateData(null);
     onClose();
     resetForm();
   };
 
-  const handleAddToCalendar = () => {
-    if (lastSavedTransaction) {
-      openGoogleCalendar(lastSavedTransaction);
-      toast.success('Abrindo Google Calendar...');
-    }
-  };
-
-  const handleDownloadCalendarFile = () => {
-    if (lastSavedTransaction) {
-      downloadCalendarFile(lastSavedTransaction);
-      toast.success('Arquivo .ics baixado!');
-    }
-  };
-
   const handleClose = () => {
     onClose();
     resetForm();
+  };
+
+  const canOpenCalendar = Boolean(title.trim() && amount > 0 && date);
+
+  const handleAddToCalendar = () => {
+    if (!canOpenCalendar) return;
+
+    openGoogleCalendar({
+      title: title.trim(),
+      date,
+      amount,
+      type,
+      notes: notes.trim() || undefined,
+    });
+
+    toast.success('Abrindo Google Agenda...');
   };
 
   const applySuggestedCategory = () => {
@@ -290,63 +311,6 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
 
   if (!isOpen) return null;
 
-  // Success state with calendar action
-  if (showSuccessActions && lastSavedTransaction) {
-    return (
-      <AnimatePresence>
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50"
-          onClick={handleClose}
-        >
-        <motion.div
-          initial={{ opacity: 0, y: 24, scale: 0.98 }}
-          animate={{ opacity: 1, y: 0, scale: 1 }}
-          exit={{ opacity: 0, y: 24, scale: 0.98 }}
-          transition={{ type: 'spring', damping: 24, stiffness: 280 }}
-          onClick={(e) => e.stopPropagation()}
-          className="absolute bottom-0 left-0 right-0 overflow-hidden rounded-t-3xl bg-card sm:bottom-auto sm:left-1/2 sm:top-1/2 sm:w-[min(28rem,calc(100vw-1.5rem))] sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-3xl"
-        >
-          <div className="p-5 text-center sm:p-6">
-              <div className="w-16 h-16 rounded-full bg-income/20 flex items-center justify-center mx-auto mb-4">
-                <Check className="w-8 h-8 text-income" />
-              </div>
-              <h2 className="text-xl font-semibold mb-2">Transação Salva!</h2>
-              <p className="text-muted-foreground mb-6">
-                {lastSavedTransaction.title} foi adicionada com sucesso.
-              </p>
-              
-              <div className="space-y-3">
-                <button
-                  onClick={handleAddToCalendar}
-                  className="w-full py-4 rounded-xl font-semibold bg-primary text-primary-foreground flex items-center justify-center gap-2"
-                >
-                  <CalendarPlus className="w-5 h-5" />
-                  Adicionar ao Google Calendar
-                </button>
-                <button
-                  onClick={handleDownloadCalendarFile}
-                  className="w-full py-4 rounded-xl font-semibold bg-secondary text-secondary-foreground flex items-center justify-center gap-2"
-                >
-                  <Download className="w-5 h-5" />
-                  Baixar arquivo .ics (Outlook/Apple)
-                </button>
-                <button
-                  onClick={handleClose}
-                  className="w-full py-4 rounded-xl font-semibold bg-muted text-foreground"
-                >
-                  Fechar
-                </button>
-              </div>
-            </div>
-          </motion.div>
-        </motion.div>
-      </AnimatePresence>
-    );
-  }
-
   return (
     <AnimatePresence>
       <motion.div
@@ -361,55 +325,47 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
           animate={{ opacity: 1, y: 0, scale: 1 }}
           exit={{ opacity: 0, y: 24, scale: 0.98 }}
           transition={{ type: 'spring', damping: 24, stiffness: 280 }}
-          onClick={(e) => e.stopPropagation()}
+          onClick={(event) => event.stopPropagation()}
           className="absolute bottom-0 left-0 right-0 flex max-h-[88vh] flex-col overflow-hidden rounded-t-3xl bg-card sm:static sm:max-h-[86vh] sm:w-[min(42rem,calc(100vw-1.5rem))] sm:rounded-3xl"
         >
-          {/* Header */}
           <div className="sticky top-0 z-10 flex flex-shrink-0 items-center justify-between border-b border-border bg-card px-4 py-3 sm:px-5">
             <h2 className="text-base font-semibold sm:text-lg">
-              {editTransaction ? 'Editar Transação' : 'Nova Transação'}
+              {editTransaction ? 'Editar transacao' : 'Nova transacao'}
             </h2>
             <button
               onClick={handleClose}
               className="touch-btn flex h-9 w-9 items-center justify-center rounded-full bg-muted"
             >
-              <X className="w-5 h-5" />
+              <X className="h-5 w-5" />
             </button>
           </div>
 
-          {/* Scrollable content */}
-          <div className="flex-1 overflow-y-auto px-4 pb-20 pt-4 sm:px-5 sm:pb-6">
-            {/* Type toggle */}
-            <div className="grid grid-cols-2 gap-2 p-1 bg-muted rounded-xl mb-6">
+          <div className="flex-1 overflow-y-auto px-4 pb-6 pt-4 sm:px-5">
+            <div className="mb-6 grid grid-cols-2 gap-2 rounded-xl bg-muted p-1">
               <button
                 onClick={() => setType('expense')}
-                className={`
-                  py-3 rounded-lg font-medium transition-all
-                  ${type === 'expense'
+                className={`py-3 rounded-lg font-medium transition-all ${
+                  type === 'expense'
                     ? 'bg-expense text-expense-foreground shadow-md'
                     : 'text-muted-foreground'
-                  }
-                `}
+                }`}
               >
                 Despesa
               </button>
               <button
                 onClick={() => setType('income')}
-                className={`
-                  py-3 rounded-lg font-medium transition-all
-                  ${type === 'income'
+                className={`py-3 rounded-lg font-medium transition-all ${
+                  type === 'income'
                     ? 'bg-income text-income-foreground shadow-md'
                     : 'text-muted-foreground'
-                  }
-                `}
+                }`}
               >
                 Receita
               </button>
             </div>
 
-            {/* Amount */}
             <div className="mb-6">
-              <label className="block text-sm font-medium text-muted-foreground mb-2">
+              <label className="mb-2 block text-sm font-medium text-muted-foreground">
                 Valor
               </label>
               <CurrencyInput
@@ -419,17 +375,16 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
               />
             </div>
 
-            {/* Title */}
             <div className="mb-6">
-              <label className="block text-sm font-medium text-muted-foreground mb-2">
-                Descrição
+              <label className="mb-2 block text-sm font-medium text-muted-foreground">
+                Descricao
               </label>
               <input
                 type="text"
                 value={title}
-                onChange={(e) => setTitle(e.target.value)}
+                onChange={(event) => setTitle(event.target.value)}
                 placeholder="Ex: Supermercado"
-                className="w-full px-4 py-4 rounded-xl bg-input border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                className="w-full rounded-xl border border-border bg-input px-4 py-4 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
               />
               {!editTransaction && suggestedCategory && suggestedCategory.id !== categoryId ? (
                 <button
@@ -443,85 +398,88 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
               ) : null}
             </div>
 
-            {/* Category */}
             <div className="mb-6">
-              <label className="block text-sm font-medium text-muted-foreground mb-2">
+              <label className="mb-2 block text-sm font-medium text-muted-foreground">
                 Categoria
               </label>
               <button
-                onClick={() => setShowCategoryPicker(!showCategoryPicker)}
-                className="w-full px-4 py-4 rounded-xl bg-input border border-border flex items-center justify-between"
+                onClick={() => setShowCategoryPicker((current) => !current)}
+                className="flex w-full items-center justify-between rounded-xl border border-border bg-input px-4 py-4"
               >
                 <div className="flex items-center gap-3">
                   <div
-                    className="w-10 h-10 rounded-full flex items-center justify-center"
-                    style={{ backgroundColor: selectedCategory?.color + '20' }}
+                    className="flex h-10 w-10 items-center justify-center rounded-full"
+                    style={{ backgroundColor: `${selectedCategory?.color || '#64748b'}20` }}
                   >
                     <CategoryIcon
-                      className="w-5 h-5"
+                      className="h-5 w-5"
                       style={{ color: selectedCategory?.color }}
                     />
                   </div>
                   <span>{selectedCategory?.name || 'Selecionar'}</span>
                 </div>
-                <ChevronDown className={`w-5 h-5 transition-transform ${showCategoryPicker ? 'rotate-180' : ''}`} />
+                <ChevronDown
+                  className={`h-5 w-5 transition-transform ${
+                    showCategoryPicker ? 'rotate-180' : ''
+                  }`}
+                />
               </button>
 
               <AnimatePresence>
-                {showCategoryPicker && (
+                {showCategoryPicker ? (
                   <motion.div
                     initial={{ height: 0, opacity: 0 }}
                     animate={{ height: 'auto', opacity: 1 }}
                     exit={{ height: 0, opacity: 0 }}
                     className="overflow-hidden"
                   >
-                    <div className="grid grid-cols-4 gap-2 mt-3 p-3 bg-muted rounded-xl">
-                      {filteredCategories.map((cat) => {
-                        const Icon = icons[cat.icon as keyof typeof icons] || Circle;
+                    <div className="mt-3 grid grid-cols-4 gap-2 rounded-xl bg-muted p-3">
+                      {filteredCategories.map((category) => {
+                        const Icon =
+                          icons[category.icon as keyof typeof icons] || Circle;
+
                         return (
                           <button
-                            key={cat.id}
+                            key={category.id}
                             onClick={() => {
-                              setCategoryId(cat.id);
+                              setCategoryId(category.id);
                               setShowCategoryPicker(false);
                             }}
-                            className={`
-                              flex flex-col items-center gap-2 p-3 rounded-xl transition-all
-                              ${categoryId === cat.id
+                            className={`flex flex-col items-center gap-2 rounded-xl p-3 transition-all ${
+                              categoryId === category.id
                                 ? 'bg-card shadow-md'
                                 : 'hover:bg-card/50'
-                              }
-                            `}
+                            }`}
                           >
                             <div
-                              className="w-10 h-10 rounded-full flex items-center justify-center"
-                              style={{ backgroundColor: cat.color + '20' }}
+                              className="flex h-10 w-10 items-center justify-center rounded-full"
+                              style={{ backgroundColor: `${category.color}20` }}
                             >
-                              <Icon className="w-5 h-5" style={{ color: cat.color }} />
+                              <Icon className="h-5 w-5" style={{ color: category.color }} />
                             </div>
-                            <span className="text-xs text-center truncate w-full">
-                              {cat.name}
+                            <span className="w-full truncate text-center text-xs">
+                              {category.name}
                             </span>
                           </button>
                         );
                       })}
                     </div>
                   </motion.div>
-                )}
+                ) : null}
               </AnimatePresence>
             </div>
 
             <div className="mb-6">
-              <label className="block text-sm font-medium text-muted-foreground mb-2">
-                {recurrenceType === 'none' ? 'Data' : 'Data de início'}
+              <label className="mb-2 block text-sm font-medium text-muted-foreground">
+                {recurrenceType === 'none' ? 'Data' : 'Data de inicio'}
               </label>
               <div className="relative">
-                <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+                <Calendar className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" />
                 <input
                   type="date"
                   value={date}
-                  onChange={(e) => setDate(e.target.value)}
-                  className="w-full pl-12 pr-4 py-4 rounded-xl bg-input border border-border text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                  onChange={(event) => setDate(event.target.value)}
+                  className="w-full rounded-xl border border-border bg-input py-4 pl-12 pr-4 text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
                 />
               </div>
             </div>
@@ -533,9 +491,10 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
                 className="flex w-full items-center justify-between gap-4 px-4 py-3.5 text-left"
               >
                 <div>
-                  <p className="text-sm font-medium">Mais opções</p>
+                  <p className="text-sm font-medium">Mais opcoes</p>
                   <p className="mt-1 text-xs text-muted-foreground">
-                    Parcelamento, recorrência e observações ficam aqui para o fluxo principal continuar simples.
+                    Parcelamento, recorrencia e observacoes ficam aqui para manter o
+                    fluxo principal simples.
                   </p>
                 </div>
                 <ChevronDown
@@ -554,58 +513,52 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
                     className="overflow-hidden border-t border-border/70"
                   >
                     <div className="px-4 pb-4 pt-3.5">
-                      {!editTransaction && (
+                      {!editTransaction ? (
                         <div className="mb-6">
-                          <label className="block text-sm font-medium text-muted-foreground mb-2">
-                            Tipo de transação
+                          <label className="mb-2 block text-sm font-medium text-muted-foreground">
+                            Tipo de transacao
                           </label>
-                          <div className="grid grid-cols-3 gap-2 p-1 bg-muted rounded-xl">
+                          <div className="grid grid-cols-3 gap-2 rounded-xl bg-muted p-1">
                             <button
                               onClick={() => setRecurrenceType('none')}
-                              className={`
-                                py-3 rounded-lg text-sm font-medium transition-all
-                                ${recurrenceType === 'none'
-                                  ? 'bg-card shadow-md text-foreground'
+                              className={`py-3 rounded-lg text-sm font-medium transition-all ${
+                                recurrenceType === 'none'
+                                  ? 'bg-card text-foreground shadow-md'
                                   : 'text-muted-foreground'
-                                }
-                              `}
+                              }`}
                             >
-                              Única
+                              Unica
                             </button>
                             <button
                               onClick={() => setRecurrenceType('installment')}
-                              className={`
-                                py-3 rounded-lg text-sm font-medium transition-all
-                                ${recurrenceType === 'installment'
-                                  ? 'bg-card shadow-md text-foreground'
+                              className={`py-3 rounded-lg text-sm font-medium transition-all ${
+                                recurrenceType === 'installment'
+                                  ? 'bg-card text-foreground shadow-md'
                                   : 'text-muted-foreground'
-                                }
-                              `}
+                              }`}
                             >
                               Parcelado
                             </button>
                             <button
                               onClick={() => setRecurrenceType('subscription')}
-                              className={`
-                                py-3 rounded-lg text-sm font-medium transition-all
-                                ${recurrenceType === 'subscription'
-                                  ? 'bg-card shadow-md text-foreground'
+                              className={`py-3 rounded-lg text-sm font-medium transition-all ${
+                                recurrenceType === 'subscription'
+                                  ? 'bg-card text-foreground shadow-md'
                                   : 'text-muted-foreground'
-                                }
-                              `}
+                              }`}
                             >
                               Recorrente
                             </button>
                           </div>
 
-                          {recurrenceType === 'installment' && (
+                          {recurrenceType === 'installment' ? (
                             <motion.div
                               initial={{ height: 0, opacity: 0 }}
                               animate={{ height: 'auto', opacity: 1 }}
                               className="mt-4"
                             >
-                              <label className="block text-sm text-muted-foreground mb-2">
-                                Número de parcelas
+                              <label className="mb-2 block text-sm text-muted-foreground">
+                                Numero de parcelas
                               </label>
                               <div className="flex items-center gap-4">
                                 <input
@@ -613,139 +566,140 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
                                   min="2"
                                   max="48"
                                   value={installments}
-                                  onChange={(e) => setInstallments(parseInt(e.target.value))}
+                                  onChange={(event) =>
+                                    setInstallments(Number.parseInt(event.target.value, 10))
+                                  }
                                   className="flex-1"
                                 />
-                                <span className="font-mono text-lg font-semibold w-12 text-center">
+                                <span className="w-12 text-center font-mono text-lg font-semibold">
                                   {installments}x
                                 </span>
                               </div>
-                              <p className="text-sm text-muted-foreground mt-2">
+                              <p className="mt-2 text-sm text-muted-foreground">
                                 Valor por parcela:{' '}
                                 <span className="font-mono font-medium text-foreground">
-                                  R$ {(amount / installments).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                                  R${' '}
+                                  {(amount / installments).toLocaleString('pt-BR', {
+                                    minimumFractionDigits: 2,
+                                  })}
                                 </span>
                               </p>
                             </motion.div>
-                          )}
+                          ) : null}
 
-                          {recurrenceType === 'subscription' && (
+                          {recurrenceType === 'subscription' ? (
                             <motion.div
                               initial={{ height: 0, opacity: 0 }}
                               animate={{ height: 'auto', opacity: 1 }}
                               className="mt-4 space-y-4"
                             >
                               <div>
-                                <label className="block text-sm text-muted-foreground mb-2">
+                                <label className="mb-2 block text-sm text-muted-foreground">
                                   Repetir a cada
                                 </label>
                                 <div className="grid grid-cols-3 gap-2">
-                                  {(['weekly', 'monthly', 'yearly'] as RecurrenceInterval[]).map((interval) => (
-                                    <button
-                                      key={interval}
-                                      onClick={() => setRecurrenceInterval(interval)}
-                                      className={`
-                                        py-3 rounded-xl text-sm font-medium transition-all border
-                                        ${recurrenceInterval === interval
-                                          ? 'bg-primary text-primary-foreground border-primary'
-                                          : 'bg-muted border-border text-muted-foreground'
-                                        }
-                                      `}
-                                    >
-                                      {interval === 'weekly' && 'Semana'}
-                                      {interval === 'monthly' && 'Mês'}
-                                      {interval === 'yearly' && 'Ano'}
-                                    </button>
-                                  ))}
+                                  {(['weekly', 'monthly', 'yearly'] as RecurrenceInterval[]).map(
+                                    (interval) => (
+                                      <button
+                                        key={interval}
+                                        onClick={() => setRecurrenceInterval(interval)}
+                                        className={`rounded-xl border py-3 text-sm font-medium transition-all ${
+                                          recurrenceInterval === interval
+                                            ? 'border-primary bg-primary text-primary-foreground'
+                                            : 'border-border bg-muted text-muted-foreground'
+                                        }`}
+                                      >
+                                        {interval === 'weekly' && 'Semana'}
+                                        {interval === 'monthly' && 'Mes'}
+                                        {interval === 'yearly' && 'Ano'}
+                                      </button>
+                                    )
+                                  )}
                                 </div>
                               </div>
 
                               <div>
-                                <label className="block text-sm text-muted-foreground mb-2">
+                                <label className="mb-2 block text-sm text-muted-foreground">
                                   Termina
                                 </label>
-                                <div className="grid grid-cols-3 gap-2 mb-3">
+                                <div className="mb-3 grid grid-cols-3 gap-2">
                                   <button
                                     onClick={() => setEndCondition('never')}
-                                    className={`
-                                      py-3 rounded-xl text-sm font-medium transition-all border
-                                      ${endCondition === 'never'
-                                        ? 'bg-primary text-primary-foreground border-primary'
-                                        : 'bg-muted border-border text-muted-foreground'
-                                      }
-                                    `}
+                                    className={`rounded-xl border py-3 text-sm font-medium transition-all ${
+                                      endCondition === 'never'
+                                        ? 'border-primary bg-primary text-primary-foreground'
+                                        : 'border-border bg-muted text-muted-foreground'
+                                    }`}
                                   >
                                     Nunca
                                   </button>
                                   <button
                                     onClick={() => setEndCondition('occurrences')}
-                                    className={`
-                                      py-3 rounded-xl text-sm font-medium transition-all border
-                                      ${endCondition === 'occurrences'
-                                        ? 'bg-primary text-primary-foreground border-primary'
-                                        : 'bg-muted border-border text-muted-foreground'
-                                      }
-                                    `}
+                                    className={`rounded-xl border py-3 text-sm font-medium transition-all ${
+                                      endCondition === 'occurrences'
+                                        ? 'border-primary bg-primary text-primary-foreground'
+                                        : 'border-border bg-muted text-muted-foreground'
+                                    }`}
                                   >
-                                    Após X vezes
+                                    Apos X vezes
                                   </button>
                                   <button
                                     onClick={() => setEndCondition('date')}
-                                    className={`
-                                      py-3 rounded-xl text-sm font-medium transition-all border
-                                      ${endCondition === 'date'
-                                        ? 'bg-primary text-primary-foreground border-primary'
-                                        : 'bg-muted border-border text-muted-foreground'
-                                      }
-                                    `}
+                                    className={`rounded-xl border py-3 text-sm font-medium transition-all ${
+                                      endCondition === 'date'
+                                        ? 'border-primary bg-primary text-primary-foreground'
+                                        : 'border-border bg-muted text-muted-foreground'
+                                    }`}
                                   >
                                     Em data
                                   </button>
                                 </div>
 
-                                {endCondition === 'occurrences' && (
+                                {endCondition === 'occurrences' ? (
                                   <div className="flex items-center gap-4">
                                     <input
                                       type="range"
                                       min="2"
                                       max="60"
                                       value={occurrences}
-                                      onChange={(e) => setOccurrences(parseInt(e.target.value))}
+                                      onChange={(event) =>
+                                        setOccurrences(Number.parseInt(event.target.value, 10))
+                                      }
                                       className="flex-1"
                                     />
-                                    <span className="font-mono text-lg font-semibold w-16 text-center">
+                                    <span className="w-16 text-center font-mono text-lg font-semibold">
                                       {occurrences}x
                                     </span>
                                   </div>
-                                )}
+                                ) : null}
 
-                                {endCondition === 'date' && (
+                                {endCondition === 'date' ? (
                                   <div className="relative">
-                                    <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+                                    <Calendar className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" />
                                     <input
                                       type="date"
                                       value={endDate}
-                                      onChange={(e) => setEndDate(e.target.value)}
-                                      className="w-full pl-12 pr-4 py-4 rounded-xl bg-input border border-border text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                                      onChange={(event) => setEndDate(event.target.value)}
+                                      className="w-full rounded-xl border border-border bg-input py-4 pl-12 pr-4 text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
                                     />
                                   </div>
-                                )}
+                                ) : null}
                               </div>
                             </motion.div>
-                          )}
+                          ) : null}
                         </div>
-                      )}
+                      ) : null}
 
                       <div className="mb-6">
-                        <label className="block text-sm font-medium text-muted-foreground mb-2">
-                          Observações (opcional)
+                        <label className="mb-2 block text-sm font-medium text-muted-foreground">
+                          Observacoes (opcional)
                         </label>
                         <textarea
                           value={notes}
-                          onChange={(e) => setNotes(e.target.value)}
+                          onChange={(event) => setNotes(event.target.value)}
                           placeholder="Adicione uma nota..."
                           rows={3}
-                          className="w-full px-4 py-4 rounded-xl bg-input border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary resize-none"
+                          className="w-full resize-none rounded-xl border border-border bg-input px-4 py-4 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
                         />
                       </div>
                     </div>
@@ -754,74 +708,77 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
               </AnimatePresence>
             </div>
 
-
-            {/* Status toggle (edit mode) */}
-            {editTransaction && (
+            {editTransaction ? (
               <div className="mb-6">
-                <label className="block text-sm font-medium text-muted-foreground mb-2">
+                <label className="mb-2 block text-sm font-medium text-muted-foreground">
                   Status
                 </label>
-                <div className="grid grid-cols-2 gap-2 p-1 bg-muted rounded-xl">
+                <div className="grid grid-cols-2 gap-2 rounded-xl bg-muted p-1">
                   <button
                     onClick={() => setStatus('pending')}
-                    className={`
-                      py-3 rounded-lg font-medium transition-all flex items-center justify-center gap-2
-                      ${status === 'pending'
-                        ? 'bg-pending/20 text-pending shadow-md border border-pending/30'
+                    className={`flex items-center justify-center gap-2 rounded-lg py-3 font-medium transition-all ${
+                      status === 'pending'
+                        ? 'border border-pending/30 bg-pending/20 text-pending shadow-md'
                         : 'text-muted-foreground'
-                      }
-                    `}
+                    }`}
                   >
-                    <Clock className="w-4 h-4" />
+                    <Clock className="h-4 w-4" />
                     Pendente
                   </button>
                   <button
                     onClick={() => setStatus('completed')}
-                    className={`
-                      py-3 rounded-lg font-medium transition-all flex items-center justify-center gap-2
-                      ${status === 'completed'
-                        ? 'bg-income/20 text-income shadow-md border border-income/30'
+                    className={`flex items-center justify-center gap-2 rounded-lg py-3 font-medium transition-all ${
+                      status === 'completed'
+                        ? 'border border-income/30 bg-income/20 text-income shadow-md'
                         : 'text-muted-foreground'
-                      }
-                    `}
+                    }`}
                   >
-                    <Check className="w-4 h-4" />
+                    <Check className="h-4 w-4" />
                     Confirmado
                   </button>
                 </div>
               </div>
-            )}
+            ) : null}
 
-            {/* Installment info (edit mode) */}
-            {editTransaction && editTransaction.installmentNumber && editTransaction.totalInstallments && (
-              <div className="mb-6 p-3 bg-muted/50 rounded-xl border border-border">
+            {editTransaction &&
+            editTransaction.installmentNumber &&
+            editTransaction.totalInstallments ? (
+              <div className="mb-6 rounded-xl border border-border bg-muted/50 p-3">
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-muted-foreground">Parcela</span>
                   <span className="text-sm font-semibold">
-                    {editTransaction.installmentNumber} de {editTransaction.totalInstallments}
+                    {editTransaction.installmentNumber} de{' '}
+                    {editTransaction.totalInstallments}
                   </span>
                 </div>
               </div>
-            )}
-
+            ) : null}
           </div>
 
-          {/* Sticky footer */}
-          <div className="sticky bottom-0 z-10 border-t border-border bg-card p-4 sm:mt-auto sm:p-5">
-            <button
-              onClick={() => handleSubmit()}
-              disabled={!title || !amount || !categoryId}
-              className={`
-                w-full rounded-xl py-3 text-sm font-semibold
-                transition-all disabled:opacity-50 disabled:cursor-not-allowed
-                ${type === 'income'
-                  ? 'bg-income text-income-foreground shadow-glow-income'
-                  : 'bg-expense text-expense-foreground shadow-glow-expense'
-                }
-              `}
-            >
-              {editTransaction ? 'Salvar Alterações' : 'Adicionar'}
-            </button>
+          <div className="shrink-0 border-t border-border bg-card p-4 sm:p-5">
+            <div className="grid gap-2 sm:grid-cols-[auto_1fr]">
+              <button
+                type="button"
+                onClick={handleAddToCalendar}
+                disabled={!canOpenCalendar}
+                className="inline-flex items-center justify-center gap-2 rounded-xl border border-border bg-muted/50 px-4 py-3 text-sm font-medium text-foreground transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <CalendarPlus className="h-4 w-4" />
+                Adicionar ao Google
+              </button>
+
+              <button
+                onClick={() => handleSubmit()}
+                disabled={!title || !amount || !categoryId}
+                className={`w-full rounded-xl py-3 text-sm font-semibold transition-all disabled:cursor-not-allowed disabled:opacity-50 ${
+                  type === 'income'
+                    ? 'bg-income text-income-foreground shadow-glow-income'
+                    : 'bg-expense text-expense-foreground shadow-glow-expense'
+                }`}
+              >
+                {editTransaction ? 'Salvar alteracoes' : 'Salvar'}
+              </button>
+            </div>
           </div>
         </motion.div>
       </motion.div>
