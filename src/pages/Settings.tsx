@@ -274,11 +274,22 @@ const Settings: React.FC = () => {
 
   const runDeleteStep = async (
     operation: PromiseLike<{ error: { message?: string } | null }>,
-    fallbackMessage: string
+    fallbackMessage: string,
+    options?: { ignoreMissingTable?: boolean; tableName?: string }
   ) => {
     const { error } = await operation;
     if (error) {
-      throw new Error(error.message || fallbackMessage);
+      const errorMessage = error.message || fallbackMessage;
+      const missingTableMessage = options?.tableName
+        ? `Could not find the table 'public.${options.tableName}' in the schema cache`
+        : null;
+
+      if (options?.ignoreMissingTable && missingTableMessage && errorMessage.includes(missingTableMessage)) {
+        console.warn(`Skipping optional delete step for missing table: ${options.tableName}`);
+        return;
+      }
+
+      throw new Error(errorMessage);
     }
   };
 
@@ -325,7 +336,8 @@ const Settings: React.FC = () => {
 
         await runDeleteStep(
           supabase.from('purchase_goals').delete().eq('workspace_id', currentWorkspace.id),
-          'Erro ao limpar metas.'
+          'Erro ao limpar metas.',
+          { ignoreMissingTable: true, tableName: 'purchase_goals' }
         );
         await runDeleteStep(
           supabase.from('transactions').delete().eq('workspace_id', currentWorkspace.id),
@@ -346,7 +358,8 @@ const Settings: React.FC = () => {
             .delete()
             .eq('user_id', user.id)
             .is('workspace_id', null),
-          'Erro ao limpar metas pessoais.'
+          'Erro ao limpar metas pessoais.',
+          { ignoreMissingTable: true, tableName: 'purchase_goals' }
         );
         await runDeleteStep(
           supabase
