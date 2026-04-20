@@ -183,6 +183,8 @@ const getScopedTransactionIds = (
     .map((transaction) => transaction.id);
 };
 
+const getUniqueTransactionIds = (ids: string[]) => [...new Set(ids)];
+
 const addDateByInterval = (
   date: Date,
   index: number,
@@ -418,6 +420,7 @@ export const useFinanceStore = create<FinanceState>((set, get) => ({
               }));
       const anchorDate = parseISO(updates.date ?? transaction.date);
       const interval = resolveSeriesInterval(transaction, updates);
+      const updatedIds: string[] = [];
 
       for (const { item, index } of scopedTransactions) {
         const relativeIndex = index - (targetIndex >= 0 ? targetIndex : 0);
@@ -433,32 +436,71 @@ export const useFinanceStore = create<FinanceState>((set, get) => ({
           recurrence_interval: interval,
         };
 
-        const { error } = await supabase
+        const { data, error } = await supabase
           .from('transactions')
           .update(scopedUpdates)
-          .eq('id', item.id);
+          .eq('id', item.id)
+          .select('id');
 
         if (error) {
           console.error('Failed to update recurring transaction series:', error);
           toast.error('Nao foi possivel atualizar a serie da transacao.');
           return false;
         }
+
+        if (!data || data.length !== 1 || data[0].id !== item.id) {
+          console.error('Recurring update touched an unexpected set of records.', {
+            expectedId: item.id,
+            returned: data,
+          });
+          toast.error('A atualizacao nao foi aplicada com seguranca na serie.');
+          return false;
+        }
+
+        updatedIds.push(item.id);
+      }
+
+      if (updatedIds.length !== scopedTransactions.length) {
+        console.error('Recurring update count mismatch.', {
+          expected: scopedTransactions.length,
+          updated: updatedIds.length,
+        });
+        toast.error('A atualizacao da serie nao foi concluida como esperado.');
+        return false;
       }
 
       await get().refreshData();
       return true;
     }
 
-    const ids = getScopedTransactionIds(get().transactions, transaction, scope);
+    const ids = getUniqueTransactionIds(
+      getScopedTransactionIds(get().transactions, transaction, scope)
+    );
 
-    const { error } = await supabase
+    if (ids.length === 0) {
+      toast.error('Nenhum card valido foi encontrado para atualizar.');
+      return false;
+    }
+
+    const { data, error } = await supabase
       .from('transactions')
       .update(dbUpdates)
-      .in('id', ids);
+      .in('id', ids)
+      .select('id');
 
     if (error) {
       console.error('Failed to update transaction:', error);
       toast.error('Nao foi possivel atualizar a transacao.');
+      return false;
+    }
+
+    const updatedIds = getUniqueTransactionIds((data || []).map((item) => item.id));
+    if (updatedIds.length !== ids.length) {
+      console.error('Update affected an unexpected number of records.', {
+        expectedIds: ids,
+        updatedIds,
+      });
+      toast.error('A atualizacao nao foi aplicada com seguranca.');
       return false;
     }
 

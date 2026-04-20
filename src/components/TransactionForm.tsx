@@ -64,6 +64,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
   const [showUpdateScopeModal, setShowUpdateScopeModal] = useState(false);
   const [pendingUpdateData, setPendingUpdateData] =
     useState<Record<string, unknown> | null>(null);
+  const [pendingUpdateTransactionId, setPendingUpdateTransactionId] = useState<string | null>(null);
   const [suggestedCategoryId, setSuggestedCategoryId] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isResolvingScope, setIsResolvingScope] = useState(false);
@@ -89,6 +90,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
     setShowAdvancedFields(false);
     setShowUpdateScopeModal(false);
     setPendingUpdateData(null);
+    setPendingUpdateTransactionId(null);
     setSuggestedCategoryId(null);
     setIsSubmitting(false);
     setIsResolvingScope(false);
@@ -206,6 +208,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
     if (editTransaction) {
       if (isRecurringEdit && !showUpdateScopeModal && !updateFuture && !updateAll) {
         setPendingUpdateData(transactionData);
+        setPendingUpdateTransactionId(editTransaction.id);
         setShowUpdateScopeModal(true);
         return;
       }
@@ -293,25 +296,25 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
   };
 
   const handleUpdateScopeConfirm = async (scope: 'single' | 'future' | 'all') => {
-    if (!editTransaction || !pendingUpdateData || isResolvingScope) return;
+    if (!pendingUpdateTransactionId || !pendingUpdateData || isResolvingScope) return;
 
     setIsResolvingScope(true);
     try {
       const success =
         scope === 'single'
           ? await updateTransaction(
-              editTransaction.id,
+              pendingUpdateTransactionId,
               pendingUpdateData as Partial<Transaction>,
               false
             )
           : scope === 'future'
             ? await updateTransaction(
-                editTransaction.id,
+                pendingUpdateTransactionId,
                 pendingUpdateData as Partial<Transaction>,
                 true
               )
             : await updateTransaction(
-                editTransaction.id,
+                pendingUpdateTransactionId,
                 pendingUpdateData as Partial<Transaction>,
                 false,
                 true
@@ -322,6 +325,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
       toast.success('Transacao atualizada!');
       setShowUpdateScopeModal(false);
       setPendingUpdateData(null);
+      setPendingUpdateTransactionId(null);
       onClose();
       resetForm();
     } finally {
@@ -849,6 +853,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
           if (isResolvingScope) return;
           setShowUpdateScopeModal(false);
           setPendingUpdateData(null);
+          setPendingUpdateTransactionId(null);
         }}
         onConfirm={handleUpdateScopeConfirm}
         transactionTitle={editTransaction?.title || ''}
