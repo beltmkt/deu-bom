@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Plus,
+  Minus,
   Users,
   ShoppingCart,
   Calculator,
@@ -940,56 +941,88 @@ const Leisure: React.FC = () => {
               </div>
 
               {/* People Count */}
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-muted-foreground mb-2">
-                    <User className="w-4 h-4 inline mr-2" />
-                    Adultos
-                  </label>
-                  <div className="flex items-center gap-2">
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="rounded-2xl border border-border bg-card p-4">
+                  <div className="mb-4 flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-2">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+                        <User className="h-4 w-4" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium">Adultos</p>
+                        <p className="text-xs text-muted-foreground">Pagam valor integral</p>
+                      </div>
+                    </div>
+                    <div className="min-w-[3rem] rounded-2xl bg-muted px-3 py-2 text-center text-2xl font-bold tabular-nums">
+                      {adultsCount}
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-[52px_1fr_52px] gap-3 sm:grid-cols-[56px_1fr_56px]">
                     <button
+                      type="button"
                       onClick={() => setAdultsCount(Math.max(0, adultsCount - 1))}
-                      className="w-12 h-12 rounded-xl bg-muted flex items-center justify-center text-xl font-bold"
+                      className="flex h-12 items-center justify-center rounded-2xl border border-border bg-muted text-foreground transition-colors hover:bg-muted/80 active:scale-[0.98] sm:h-14"
+                      aria-label="Diminuir adultos"
                     >
-                      -
+                      <Minus className="h-4 w-4" />
                     </button>
                     <input
                       type="number"
                       value={adultsCount}
-                      onChange={(e) => setAdultsCount(Math.max(0, parseInt(e.target.value) || 0))}
-                      className="flex-1 text-center text-2xl font-bold bg-transparent"
+                      onChange={(e) =>
+                        setAdultsCount(Math.max(0, Number.parseInt(e.target.value, 10) || 0))
+                      }
+                      className="h-12 rounded-2xl border border-border bg-background px-4 text-center text-xl font-semibold tabular-nums outline-none transition-colors focus:border-primary sm:h-14"
                     />
                     <button
+                      type="button"
                       onClick={() => setAdultsCount(adultsCount + 1)}
-                      className="w-12 h-12 rounded-xl bg-muted flex items-center justify-center text-xl font-bold"
+                      className="flex h-12 items-center justify-center rounded-2xl border border-primary/20 bg-primary/10 text-primary transition-colors hover:bg-primary/15 active:scale-[0.98] sm:h-14"
+                      aria-label="Aumentar adultos"
                     >
-                      +
+                      <Plus className="h-4 w-4" />
                     </button>
                   </div>
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-muted-foreground mb-2">
-                    <Baby className="w-4 h-4 inline mr-2" />
-                    Crianças
-                  </label>
-                  <div className="flex items-center gap-2">
+                <div className="rounded-2xl border border-border bg-card p-4">
+                  <div className="mb-4 flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-2">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-warning/10 text-warning">
+                        <Baby className="h-4 w-4" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium">Criancas</p>
+                        <p className="text-xs text-muted-foreground">Rateio infantil separado</p>
+                      </div>
+                    </div>
+                    <div className="min-w-[3rem] rounded-2xl bg-muted px-3 py-2 text-center text-2xl font-bold tabular-nums">
+                      {childrenCount}
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-[52px_1fr_52px] gap-3 sm:grid-cols-[56px_1fr_56px]">
                     <button
+                      type="button"
                       onClick={() => setChildrenCount(Math.max(0, childrenCount - 1))}
-                      className="w-12 h-12 rounded-xl bg-muted flex items-center justify-center text-xl font-bold"
+                      className="flex h-12 items-center justify-center rounded-2xl border border-border bg-muted text-foreground transition-colors hover:bg-muted/80 active:scale-[0.98] sm:h-14"
+                      aria-label="Diminuir criancas"
                     >
-                      -
+                      <Minus className="h-4 w-4" />
                     </button>
                     <input
                       type="number"
                       value={childrenCount}
-                      onChange={(e) => setChildrenCount(Math.max(0, parseInt(e.target.value) || 0))}
-                      className="flex-1 text-center text-2xl font-bold bg-transparent"
+                      onChange={(e) =>
+                        setChildrenCount(Math.max(0, Number.parseInt(e.target.value, 10) || 0))
+                      }
+                      className="h-12 rounded-2xl border border-border bg-background px-4 text-center text-xl font-semibold tabular-nums outline-none transition-colors focus:border-primary sm:h-14"
                     />
                     <button
+                      type="button"
                       onClick={() => setChildrenCount(childrenCount + 1)}
-                      className="w-12 h-12 rounded-xl bg-muted flex items-center justify-center text-xl font-bold"
+                      className="flex h-12 items-center justify-center rounded-2xl border border-primary/20 bg-primary/10 text-primary transition-colors hover:bg-primary/15 active:scale-[0.98] sm:h-14"
+                      aria-label="Aumentar criancas"
                     >
-                      +
+                      <Plus className="h-4 w-4" />
                     </button>
                   </div>
                 </div>
@@ -997,15 +1030,20 @@ const Leisure: React.FC = () => {
 
               {/* Children Percentage */}
               <div className="bg-card border border-border rounded-2xl p-4">
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-                    <Percent className="w-5 h-5 text-primary" />
+                <div className="mb-4 flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                      <Percent className="w-5 h-5 text-primary" />
+                    </div>
+                    <div>
+                      <p className="font-medium">Percentual Criancas</p>
+                      <p className="text-sm text-muted-foreground">
+                        Criancas pagam {childrenPercentage}% do valor de adulto
+                      </p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="font-medium">Percentual Crianças</p>
-                    <p className="text-sm text-muted-foreground">
-                      Crianças pagam {childrenPercentage}% do valor de adulto
-                    </p>
+                  <div className="min-w-[4.5rem] rounded-2xl bg-primary/10 px-3 py-2 text-center text-lg font-semibold text-primary">
+                    {childrenPercentage}%
                   </div>
                 </div>
                 <input
@@ -1017,7 +1055,7 @@ const Leisure: React.FC = () => {
                   onChange={(e) => setChildrenPercentage(Number(e.target.value))}
                   className="w-full accent-primary"
                 />
-                <div className="flex justify-between text-xs text-muted-foreground mt-1">
+                <div className="mt-2 flex justify-between text-xs text-muted-foreground">
                   <span>0%</span>
                   <span>50%</span>
                   <span>100%</span>
@@ -1358,17 +1396,22 @@ const Leisure: React.FC = () => {
 
                 {/* Children Percentage */}
                 <div className="bg-card border border-border rounded-2xl p-4">
-                  <div className="flex items-center gap-3 mb-4">
+                  <div className="mb-4 flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
                       <Percent className="w-5 h-5 text-primary" />
                     </div>
                     <div>
-                      <p className="font-medium">Percentual Crianças</p>
+                      <p className="font-medium">Percentual Criancas</p>
                       <p className="text-sm text-muted-foreground">
-                        Crianças pagam {selectedEvent.childrenPercentage}% do valor de adulto
+                        Criancas pagam {selectedEvent.childrenPercentage}% do valor de adulto
                       </p>
                     </div>
                   </div>
+                  <div className="min-w-[4.5rem] rounded-2xl bg-primary/10 px-3 py-2 text-center text-lg font-semibold text-primary">
+                    {selectedEvent.childrenPercentage}%
+                  </div>
+                </div>
                   <input
                     type="range"
                     min="0"
@@ -1379,7 +1422,7 @@ const Leisure: React.FC = () => {
                     className="w-full accent-primary"
                     disabled={!canEdit}
                   />
-                  <div className="flex justify-between text-xs text-muted-foreground mt-1">
+                  <div className="mt-2 flex justify-between text-xs text-muted-foreground">
                     <span>0%</span>
                     <span>50%</span>
                     <span>100%</span>
