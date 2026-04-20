@@ -91,6 +91,7 @@ const Budgets: React.FC = () => {
   const [targetDate, setTargetDate] = useState('');
   const [notes, setNotes] = useState('');
   const [priority, setPriority] = useState<PurchaseGoal['priority']>('medium');
+  const [isSavingGoal, setIsSavingGoal] = useState(false);
 
   useEffect(() => {
     if (!initialized) {
@@ -186,8 +187,9 @@ const Budgets: React.FC = () => {
   };
 
   const handleCreateGoal = async () => {
-    if (!user || !title.trim() || targetAmount <= 0) return;
+    if (!user || !title.trim() || targetAmount <= 0 || isSavingGoal) return;
 
+    setIsSavingGoal(true);
     try {
       const { error } = await supabase.from('purchase_goals').insert({
         user_id: user.id,
@@ -212,6 +214,8 @@ const Budgets: React.FC = () => {
     } catch (error) {
       console.error('Failed to create purchase goal:', error);
       toast.error('Nao foi possivel salvar a meta');
+    } finally {
+      setIsSavingGoal(false);
     }
   };
 
@@ -558,10 +562,10 @@ const Budgets: React.FC = () => {
               <div className="shrink-0 border-t border-border bg-card p-4 sm:p-5">
                 <button
                   onClick={handleCreateGoal}
-                  disabled={!title.trim() || targetAmount <= 0}
+                  disabled={!title.trim() || targetAmount <= 0 || isSavingGoal}
                   className="w-full rounded-xl bg-primary py-3 text-sm font-semibold text-primary-foreground disabled:cursor-not-allowed disabled:opacity-50"
                 >
-                  Salvar meta
+                  {isSavingGoal ? 'Salvando...' : 'Salvar meta'}
                 </button>
               </div>
             </motion.div>

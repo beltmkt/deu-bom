@@ -65,6 +65,8 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
   const [pendingUpdateData, setPendingUpdateData] =
     useState<Record<string, unknown> | null>(null);
   const [suggestedCategoryId, setSuggestedCategoryId] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isResolvingScope, setIsResolvingScope] = useState(false);
 
   const filteredCategories = categories.filter((category) => category.type === type);
   const selectedCategory = categories.find((category) => category.id === categoryId);
@@ -85,7 +87,11 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
     setEndDate(format(addMonths(new Date(), 12), 'yyyy-MM-dd'));
     setShowCategoryPicker(false);
     setShowAdvancedFields(false);
+    setShowUpdateScopeModal(false);
+    setPendingUpdateData(null);
     setSuggestedCategoryId(null);
+    setIsSubmitting(false);
+    setIsResolvingScope(false);
   }, [defaultType]);
 
   useEffect(() => {
@@ -180,7 +186,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
   );
 
   const handleSubmit = async (updateFuture = false, updateAll = false) => {
-    if (!title || !amount || !categoryId) return;
+    if (!title || !amount || !categoryId || isSubmitting || isResolvingScope) return;
 
     const transactionData = {
       title,
@@ -204,18 +210,42 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
         return;
       }
 
-      await updateTransaction(editTransaction.id, transactionData, updateFuture, updateAll);
-      toast.success('Transacao atualizada!');
-      onClose();
-      resetForm();
+      setIsSubmitting(true);
+      try {
+        const success = await updateTransaction(
+          editTransaction.id,
+          transactionData,
+          updateFuture,
+          updateAll
+        );
+        if (!success) return;
+
+        toast.success('Transacao atualizada!');
+        onClose();
+        resetForm();
+      } finally {
+        setIsSubmitting(false);
+      }
       return;
     }
 
     if (recurrenceType === 'installment' && installments > 1) {
-      await generateRecurringTransactions(transactionData, installments, 'monthly', true);
-      toast.success(`${installments} parcelas criadas!`);
-      onClose();
-      resetForm();
+      setIsSubmitting(true);
+      try {
+        const success = await generateRecurringTransactions(
+          transactionData,
+          installments,
+          'monthly',
+          true
+        );
+        if (!success) return;
+
+        toast.success(`${installments} parcelas criadas!`);
+        onClose();
+        resetForm();
+      } finally {
+        setIsSubmitting(false);
+      }
       return;
     }
 
@@ -230,51 +260,77 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
         count = occurrences;
       }
 
-      await generateRecurringTransactions(transactionData, count, recurrenceInterval, false);
-      toast.success(`${count} transacoes recorrentes criadas!`);
-      onClose();
-      resetForm();
+      setIsSubmitting(true);
+      try {
+        const success = await generateRecurringTransactions(
+          transactionData,
+          count,
+          recurrenceInterval,
+          false
+        );
+        if (!success) return;
+
+        toast.success(`${count} transacoes recorrentes criadas!`);
+        onClose();
+        resetForm();
+      } finally {
+        setIsSubmitting(false);
+      }
       return;
     }
 
-    await addTransaction(transactionData);
-    toast.success('Transacao adicionada!');
-    onClose();
-    resetForm();
+    setIsSubmitting(true);
+    try {
+      const success = await addTransaction(transactionData);
+      if (!success) return;
+
+      toast.success('Transacao adicionada!');
+      onClose();
+      resetForm();
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleUpdateScopeConfirm = async (scope: 'single' | 'future' | 'all') => {
-    setShowUpdateScopeModal(false);
-    if (!editTransaction || !pendingUpdateData) return;
+    if (!editTransaction || !pendingUpdateData || isResolvingScope) return;
 
-    if (scope === 'single') {
-      await updateTransaction(
-        editTransaction.id,
-        pendingUpdateData as Partial<Transaction>,
-        false
-      );
-    } else if (scope === 'future') {
-      await updateTransaction(
-        editTransaction.id,
-        pendingUpdateData as Partial<Transaction>,
-        true
-      );
-    } else {
-      await updateTransaction(
-        editTransaction.id,
-        pendingUpdateData as Partial<Transaction>,
-        false,
-        true
-      );
+    setIsResolvingScope(true);
+    try {
+      const success =
+        scope === 'single'
+          ? await updateTransaction(
+              editTransaction.id,
+              pendingUpdateData as Partial<Transaction>,
+              false
+            )
+          : scope === 'future'
+            ? await updateTransaction(
+                editTransaction.id,
+                pendingUpdateData as Partial<Transaction>,
+                true
+              )
+            : await updateTransaction(
+                editTransaction.id,
+                pendingUpdateData as Partial<Transaction>,
+                false,
+                true
+              );
+
+      if (!success) return;
+
+      toast.success('Transacao atualizada!');
+      setShowUpdateScopeModal(false);
+      setPendingUpdateData(null);
+      onClose();
+      resetForm();
+    } finally {
+      setIsResolvingScope(false);
     }
-
-    toast.success('Transacao atualizada!');
-    setPendingUpdateData(null);
-    onClose();
-    resetForm();
   };
 
   const handleClose = () => {
+    if (isSubmitting || isResolvingScope) return;
     onClose();
     resetForm();
   };
@@ -760,7 +816,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
               <button
                 type="button"
                 onClick={handleAddToCalendar}
-                disabled={!canOpenCalendar}
+                disabled={!canOpenCalendar || isSubmitting || isResolvingScope}
                 className="inline-flex items-center justify-center gap-2 rounded-xl border border-border bg-muted/50 px-4 py-3 text-sm font-medium text-foreground transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <CalendarPlus className="h-4 w-4" />
@@ -769,14 +825,18 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
 
               <button
                 onClick={() => handleSubmit()}
-                disabled={!title || !amount || !categoryId}
+                disabled={!title || !amount || !categoryId || isSubmitting || isResolvingScope}
                 className={`w-full rounded-xl py-3 text-sm font-semibold transition-all disabled:cursor-not-allowed disabled:opacity-50 ${
                   type === 'income'
                     ? 'bg-income text-income-foreground shadow-glow-income'
                     : 'bg-expense text-expense-foreground shadow-glow-expense'
                 }`}
               >
-                {editTransaction ? 'Salvar alteracoes' : 'Salvar'}
+                {isSubmitting
+                  ? 'Salvando...'
+                  : editTransaction
+                    ? 'Salvar alteracoes'
+                    : 'Salvar'}
               </button>
             </div>
           </div>
@@ -786,11 +846,13 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
       <TransactionUpdateModal
         isOpen={showUpdateScopeModal}
         onClose={() => {
+          if (isResolvingScope) return;
           setShowUpdateScopeModal(false);
           setPendingUpdateData(null);
         }}
         onConfirm={handleUpdateScopeConfirm}
         transactionTitle={editTransaction?.title || ''}
+        isSubmitting={isResolvingScope}
       />
     </AnimatePresence>
   );

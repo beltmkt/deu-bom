@@ -16,16 +16,26 @@ export const BudgetForm: React.FC<BudgetFormProps> = ({ isOpen, onClose }) => {
   const [categoryId, setCategoryId] = useState('');
   const [limit, setLimit] = useState(0);
   const [showCategoryPicker, setShowCategoryPicker] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const expenseCategories = categories.filter((category) => category.type === 'expense');
   const selectedCategory = categories.find((category) => category.id === categoryId);
 
-  const handleSubmit = () => {
-    if (!categoryId || !limit) return;
-    setBudget(categoryId, limit);
-    onClose();
-    setCategoryId('');
-    setLimit(0);
+  const handleSubmit = async () => {
+    if (!categoryId || !limit || isSubmitting) return;
+
+    setIsSubmitting(true);
+    try {
+      const success = await setBudget(categoryId, limit);
+      if (!success) return;
+
+      onClose();
+      setCategoryId('');
+      setLimit(0);
+      setShowCategoryPicker(false);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const CategoryIcon =
@@ -50,7 +60,7 @@ export const BudgetForm: React.FC<BudgetFormProps> = ({ isOpen, onClose }) => {
           exit={{ opacity: 0, y: 24, scale: 0.98 }}
           transition={{ type: 'spring', damping: 24, stiffness: 280 }}
           onClick={(event) => event.stopPropagation()}
-          className="absolute bottom-0 left-0 right-0 mx-auto flex max-h-[88vh] flex-col overflow-hidden rounded-t-[28px] bg-card sm:static sm:w-[min(40rem,calc(100vw-1.5rem))] sm:max-h-[82vh] sm:rounded-[28px]"
+          className="absolute bottom-0 left-0 right-0 mx-auto flex max-h-[88vh] flex-col overflow-hidden rounded-t-[28px] bg-card sm:static sm:max-h-[82vh] sm:w-[min(40rem,calc(100vw-1.5rem))] sm:rounded-[28px]"
         >
           <div className="flex items-center justify-between border-b border-border px-4 py-3 sm:px-5">
             <div className="flex items-center gap-3">
@@ -58,7 +68,7 @@ export const BudgetForm: React.FC<BudgetFormProps> = ({ isOpen, onClose }) => {
                 <PiggyBank className="h-5 w-5 text-primary" />
               </div>
               <div>
-                <h2 className="text-lg font-semibold">Novo orçamento</h2>
+                <h2 className="text-lg font-semibold">Novo orcamento</h2>
                 <p className="text-sm text-muted-foreground">
                   Defina um limite simples para acompanhar a categoria.
                 </p>
@@ -160,10 +170,10 @@ export const BudgetForm: React.FC<BudgetFormProps> = ({ isOpen, onClose }) => {
           <div className="sticky bottom-0 z-10 border-t border-border bg-card p-4 sm:mt-auto sm:p-5">
             <button
               onClick={handleSubmit}
-              disabled={!categoryId || !limit}
+              disabled={!categoryId || !limit || isSubmitting}
               className="w-full rounded-xl bg-primary py-3 text-sm font-semibold text-primary-foreground disabled:cursor-not-allowed disabled:opacity-50"
             >
-              Salvar orçamento
+              {isSubmitting ? 'Salvando...' : 'Salvar orcamento'}
             </button>
           </div>
         </motion.div>

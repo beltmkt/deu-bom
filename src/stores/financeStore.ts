@@ -41,13 +41,13 @@ interface FinanceState extends FinanceSnapshot {
 
   initialize: () => Promise<void>;
   refreshData: () => Promise<void>;
-  addTransaction: (transaction: Omit<Transaction, 'id' | 'createdAt' | 'updatedAt'>) => Promise<void>;
+  addTransaction: (transaction: Omit<Transaction, 'id' | 'createdAt' | 'updatedAt'>) => Promise<boolean>;
   updateTransaction: (
     id: string,
     updates: Partial<Transaction>,
     updateFuture?: boolean,
     updateAll?: boolean
-  ) => Promise<void>;
+  ) => Promise<boolean>;
   deleteTransaction: (id: string, deleteFuture?: boolean, deleteAll?: boolean) => Promise<void>;
   toggleTransactionStatus: (id: string) => Promise<void>;
 
@@ -55,10 +55,10 @@ interface FinanceState extends FinanceSnapshot {
   updateCategory: (id: string, updates: Partial<Category>) => Promise<void>;
   deleteCategory: (id: string) => Promise<void>;
 
-  setBudget: (categoryId: string, limit: number) => Promise<void>;
+  setBudget: (categoryId: string, limit: number) => Promise<boolean>;
   removeBudget: (categoryId: string) => Promise<void>;
 
-  updateSettings: (settings: Partial<UserSettings>) => Promise<void>;
+  updateSettings: (settings: Partial<UserSettings>) => Promise<boolean>;
 
   exportData: () => string;
   importData: (data: string) => Promise<boolean>;
@@ -69,7 +69,7 @@ interface FinanceState extends FinanceSnapshot {
     count: number,
     interval: 'weekly' | 'monthly' | 'yearly',
     splitAmount: boolean
-  ) => Promise<void>;
+  ) => Promise<boolean>;
 }
 
 type TransactionRow = Database['public']['Tables']['transactions']['Row'];
@@ -356,7 +356,7 @@ export const useFinanceStore = create<FinanceState>((set, get) => ({
     const {
       data: { user },
     } = await supabase.auth.getUser();
-    if (!user) return;
+    if (!user) return false;
 
     const { data: profile } = await supabase
       .from('profiles')
@@ -387,15 +387,16 @@ export const useFinanceStore = create<FinanceState>((set, get) => ({
     if (error) {
       console.error('Failed to add transaction:', error);
       toast.error('Nao foi possivel salvar a transacao.');
-      return;
+      return false;
     }
 
     await get().refreshData();
+    return true;
   },
 
   updateTransaction: async (id, updates, updateFuture = false, updateAll = false) => {
     const transaction = get().transactions.find((item) => item.id === id);
-    if (!transaction) return;
+    if (!transaction) return false;
 
     const scope = updateAll ? 'all' : updateFuture ? 'future' : 'single';
     const dbUpdates = buildDbTransactionUpdates(updates);
@@ -440,12 +441,12 @@ export const useFinanceStore = create<FinanceState>((set, get) => ({
         if (error) {
           console.error('Failed to update recurring transaction series:', error);
           toast.error('Nao foi possivel atualizar a serie da transacao.');
-          return;
+          return false;
         }
       }
 
       await get().refreshData();
-      return;
+      return true;
     }
 
     const ids = getScopedTransactionIds(get().transactions, transaction, scope);
@@ -458,10 +459,11 @@ export const useFinanceStore = create<FinanceState>((set, get) => ({
     if (error) {
       console.error('Failed to update transaction:', error);
       toast.error('Nao foi possivel atualizar a transacao.');
-      return;
+      return false;
     }
 
     await get().refreshData();
+    return true;
   },
 
   deleteTransaction: async (id, deleteFuture = false, deleteAll = false) => {
@@ -565,7 +567,7 @@ export const useFinanceStore = create<FinanceState>((set, get) => ({
     const {
       data: { user },
     } = await supabase.auth.getUser();
-    if (!user) return;
+    if (!user) return false;
 
     const { data: profile } = await supabase
       .from('profiles')
@@ -584,7 +586,7 @@ export const useFinanceStore = create<FinanceState>((set, get) => ({
       if (error) {
         console.error('Failed to update budget:', error);
         toast.error('Nao foi possivel atualizar o orcamento.');
-        return;
+        return false;
       }
     } else {
       const { error } = await supabase.from('budgets').insert({
@@ -598,11 +600,12 @@ export const useFinanceStore = create<FinanceState>((set, get) => ({
       if (error) {
         console.error('Failed to create budget:', error);
         toast.error('Nao foi possivel criar o orcamento.');
-        return;
+        return false;
       }
     }
 
     await get().refreshData();
+    return true;
   },
 
   removeBudget: async (categoryId) => {
@@ -627,7 +630,7 @@ export const useFinanceStore = create<FinanceState>((set, get) => ({
     const {
       data: { user },
     } = await supabase.auth.getUser();
-    if (!user) return;
+    if (!user) return false;
 
     const dbUpdates: Record<string, unknown> = {};
     if (newSettings.cycleStartDay !== undefined) dbUpdates.cycle_start_day = newSettings.cycleStartDay;
@@ -643,12 +646,13 @@ export const useFinanceStore = create<FinanceState>((set, get) => ({
     if (error) {
       console.error('Failed to update settings:', error);
       toast.error('Nao foi possivel salvar as configuracoes.');
-      return;
+      return false;
     }
 
     set((state) => ({
       settings: { ...state.settings, ...newSettings },
     }));
+    return true;
   },
 
   exportData: () => {
@@ -773,7 +777,7 @@ export const useFinanceStore = create<FinanceState>((set, get) => ({
     const {
       data: { user },
     } = await supabase.auth.getUser();
-    if (!user) return;
+    if (!user) return false;
 
     const { data: profile } = await supabase
       .from('profiles')
@@ -818,10 +822,11 @@ export const useFinanceStore = create<FinanceState>((set, get) => ({
     if (error) {
       console.error('Failed to insert recurring transactions:', error);
       toast.error('Erro ao salvar transacoes recorrentes.');
-      return;
+      return false;
     }
 
     await get().refreshData();
+    return true;
   },
 }));
 

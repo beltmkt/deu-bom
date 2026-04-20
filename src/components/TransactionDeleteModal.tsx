@@ -1,5 +1,11 @@
 import React from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 
 type DeleteScope = 'single' | 'future' | 'all';
 
@@ -21,23 +27,25 @@ export const TransactionDeleteModal: React.FC<TransactionDeleteModalProps> = ({
   if (!isRecurring) {
     return (
       <Dialog open={isOpen} onOpenChange={onClose}>
-        <DialogContent className="sm:max-w-sm rounded-2xl p-6">
+        <DialogContent className="rounded-2xl p-6 sm:max-w-sm">
           <DialogHeader className="text-center">
-            <DialogTitle className="text-base font-semibold">Excluir transação</DialogTitle>
-            <DialogDescription className="text-sm mt-1">
+            <DialogTitle className="text-base font-semibold">
+              Excluir transacao
+            </DialogTitle>
+            <DialogDescription className="mt-1 text-sm">
               Excluir "{transactionTitle}"?
             </DialogDescription>
           </DialogHeader>
-          <div className="flex gap-3 mt-4">
+          <div className="mt-4 flex gap-3">
             <button
               onClick={onClose}
-              className="flex-1 py-2.5 rounded-xl bg-muted text-muted-foreground text-sm font-medium transition-colors hover:bg-muted/80"
+              className="flex-1 rounded-xl bg-muted py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted/80"
             >
               Cancelar
             </button>
             <button
               onClick={() => onConfirm('single')}
-              className="flex-1 py-2.5 rounded-xl bg-destructive/10 text-destructive text-sm font-medium transition-colors hover:bg-destructive/20"
+              className="flex-1 rounded-xl bg-destructive/10 py-2.5 text-sm font-medium text-destructive transition-colors hover:bg-destructive/20"
             >
               Excluir
             </button>
@@ -49,35 +57,37 @@ export const TransactionDeleteModal: React.FC<TransactionDeleteModalProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-sm rounded-2xl p-6">
+      <DialogContent className="rounded-2xl p-6 sm:max-w-sm">
         <DialogHeader className="text-center">
-          <DialogTitle className="text-base font-semibold">Excluir transação</DialogTitle>
-          <DialogDescription className="text-sm mt-1">
-            "{transactionTitle}" faz parte de uma série.
+          <DialogTitle className="text-base font-semibold">
+            Excluir transacao
+          </DialogTitle>
+          <DialogDescription className="mt-1 text-sm">
+            "{transactionTitle}" faz parte de uma serie.
           </DialogDescription>
         </DialogHeader>
-        <div className="space-y-2 mt-4">
+        <div className="mt-4 space-y-2">
           <button
             onClick={() => onConfirm('single')}
-            className="w-full py-2.5 px-4 rounded-xl text-sm font-medium text-left transition-colors bg-muted/50 hover:bg-muted text-foreground"
+            className="w-full rounded-xl bg-muted/50 px-4 py-2.5 text-left text-sm font-medium text-foreground transition-colors hover:bg-muted"
           >
             Excluir apenas este
           </button>
           <button
             onClick={() => onConfirm('future')}
-            className="w-full py-2.5 px-4 rounded-xl text-sm font-medium text-left transition-colors bg-muted/50 hover:bg-muted text-foreground"
+            className="w-full rounded-xl bg-muted/50 px-4 py-2.5 text-left text-sm font-medium text-foreground transition-colors hover:bg-muted"
           >
-            Este e os próximos
+            Este e os proximos
           </button>
           <button
             onClick={() => onConfirm('all')}
-            className="w-full py-2.5 px-4 rounded-xl text-sm font-medium text-left transition-colors bg-destructive/5 hover:bg-destructive/10 text-destructive"
+            className="w-full rounded-xl bg-destructive/5 px-4 py-2.5 text-left text-sm font-medium text-destructive transition-colors hover:bg-destructive/10"
           >
-            Excluir todos da série
+            Excluir todos da serie
           </button>
           <button
             onClick={onClose}
-            className="w-full py-2.5 rounded-xl text-sm text-muted-foreground font-medium hover:bg-muted/50 transition-colors"
+            className="w-full rounded-xl py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted/50"
           >
             Cancelar
           </button>
@@ -87,14 +97,14 @@ export const TransactionDeleteModal: React.FC<TransactionDeleteModalProps> = ({
   );
 };
 
-// Reuse for update scope
 type UpdateScope = 'single' | 'future' | 'all';
 
 interface TransactionUpdateModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onConfirm: (scope: UpdateScope) => void;
+  onConfirm: (scope: UpdateScope) => Promise<void> | void;
   transactionTitle: string;
+  isSubmitting?: boolean;
 }
 
 export const TransactionUpdateModal: React.FC<TransactionUpdateModalProps> = ({
@@ -102,40 +112,54 @@ export const TransactionUpdateModal: React.FC<TransactionUpdateModalProps> = ({
   onClose,
   onConfirm,
   transactionTitle,
+  isSubmitting = false,
 }) => {
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-sm rounded-2xl p-6">
+    <Dialog
+      open={isOpen}
+      onOpenChange={(open) => {
+        if (!open && !isSubmitting) {
+          onClose();
+        }
+      }}
+    >
+      <DialogContent className="rounded-2xl p-6 sm:max-w-sm">
         <DialogHeader className="text-center">
-          <DialogTitle className="text-base font-semibold">Atualizar transação</DialogTitle>
-          <DialogDescription className="text-sm mt-1">
-            "{transactionTitle}" faz parte de uma série. Aplicar alteração em:
+          <DialogTitle className="text-base font-semibold">
+            Atualizar transacao
+          </DialogTitle>
+          <DialogDescription className="mt-1 text-sm">
+            "{transactionTitle}" faz parte de uma serie. Aplicar alteracao em:
           </DialogDescription>
         </DialogHeader>
-        <div className="space-y-2 mt-4">
+        <div className="mt-4 space-y-2">
           <button
             onClick={() => onConfirm('single')}
-            className="w-full py-2.5 px-4 rounded-xl text-sm font-medium text-left transition-colors bg-muted/50 hover:bg-muted text-foreground"
+            disabled={isSubmitting}
+            className="w-full rounded-xl bg-muted/50 px-4 py-2.5 text-left text-sm font-medium text-foreground transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-60"
           >
             Apenas este
           </button>
           <button
             onClick={() => onConfirm('future')}
-            className="w-full py-2.5 px-4 rounded-xl text-sm font-medium text-left transition-colors bg-muted/50 hover:bg-muted text-foreground"
+            disabled={isSubmitting}
+            className="w-full rounded-xl bg-muted/50 px-4 py-2.5 text-left text-sm font-medium text-foreground transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-60"
           >
-            Este e os próximos
+            Este e os proximos
           </button>
           <button
             onClick={() => onConfirm('all')}
-            className="w-full py-2.5 px-4 rounded-xl text-sm font-medium text-left transition-colors bg-primary/10 hover:bg-primary/20 text-primary"
+            disabled={isSubmitting}
+            className="w-full rounded-xl bg-primary/10 px-4 py-2.5 text-left text-sm font-medium text-primary transition-colors hover:bg-primary/20 disabled:cursor-not-allowed disabled:opacity-60"
           >
-            Todos da série
+            Todos da serie
           </button>
           <button
             onClick={onClose}
-            className="w-full py-2.5 rounded-xl text-sm text-muted-foreground font-medium hover:bg-muted/50 transition-colors"
+            disabled={isSubmitting}
+            className="w-full rounded-xl py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted/50 disabled:cursor-not-allowed disabled:opacity-60"
           >
-            Cancelar
+            {isSubmitting ? 'Salvando...' : 'Cancelar'}
           </button>
         </div>
       </DialogContent>
