@@ -12,9 +12,10 @@ type DeleteScope = 'single' | 'future' | 'all';
 interface TransactionDeleteModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onConfirm: (scope: DeleteScope) => void;
+  onConfirm: (scope: DeleteScope) => Promise<void> | void;
   isRecurring: boolean;
   transactionTitle: string;
+  isSubmitting?: boolean;
 }
 
 export const TransactionDeleteModal: React.FC<TransactionDeleteModalProps> = ({
@@ -23,10 +24,18 @@ export const TransactionDeleteModal: React.FC<TransactionDeleteModalProps> = ({
   onConfirm,
   isRecurring,
   transactionTitle,
+  isSubmitting = false,
 }) => {
   if (!isRecurring) {
     return (
-      <Dialog open={isOpen} onOpenChange={onClose}>
+      <Dialog
+        open={isOpen}
+        onOpenChange={(open) => {
+          if (!open && !isSubmitting) {
+            onClose();
+          }
+        }}
+      >
         <DialogContent className="rounded-2xl p-6 sm:max-w-sm">
           <DialogHeader className="text-center">
             <DialogTitle className="text-base font-semibold">
@@ -39,12 +48,14 @@ export const TransactionDeleteModal: React.FC<TransactionDeleteModalProps> = ({
           <div className="mt-4 flex gap-3">
             <button
               onClick={onClose}
+              disabled={isSubmitting}
               className="flex-1 rounded-xl bg-muted py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted/80"
             >
-              Cancelar
+              {isSubmitting ? 'Excluindo...' : 'Cancelar'}
             </button>
             <button
               onClick={() => onConfirm('single')}
+              disabled={isSubmitting}
               className="flex-1 rounded-xl bg-destructive/10 py-2.5 text-sm font-medium text-destructive transition-colors hover:bg-destructive/20"
             >
               Excluir
@@ -56,7 +67,14 @@ export const TransactionDeleteModal: React.FC<TransactionDeleteModalProps> = ({
   }
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
+    <Dialog
+      open={isOpen}
+      onOpenChange={(open) => {
+        if (!open && !isSubmitting) {
+          onClose();
+        }
+      }}
+    >
       <DialogContent className="rounded-2xl p-6 sm:max-w-sm">
         <DialogHeader className="text-center">
           <DialogTitle className="text-base font-semibold">
@@ -69,27 +87,31 @@ export const TransactionDeleteModal: React.FC<TransactionDeleteModalProps> = ({
         <div className="mt-4 space-y-2">
           <button
             onClick={() => onConfirm('single')}
+            disabled={isSubmitting}
             className="w-full rounded-xl bg-muted/50 px-4 py-2.5 text-left text-sm font-medium text-foreground transition-colors hover:bg-muted"
           >
             Excluir apenas este
           </button>
           <button
             onClick={() => onConfirm('future')}
+            disabled={isSubmitting}
             className="w-full rounded-xl bg-muted/50 px-4 py-2.5 text-left text-sm font-medium text-foreground transition-colors hover:bg-muted"
           >
             Este e os proximos
           </button>
           <button
             onClick={() => onConfirm('all')}
+            disabled={isSubmitting}
             className="w-full rounded-xl bg-destructive/5 px-4 py-2.5 text-left text-sm font-medium text-destructive transition-colors hover:bg-destructive/10"
           >
             Excluir todos da serie
           </button>
           <button
             onClick={onClose}
+            disabled={isSubmitting}
             className="w-full rounded-xl py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted/50"
           >
-            Cancelar
+            {isSubmitting ? 'Excluindo...' : 'Cancelar'}
           </button>
         </div>
       </DialogContent>

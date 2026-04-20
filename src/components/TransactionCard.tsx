@@ -7,6 +7,7 @@ import { formatCurrency } from '@/utils/currency';
 import { getRelativeDate } from '@/utils/dates';
 import type { Transaction } from '@/types/finance';
 import { TransactionDeleteModal } from '@/components/TransactionDeleteModal';
+import { toast } from 'sonner';
 
 interface TransactionCardProps {
   transaction: Transaction;
@@ -17,6 +18,7 @@ export const TransactionCard: React.FC<TransactionCardProps> = ({ transaction, o
   const [swipeOffset, setSwipeOffset] = React.useState(0);
   const [isDeleting, setIsDeleting] = React.useState(false);
   const [showDeleteModal, setShowDeleteModal] = React.useState(false);
+  const [isResolvingDelete, setIsResolvingDelete] = React.useState(false);
   const category = useCategoryById(transaction.categoryId);
   const { toggleTransactionStatus, deleteTransaction } = useFinanceStore();
 
@@ -61,16 +63,24 @@ export const TransactionCard: React.FC<TransactionCardProps> = ({ transaction, o
   };
 
   const handleDeleteConfirm = async (scope: 'single' | 'future' | 'all') => {
-    setShowDeleteModal(false);
-    setIsDeleting(true);
-    
-    if (scope === 'single') {
-      await deleteTransaction(transaction.id, false);
-    } else if (scope === 'future') {
-      await deleteTransaction(transaction.id, true);
-    } else if (scope === 'all') {
-      // Delete all in the group
-      await deleteTransaction(transaction.id, false, true);
+    if (isResolvingDelete) return;
+
+    setIsResolvingDelete(true);
+    try {
+      const success =
+        scope === 'single'
+          ? await deleteTransaction(transaction.id, false)
+          : scope === 'future'
+            ? await deleteTransaction(transaction.id, true)
+            : await deleteTransaction(transaction.id, false, true);
+
+      if (!success) return;
+
+      toast.success('Transacao excluida!');
+      setShowDeleteModal(false);
+      setIsDeleting(true);
+    } finally {
+      setIsResolvingDelete(false);
     }
   };
 
@@ -222,10 +232,14 @@ export const TransactionCard: React.FC<TransactionCardProps> = ({ transaction, o
 
       <TransactionDeleteModal
         isOpen={showDeleteModal}
-        onClose={() => setShowDeleteModal(false)}
+        onClose={() => {
+          if (isResolvingDelete) return;
+          setShowDeleteModal(false);
+        }}
         onConfirm={handleDeleteConfirm}
         isRecurring={isRecurring}
         transactionTitle={transaction.title}
+        isSubmitting={isResolvingDelete}
       />
     </>
   );

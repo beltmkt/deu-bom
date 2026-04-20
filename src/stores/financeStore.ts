@@ -48,7 +48,7 @@ interface FinanceState extends FinanceSnapshot {
     updateFuture?: boolean,
     updateAll?: boolean
   ) => Promise<boolean>;
-  deleteTransaction: (id: string, deleteFuture?: boolean, deleteAll?: boolean) => Promise<void>;
+  deleteTransaction: (id: string, deleteFuture?: boolean, deleteAll?: boolean) => Promise<boolean>;
   toggleTransactionStatus: (id: string) => Promise<void>;
 
   addCategory: (category: Omit<Category, 'id'>) => Promise<void>;
@@ -510,23 +510,42 @@ export const useFinanceStore = create<FinanceState>((set, get) => ({
 
   deleteTransaction: async (id, deleteFuture = false, deleteAll = false) => {
     const transaction = get().transactions.find((item) => item.id === id);
-    if (!transaction) return;
+    if (!transaction) return false;
 
     const scope = deleteAll ? 'all' : deleteFuture ? 'future' : 'single';
-    const ids = getScopedTransactionIds(get().transactions, transaction, scope);
+    const ids = getUniqueTransactionIds(
+      getScopedTransactionIds(get().transactions, transaction, scope)
+    );
 
-    const { error } = await supabase
+    if (ids.length === 0) {
+      toast.error('Nenhum card valido foi encontrado para excluir.');
+      return false;
+    }
+
+    const { data, error } = await supabase
       .from('transactions')
       .delete()
-      .in('id', ids);
+      .in('id', ids)
+      .select('id');
 
     if (error) {
       console.error('Failed to delete transaction:', error);
       toast.error('Nao foi possivel excluir a transacao.');
-      return;
+      return false;
+    }
+
+    const deletedIds = getUniqueTransactionIds((data || []).map((item) => item.id));
+    if (deletedIds.length !== ids.length) {
+      console.error('Delete affected an unexpected number of records.', {
+        expectedIds: ids,
+        deletedIds,
+      });
+      toast.error('A exclusao nao foi aplicada com seguranca.');
+      return false;
     }
 
     await get().refreshData();
+    return true;
   },
 
   toggleTransactionStatus: async (id) => {
