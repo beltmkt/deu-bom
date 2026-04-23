@@ -1,36 +1,37 @@
 installation:
   version: 6.3.0
   installDate: 2026-04-22T21:56:58.936Z
-  lastUpdated: 2026-04-22T22:04:43.803Z
+  lastUpdated: 2026-04-23T01:13:38.111Z
 modules:
   - name: core
     version: 6.3.0
     installDate: 2026-04-22T21:56:57.573Z
-    lastUpdated: 2026-04-22T22:04:43.750Z
+    lastUpdated: 2026-04-23T01:13:38.038Z
     source: built-in
     npmPackage: null
     repoUrl: null
   - name: bmm
     version: 6.3.0
     installDate: 2026-04-22T21:56:58.713Z
-    lastUpdated: 2026-04-22T22:04:43.752Z
+    lastUpdated: 2026-04-23T01:13:38.041Z
     source: built-in
     npmPackage: null
     repoUrl: null
   - name: tea
     version: 1.13.1
     installDate: 2026-04-22T22:04:30.511Z
-    lastUpdated: 2026-04-22T22:04:43.775Z
+    lastUpdated: 2026-04-23T01:13:38.083Z
     source: external
     npmPackage: bmad-method-test-architecture-enterprise
     repoUrl: https://github.com/bmad-code-org/bmad-method-test-architecture-enterprise
   - name: wds
     version: 0.1.0
     installDate: 2026-04-22T22:04:37.762Z
-    lastUpdated: 2026-04-22T22:04:43.803Z
+    lastUpdated: 2026-04-23T01:13:38.111Z
     source: community
     npmPackage: bmad-method-wds-expansion
     repoUrl: https://github.com/bmad-code-org/bmad-method-wds-expansion
 ides:
   - codex
   - gemini
+  - github-copilot
