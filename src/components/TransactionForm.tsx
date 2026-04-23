@@ -101,6 +101,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
       setType(editTransaction.type);
       setTitle(editTransaction.title);
       setAmount(editTransaction.amount);
+      
       setCategoryId(editTransaction.categoryId);
       setDate(editTransaction.date);
       setNotes(editTransaction.notes || '');
