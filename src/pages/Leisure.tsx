@@ -20,6 +20,7 @@ import {
   Edit,
   Calendar,
   Mail,
+  Send,
 } from 'lucide-react';
 import { AppShell } from '@/components/AppShell';
 import { BottomNav } from '@/components/BottomNav';
@@ -46,6 +47,7 @@ interface Event {
   childrenPercentage: number;
   totalBudget: number;
   createdAt: string;
+  createdBy: string;
 }
 
 interface EventItem {
@@ -254,6 +256,7 @@ const Leisure: React.FC = () => {
   const [expandedEventMetric, setExpandedEventMetric] = useState<
     'people' | 'budget' | 'payments' | 'children' | null
   >(null);
+  const [sendingInviteId, setSendingInviteId] = useState<string | null>(null);
   
   // Form states
   const [showItemForm, setShowItemForm] = useState(false);
@@ -317,6 +320,7 @@ const Leisure: React.FC = () => {
         childrenPercentage: Number(e.children_percentage),
         totalBudget: Number(e.total_budget),
         createdAt: e.created_at,
+        createdBy: e.created_by,
       }));
 
       setEvents(formattedEvents);
@@ -652,6 +656,7 @@ const Leisure: React.FC = () => {
           childrenPercentage: Number(eventData.children_percentage),
           totalBudget: Number(eventData.total_budget),
           createdAt: eventData.created_at,
+          createdBy: eventData.created_by,
         });
       }
     } catch (error) {
@@ -816,6 +821,53 @@ const Leisure: React.FC = () => {
     } catch (error) {
       console.error('Failed to toggle payment:', error);
       toast.error('Erro ao atualizar pagamento');
+    }
+  };
+
+  const sendParticipantInvite = async (participant: Participant) => {
+    if (!selectedEvent) return;
+    if (!participant.email) {
+      toast.error('Adicione um email para enviar o convite');
+      return;
+    }
+
+    setSendingInviteId(participant.id);
+
+    try {
+      const { data: hostProfile } = await supabase
+        .from('profiles')
+        .select('display_name, email')
+        .eq('id', selectedEvent.createdBy)
+        .maybeSingle();
+
+      const hostName =
+        hostProfile?.display_name ||
+        hostProfile?.email?.split('@')[0] ||
+        user?.email?.split('@')[0] ||
+        'Anfitriao';
+      const hostEmail = hostProfile?.email || user?.email || undefined;
+
+      const { error } = await supabase.functions.invoke('send-event-invite-email', {
+        body: {
+          email: participant.email,
+          participantName: participant.name,
+          eventName: selectedEvent.name,
+          eventDate: selectedEvent.eventDate,
+          hostName,
+          hostEmail,
+          amountDue: participant.amountDue,
+          appUrl: window.location.origin,
+        },
+      });
+
+      if (error) throw error;
+
+      toast.success('Convite enviado!');
+    } catch (error) {
+      console.error('Failed to send event invite:', error);
+      toast.error('Erro ao enviar convite');
+    } finally {
+      setSendingInviteId(null);
     }
   };
 
@@ -1847,7 +1899,20 @@ const Leisure: React.FC = () => {
                             )}
                           </div>
                           <div className="min-w-0">
-                            <p className="truncate text-sm font-medium">{participant.name}</p>
+                            <div className="flex items-center gap-2">
+                              <p className="truncate text-sm font-medium">{participant.name}</p>
+                              {participant.email && (
+                                <button
+                                  type="button"
+                                  onClick={() => sendParticipantInvite(participant)}
+                                  disabled={sendingInviteId === participant.id}
+                                  className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary disabled:cursor-not-allowed disabled:opacity-50"
+                                  title="Enviar convite"
+                                >
+                                  <Send className="h-3.5 w-3.5" />
+                                </button>
+                              )}
+                            </div>
                             <p className="truncate text-xs text-muted-foreground">
                               {participant.isChild ? 'Criança' : 'Adulto'}
                               {participant.email && ` • ${participant.email}`}
@@ -1861,19 +1926,19 @@ const Leisure: React.FC = () => {
                               {participant.paid ? 'Pago' : 'Pendente'}
                             </p>
                           </div>
-                          <button
-                            onClick={() => toggleParticipantPaid(participant)}
-                            disabled={!canEdit}
-                            className={`flex h-8 w-8 items-center justify-center rounded-full ${
-                              participant.paid ? 'bg-income/10' : 'bg-muted'
+                                <button
+                                  onClick={() => toggleParticipantPaid(participant)}
+                                  disabled={!canEdit}
+                                  className={`flex h-8 w-8 items-center justify-center rounded-full ${
+                                    participant.paid ? 'bg-income/10' : 'bg-muted'
                             } ${!canEdit ? 'cursor-not-allowed opacity-50' : ''}`}
                             title={canEdit ? 'Alterar pagamento' : 'Somente editores podem alterar pagamento'}
-                          >
-                            <Check className={`h-4 w-4 ${participant.paid ? 'text-income' : 'text-muted-foreground'}`} />
-                          </button>
-                          {canEdit && (
-                            <button
-                              onClick={() => removeParticipant(participant.id)}
+                                >
+                                  <Check className={`h-4 w-4 ${participant.paid ? 'text-income' : 'text-muted-foreground'}`} />
+                                </button>
+                                {canEdit && (
+                                  <button
+                                    onClick={() => removeParticipant(participant.id)}
                               className="flex h-8 w-8 items-center justify-center rounded-full bg-expense/10"
                             >
                               <Trash2 className="h-4 w-4 text-expense" />
