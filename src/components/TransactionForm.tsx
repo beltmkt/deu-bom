@@ -226,7 +226,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
       type,
       status: editTransaction
         ? status
-        : ((type === 'expense' ? 'completed' : 'pending') as const),
+        : ('pending' as const),
       categoryId,
       date,
       notes,
