@@ -83,3 +83,31 @@
   - novos tipos de evento
   - consumo economico/padrao/generoso
   - toggle para criar despesa no financeiro antes de salvar
+
+## 2026-04-28 - UX Design Specification concluida
+
+- Workflow `bmad-create-ux-design` concluido.
+- Documento principal salvo em `_bmad-output/planning-artifacts/ux-design-specification.md`.
+- Visualizador de direcoes salvo em `_bmad-output/planning-artifacts/ux-design-directions.html`.
+- Decisao de UX consolidada:
+  - Inicio como guia diario do mes.
+  - Financas como central operacional em kanban.
+  - Mobile com filtros compactos, bottom sheets e alternativa ao drag.
+  - Festometro com eventos em cards e detalhes sob demanda.
+  - WCAG 2.2 AA como meta formal de acessibilidade.
+- Proximo passo recomendado: transformar a especificacao em epicos/stories ou executar ajustes por tela com `bmad-quick-dev`.
+
+## 2026-04-28 - Epicos e stories concluidos
+
+- Workflow `bmad-create-epics-and-stories` concluido.
+- Documento principal salvo em `_bmad-output/planning-artifacts/epics.md`.
+- Resultado consolidado:
+  - 9 epicos.
+  - 62 historias.
+  - 98 requisitos funcionais cobertos.
+  - 33 requisitos de UX cobertos.
+- Ajuste importante feito na validacao final:
+  - Festometro entrou como Epic 9 proprio, pois estava forte na UX mas ainda sem rastreabilidade de producao.
+- Recomendacao antes de iniciar implementacao:
+  - criar um Architecture Lite curto com modelo de transacao, saldo, datas, recorrencia/parcela, store/query keys e workspace.
+  - iniciar producao pela historia vertical "Cadastrar e listar transacoes manuais do mes atual".

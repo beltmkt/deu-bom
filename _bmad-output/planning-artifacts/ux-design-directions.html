@@ -1,0 +1,488 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Deu Bom - Direcoes de UX</title>
+    <style>
+      :root {
+        --bg: #0d1117;
+        --surface: #151b23;
+        --surface-2: #1d2430;
+        --line: #2a3342;
+        --text: #f3f6fb;
+        --muted: #91a0b7;
+        --green: #16c784;
+        --blue: #5fb3ff;
+        --amber: #e6b450;
+        --red: #ff5c66;
+        --radius: 8px;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--text);
+        font-family:
+          Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }
+
+      header {
+        position: sticky;
+        top: 0;
+        z-index: 2;
+        border-bottom: 1px solid var(--line);
+        background: rgba(13, 17, 23, 0.94);
+        backdrop-filter: blur(16px);
+      }
+
+      .header-inner {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        max-width: 1240px;
+        margin: 0 auto;
+        padding: 18px 20px;
+      }
+
+      h1,
+      h2,
+      h3,
+      p {
+        margin: 0;
+      }
+
+      h1 {
+        font-size: 20px;
+        line-height: 1.2;
+      }
+
+      .sub {
+        color: var(--muted);
+        font-size: 13px;
+        margin-top: 4px;
+      }
+
+      nav {
+        display: flex;
+        gap: 8px;
+        overflow-x: auto;
+      }
+
+      nav a {
+        color: var(--muted);
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        padding: 8px 12px;
+        text-decoration: none;
+        white-space: nowrap;
+        font-size: 13px;
+      }
+
+      main {
+        max-width: 1240px;
+        margin: 0 auto;
+        padding: 24px 20px 56px;
+      }
+
+      .direction {
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        background: #10151d;
+        margin-bottom: 24px;
+        overflow: hidden;
+      }
+
+      .direction-head {
+        display: flex;
+        justify-content: space-between;
+        gap: 16px;
+        padding: 18px 20px;
+        border-bottom: 1px solid var(--line);
+      }
+
+      .tag {
+        color: var(--green);
+        font-size: 11px;
+        font-weight: 800;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+      }
+
+      .mock {
+        display: grid;
+        grid-template-columns: 220px 1fr;
+        min-height: 420px;
+      }
+
+      .side {
+        border-right: 1px solid var(--line);
+        padding: 18px;
+        background: #111821;
+      }
+
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 24px;
+      }
+
+      .logo {
+        display: grid;
+        width: 36px;
+        height: 36px;
+        place-items: center;
+        border-radius: var(--radius);
+        background: var(--green);
+        color: #06120d;
+        font-weight: 800;
+      }
+
+      .item {
+        border-radius: var(--radius);
+        color: var(--muted);
+        padding: 10px 12px;
+        margin-bottom: 6px;
+        font-size: 14px;
+      }
+
+      .item.active {
+        background: rgba(22, 199, 132, 0.12);
+        color: var(--green);
+      }
+
+      .content {
+        padding: 20px;
+      }
+
+      .topline {
+        display: flex;
+        align-items: start;
+        justify-content: space-between;
+        gap: 16px;
+        margin-bottom: 18px;
+      }
+
+      .button {
+        border: 0;
+        border-radius: var(--radius);
+        background: var(--green);
+        color: #06120d;
+        font-weight: 800;
+        padding: 10px 14px;
+      }
+
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 12px;
+        margin-bottom: 18px;
+      }
+
+      .card,
+      .column,
+      .panel {
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        background: var(--surface);
+      }
+
+      .card {
+        padding: 14px;
+      }
+
+      .label {
+        color: var(--muted);
+        font-size: 12px;
+      }
+
+      .value {
+        margin-top: 8px;
+        font-size: 24px;
+        font-weight: 800;
+      }
+
+      .positive {
+        color: var(--green);
+      }
+
+      .negative {
+        color: var(--red);
+      }
+
+      .cols {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 12px;
+      }
+
+      .column {
+        padding: 12px;
+        min-height: 210px;
+      }
+
+      .column h3 {
+        font-size: 13px;
+        margin-bottom: 10px;
+      }
+
+      .txn {
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        background: var(--surface-2);
+        padding: 10px;
+        margin-bottom: 8px;
+      }
+
+      .txn strong {
+        display: block;
+        font-size: 14px;
+      }
+
+      .txn span {
+        color: var(--muted);
+        display: block;
+        font-size: 12px;
+        margin-top: 4px;
+      }
+
+      .compact .grid {
+        grid-template-columns: 1.15fr 0.85fr;
+      }
+
+      .compact .cols {
+        grid-template-columns: 1fr;
+      }
+
+      .compact .content {
+        display: grid;
+        grid-template-columns: 1fr 320px;
+        gap: 14px;
+      }
+
+      .light {
+        --bg: #f4f7fb;
+        --surface: #ffffff;
+        --surface-2: #f7fafc;
+        --line: #d9e1ea;
+        --text: #111827;
+        --muted: #5b677a;
+        background: #f4f7fb;
+        color: #111827;
+      }
+
+      .light .side,
+      .light .direction-head {
+        background: #ffffff;
+      }
+
+      .light .content,
+      .light .mock {
+        background: #f4f7fb;
+      }
+
+      .focus .grid {
+        grid-template-columns: 1.4fr 1fr 1fr;
+      }
+
+      .focus .grid .card:first-child {
+        grid-row: span 2;
+      }
+
+      .event .cols {
+        grid-template-columns: 1.2fr 0.8fr;
+      }
+
+      .mobile-preview .mock {
+        display: block;
+      }
+
+      .mobile-preview .side {
+        display: flex;
+        border-right: 0;
+        border-bottom: 1px solid var(--line);
+        overflow-x: auto;
+      }
+
+      .mobile-preview .brand {
+        margin: 0 16px 0 0;
+      }
+
+      .mobile-preview .item {
+        white-space: nowrap;
+      }
+
+      .mobile-preview .grid,
+      .mobile-preview .cols {
+        grid-template-columns: 1fr;
+      }
+
+      @media (max-width: 780px) {
+        .header-inner,
+        .topline,
+        .direction-head {
+          display: block;
+        }
+
+        nav {
+          margin-top: 14px;
+        }
+
+        .mock,
+        .compact .content {
+          display: block;
+        }
+
+        .side {
+          display: flex;
+          border-right: 0;
+          border-bottom: 1px solid var(--line);
+          overflow-x: auto;
+        }
+
+        .brand {
+          margin: 0 16px 0 0;
+        }
+
+        .item {
+          white-space: nowrap;
+        }
+
+        .grid,
+        .compact .grid,
+        .focus .grid,
+        .cols,
+        .event .cols {
+          grid-template-columns: 1fr;
+        }
+
+        .button {
+          width: 100%;
+          margin-top: 14px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <div class="header-inner">
+        <div>
+          <h1>Deu Bom - Direcoes de UX</h1>
+          <p class="sub">Explore estilos para orientar a evolucao visual e funcional do app.</p>
+        </div>
+        <nav>
+          <a href="#d1">1 Operacional</a>
+          <a href="#d2">2 Guia diario</a>
+          <a href="#d3">3 Claro</a>
+          <a href="#d4">4 Compacto</a>
+          <a href="#d5">5 Festometro</a>
+          <a href="#d6">6 Mobile</a>
+        </nav>
+      </div>
+    </header>
+
+    <main>
+      <section class="direction" id="d1">
+        <div class="direction-head">
+          <div>
+            <div class="tag">Direcao 1</div>
+            <h2>Operacional calmo</h2>
+            <p class="sub">Melhor para a aba Financas: kanban claro, acoes rapidas e pouca ornamentacao.</p>
+          </div>
+        </div>
+        <div class="mock">
+          <aside class="side">
+            <div class="brand"><div class="logo">DB</div><strong>Deu Bom</strong></div>
+            <div class="item">Inicio</div><div class="item active">Financas</div><div class="item">Metas</div><div class="item">Dashboard</div>
+          </aside>
+          <div class="content">
+            <div class="topline"><div><h2>Financas de abril</h2><p class="sub">Pendencias, recebimentos e itens concluidos do mes.</p></div><button class="button">Adicionar</button></div>
+            <div class="grid">
+              <div class="card"><div class="label">Saldo previsto</div><div class="value positive">R$ 1.240</div></div>
+              <div class="card"><div class="label">A pagar</div><div class="value negative">R$ 574</div></div>
+              <div class="card"><div class="label">A receber</div><div class="value">R$ 3.500</div></div>
+              <div class="card"><div class="label">Concluido</div><div class="value">8</div></div>
+            </div>
+            <div class="cols">
+              <div class="column"><h3>A pagar</h3><div class="txn"><strong>Internet</strong><span>Vence dia 10 - recorrente</span></div></div>
+              <div class="column"><h3>A receber</h3><div class="txn"><strong>Salario</strong><span>Previsto dia 5 - recorrente</span></div></div>
+              <div class="column"><h3>Concluido</h3><div class="txn"><strong>Mercado</strong><span>Pago hoje</span></div></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="direction focus" id="d2">
+        <div class="direction-head"><div><div class="tag">Direcao 2</div><h2>Guia diario</h2><p class="sub">Melhor para Inicio: uma pergunta principal, proximas acoes e resumo sem ruido.</p></div></div>
+        <div class="mock">
+          <aside class="side"><div class="brand"><div class="logo">DB</div><strong>Deu Bom</strong></div><div class="item active">Inicio</div><div class="item">Financas</div><div class="item">Metas</div></aside>
+          <div class="content">
+            <div class="topline"><div><h2>Seu mes esta sob controle</h2><p class="sub">Existem 3 pendencias para revisar hoje.</p></div><button class="button">Ver pendencias</button></div>
+            <div class="grid">
+              <div class="card"><div class="label">Livre depois das pendencias</div><div class="value positive">R$ 860</div><p class="sub">Considerando contas abertas do mes.</p></div>
+              <div class="card"><div class="label">Recebido</div><div class="value">R$ 3.500</div></div>
+              <div class="card"><div class="label">Pendente</div><div class="value negative">R$ 574</div></div>
+              <div class="card"><div class="label">Proximo vencimento</div><div class="value">10</div></div>
+              <div class="card"><div class="label">Meta do mes</div><div class="value positive">42%</div></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="direction light" id="d3">
+        <div class="direction-head"><div><div class="tag">Direcao 3</div><h2>Claro e acessivel</h2><p class="sub">Alternativa para usuarios que preferem menos peso visual e leitura mais aberta.</p></div></div>
+        <div class="mock">
+          <aside class="side"><div class="brand"><div class="logo">DB</div><strong>Deu Bom</strong></div><div class="item active">Inicio</div><div class="item">Financas</div><div class="item">Dashboard</div></aside>
+          <div class="content">
+            <div class="topline"><div><h2>Resumo do mes</h2><p class="sub">Numeros claros, superficies leves e menos contraste emocional.</p></div><button class="button">Adicionar</button></div>
+            <div class="grid"><div class="card"><div class="label">Saldo</div><div class="value positive">R$ 1.240</div></div><div class="card"><div class="label">Despesas</div><div class="value negative">R$ 2.260</div></div><div class="card"><div class="label">Receitas</div><div class="value">R$ 3.500</div></div><div class="card"><div class="label">Pendencias</div><div class="value">3</div></div></div>
+            <div class="cols"><div class="column"><h3>Acoes de hoje</h3><div class="txn"><strong>Pagar internet</strong><span>R$ 120 - vence hoje</span></div></div><div class="column"><h3>Recorrentes</h3><div class="txn"><strong>Salario</strong><span>Todo dia 5</span></div></div><div class="column"><h3>Metas</h3><div class="txn"><strong>Reserva</strong><span>R$ 420 guardados</span></div></div></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="direction compact" id="d4">
+        <div class="direction-head"><div><div class="tag">Direcao 4</div><h2>Compacto de produtividade</h2><p class="sub">Mais denso para desktop: ideal quando o usuario administra muitos lancamentos.</p></div></div>
+        <div class="mock">
+          <aside class="side"><div class="brand"><div class="logo">DB</div><strong>Deu Bom</strong></div><div class="item active">Financas</div><div class="item">Dashboard</div><div class="item">Config</div></aside>
+          <div class="content">
+            <div>
+              <div class="topline"><div><h2>Operacao financeira</h2><p class="sub">Lista e kanban juntos, com detalhes sob demanda.</p></div></div>
+              <div class="cols"><div class="column"><h3>A pagar</h3><div class="txn"><strong>Cartao</strong><span>Parcela 3/10 - R$ 280</span></div><div class="txn"><strong>Aluguel</strong><span>Recorrente - R$ 1.200</span></div></div><div class="column"><h3>A receber</h3><div class="txn"><strong>Freela</strong><span>Previsto amanha - R$ 900</span></div></div></div>
+            </div>
+            <div class="panel card"><div class="label">Detalhe selecionado</div><div class="value">Cartao</div><p class="sub">Parcela 3 de 10. Alteracoes podem afetar apenas esta, futuras ou todas.</p></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="direction event" id="d5">
+        <div class="direction-head"><div><div class="tag">Direcao 5</div><h2>Festometro como planejamento</h2><p class="sub">Evento visivel em cards, detalhes apenas ao clicar, compras e participantes recolhidos.</p></div></div>
+        <div class="mock">
+          <aside class="side"><div class="brand"><div class="logo">DB</div><strong>Deu Bom</strong></div><div class="item">Financas</div><div class="item active">Festometro</div><div class="item">Metas</div></aside>
+          <div class="content">
+            <div class="topline"><div><h2>Eventos</h2><p class="sub">Planeje custos sem transformar a tela em formulario aberto.</p></div><button class="button">Criar evento</button></div>
+            <div class="cols"><div class="column"><h3>Em planejamento</h3><div class="txn"><strong>Churrasco familia</strong><span>15 pessoas - R$ 574 estimados</span></div><div class="txn"><strong>Aniversario</strong><span>28 pessoas - compras pendentes</span></div></div><div class="panel card"><div class="label">Ao abrir evento</div><div class="value">Resumo primeiro</div><p class="sub">Participantes, itens, rateio e convites aparecem em blocos recolhiveis.</p></div></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="direction mobile-preview" id="d6">
+        <div class="direction-head"><div><div class="tag">Direcao 6</div><h2>Mobile primeiro</h2><p class="sub">Sem filtros gigantes, sem depender de drag e com acoes no card.</p></div></div>
+        <div class="mock">
+          <aside class="side"><div class="brand"><div class="logo">DB</div><strong>Deu Bom</strong></div><div class="item active">Inicio</div><div class="item">Financas</div><div class="item">Metas</div></aside>
+          <div class="content">
+            <div class="topline"><div><h2>Hoje</h2><p class="sub">2 pendencias precisam de atencao.</p></div><button class="button">Adicionar</button></div>
+            <div class="grid"><div class="card"><div class="label">Pode usar</div><div class="value positive">R$ 860</div></div><div class="card"><div class="label">Pendente</div><div class="value negative">R$ 574</div></div></div>
+            <div class="cols"><div class="column"><h3>Pendencias</h3><div class="txn"><strong>Internet</strong><span>R$ 120 - Pagar | Editar | Mover</span></div><div class="txn"><strong>Cartao</strong><span>R$ 280 - Ver parcela</span></div></div></div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </body>
+</html>
