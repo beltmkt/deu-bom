@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
   Calendar,
@@ -26,6 +26,9 @@ import { TransactionUpdateModal } from '@/components/TransactionDeleteModal';
 
 type EndConditionType = 'never' | 'date' | 'occurrences';
 
+const clampCount = (value: number, min: number, max: number) =>
+  Math.min(max, Math.max(min, Number.isFinite(value) ? value : min));
+
 interface TransactionFormProps {
   isOpen: boolean;
   onClose: () => void;
@@ -41,7 +44,12 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
 }) => {
   const categories = useCategories();
   const transactions = useTransactions();
-  const { addTransaction, updateTransaction, generateRecurringTransactions } = useFinanceStore();
+  const {
+    addTransaction,
+    updateTransaction,
+    generateRecurringTransactions,
+    replaceTransactionWithRecurringTransactions,
+  } = useFinanceStore();
 
   const [type, setType] = useState<TransactionType>(defaultType);
   const [title, setTitle] = useState('');
@@ -69,7 +77,10 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isResolvingScope, setIsResolvingScope] = useState(false);
 
-  const filteredCategories = categories.filter((category) => category.type === type);
+  const filteredCategories = useMemo(
+    () => categories.filter((category) => category.type === type),
+    [categories, type]
+  );
   const selectedCategory = categories.find((category) => category.id === categoryId);
 
   const resetForm = useCallback(() => {
@@ -121,10 +132,15 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
   }, [editTransaction, isOpen, resetForm]);
 
   useEffect(() => {
-    if (!editTransaction && filteredCategories.length > 0 && !categoryId) {
+    if (filteredCategories.length === 0) {
+      if (categoryId) setCategoryId('');
+      return;
+    }
+
+    if (!categoryId || selectedCategory?.type !== type) {
       setCategoryId(filteredCategories[0].id);
     }
-  }, [categoryId, editTransaction, filteredCategories]);
+  }, [categoryId, filteredCategories, selectedCategory?.type, type]);
 
   useEffect(() => {
     if (editTransaction || !title.trim()) {
@@ -191,6 +207,19 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
   const handleSubmit = async (updateFuture = false, updateAll = false) => {
     if (!title || !amount || !categoryId || isSubmitting || isResolvingScope) return;
 
+    const normalizedInstallments = clampCount(installments, 2, 120);
+    const normalizedOccurrences = clampCount(occurrences, 2, 120);
+    const recurringCount =
+      recurrenceType === 'installment'
+        ? normalizedInstallments
+        : endCondition === 'never'
+          ? 24
+          : endCondition === 'date'
+            ? calculateOccurrencesFromDate()
+            : normalizedOccurrences;
+    const seriesInterval =
+      recurrenceType === 'installment' ? 'monthly' : recurrenceInterval;
+
     const transactionData = {
       title,
       amount,
@@ -203,10 +232,42 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
       notes,
       notify: false,
       recurrenceType,
-      recurrenceInterval: recurrenceType === 'subscription' ? recurrenceInterval : undefined,
+      recurrenceInterval: recurrenceType === 'none' ? undefined : seriesInterval,
+      recurrenceEndDate:
+        recurrenceType === 'subscription' && endCondition === 'date' ? endDate : undefined,
     };
 
     if (editTransaction) {
+      const canConvertSingleToSeries =
+        !isRecurringEdit &&
+        (recurrenceType === 'installment' || recurrenceType === 'subscription') &&
+        recurringCount > 1;
+
+      if (canConvertSingleToSeries) {
+        setIsSubmitting(true);
+        try {
+          const success = await replaceTransactionWithRecurringTransactions(
+            editTransaction.id,
+            transactionData,
+            recurringCount,
+            seriesInterval,
+            recurrenceType === 'installment'
+          );
+          if (!success) return;
+
+          toast.success(
+            recurrenceType === 'installment'
+              ? `${recurringCount} parcelas salvas!`
+              : `${recurringCount} lancamentos recorrentes salvos!`
+          );
+          onClose();
+          resetForm();
+        } finally {
+          setIsSubmitting(false);
+        }
+        return;
+      }
+
       if (isRecurringEdit && !showUpdateScopeModal && !updateFuture && !updateAll) {
         setPendingUpdateData(transactionData);
         setPendingUpdateTransactionId(editTransaction.id);
@@ -233,18 +294,18 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
       return;
     }
 
-    if (recurrenceType === 'installment' && installments > 1) {
+    if (recurrenceType === 'installment' && normalizedInstallments > 1) {
       setIsSubmitting(true);
       try {
         const success = await generateRecurringTransactions(
           transactionData,
-          installments,
+          normalizedInstallments,
           'monthly',
           true
         );
         if (!success) return;
 
-        toast.success(`${installments} parcelas criadas!`);
+        toast.success(`${normalizedInstallments} parcelas criadas!`);
         onClose();
         resetForm();
       } finally {
@@ -254,27 +315,17 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
     }
 
     if (recurrenceType === 'subscription') {
-      let count: number;
-
-      if (endCondition === 'never') {
-        count = 24;
-      } else if (endCondition === 'date') {
-        count = calculateOccurrencesFromDate();
-      } else {
-        count = occurrences;
-      }
-
       setIsSubmitting(true);
       try {
         const success = await generateRecurringTransactions(
           transactionData,
-          count,
+          recurringCount,
           recurrenceInterval,
           false
         );
         if (!success) return;
 
-        toast.success(`${count} transacoes recorrentes criadas!`);
+        toast.success(`${recurringCount} transacoes recorrentes criadas!`);
         onClose();
         resetForm();
       } finally {
@@ -580,7 +631,6 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
                     className="overflow-hidden border-t border-border/70"
                   >
                     <div className="px-4 pb-4 pt-3.5">
-                      {!editTransaction ? (
                         <div className="mb-6">
                           <label className="mb-2 block text-sm font-medium text-muted-foreground">
                             Como esse lancamento se repete?
@@ -654,26 +704,41 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
                               <label className="mb-2 block text-sm text-muted-foreground">
                                 Numero de parcelas
                               </label>
-                              <div className="flex items-center gap-4">
+                              <div className="grid gap-3 sm:grid-cols-[11rem_1fr]">
                                 <input
-                                  type="range"
+                                  type="number"
                                   min="2"
-                                  max="48"
+                                  max="120"
                                   value={installments}
                                   onChange={(event) =>
-                                    setInstallments(Number.parseInt(event.target.value, 10))
+                                    setInstallments(
+                                      clampCount(Number.parseInt(event.target.value, 10), 2, 120)
+                                    )
                                   }
-                                  className="flex-1"
+                                  className="h-12 rounded-xl border border-border bg-input px-4 text-base font-semibold text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
                                 />
-                                <span className="w-12 text-center font-mono text-lg font-semibold">
-                                  {installments}x
-                                </span>
+                                <div className="grid grid-cols-5 gap-2">
+                                  {[3, 6, 12, 24, 48].map((option) => (
+                                    <button
+                                      key={option}
+                                      type="button"
+                                      onClick={() => setInstallments(option)}
+                                      className={`h-12 rounded-xl border text-sm font-medium transition-colors ${
+                                        installments === option
+                                          ? 'border-primary bg-primary text-primary-foreground'
+                                          : 'border-border bg-muted text-muted-foreground'
+                                      }`}
+                                    >
+                                      {option}x
+                                    </button>
+                                  ))}
+                                </div>
                               </div>
                               <p className="mt-2 text-sm text-muted-foreground">
                                 Valor por parcela:{' '}
                                 <span className="font-mono font-medium text-foreground">
                                   R${' '}
-                                  {(amount / installments).toLocaleString('pt-BR', {
+                                  {(amount / clampCount(installments, 2, 120)).toLocaleString('pt-BR', {
                                     minimumFractionDigits: 2,
                                   })}
                                 </span>
@@ -750,20 +815,35 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
                                 </div>
 
                                 {endCondition === 'occurrences' ? (
-                                  <div className="flex items-center gap-4">
+                                  <div className="grid gap-3 sm:grid-cols-[11rem_1fr]">
                                     <input
-                                      type="range"
+                                      type="number"
                                       min="2"
-                                      max="60"
+                                      max="120"
                                       value={occurrences}
                                       onChange={(event) =>
-                                        setOccurrences(Number.parseInt(event.target.value, 10))
+                                        setOccurrences(
+                                          clampCount(Number.parseInt(event.target.value, 10), 2, 120)
+                                        )
                                       }
-                                      className="flex-1"
+                                      className="h-12 rounded-xl border border-border bg-input px-4 text-base font-semibold text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
                                     />
-                                    <span className="w-16 text-center font-mono text-lg font-semibold">
-                                      {occurrences}x
-                                    </span>
+                                    <div className="grid grid-cols-4 gap-2">
+                                      {[6, 12, 24, 36].map((option) => (
+                                        <button
+                                          key={option}
+                                          type="button"
+                                          onClick={() => setOccurrences(option)}
+                                          className={`h-12 rounded-xl border text-sm font-medium transition-colors ${
+                                            occurrences === option
+                                              ? 'border-primary bg-primary text-primary-foreground'
+                                              : 'border-border bg-muted text-muted-foreground'
+                                          }`}
+                                        >
+                                          {option}x
+                                        </button>
+                                      ))}
+                                    </div>
                                   </div>
                                 ) : null}
 
@@ -782,7 +862,6 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
                             </motion.div>
                           ) : null}
                         </div>
-                      ) : null}
 
                       <div className="mb-6">
                         <label className="mb-2 block text-sm font-medium text-muted-foreground">

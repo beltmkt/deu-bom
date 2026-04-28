@@ -4,7 +4,13 @@ import { supabase } from '@/integrations/supabase/client';
 import type { Database } from '@/integrations/supabase/types';
 import { toast } from 'sonner';
 import { z } from 'zod';
-import type { Transaction, Category, Budget, UserSettings } from '@/types/finance';
+import type {
+  Category,
+  Budget,
+  RecurrenceInterval,
+  Transaction,
+  UserSettings,
+} from '@/types/finance';
 import {
   getScopedTransactionIds,
   getTransactionSeries,
@@ -76,6 +82,13 @@ interface FinanceState extends FinanceSnapshot {
     interval: 'weekly' | 'monthly' | 'yearly',
     splitAmount: boolean
   ) => Promise<boolean>;
+  replaceTransactionWithRecurringTransactions: (
+    id: string,
+    baseTransaction: Omit<Transaction, 'id' | 'createdAt' | 'updatedAt'>,
+    count: number,
+    interval: RecurrenceInterval,
+    splitAmount: boolean
+  ) => Promise<boolean>;
 }
 
 type TransactionRow = Database['public']['Tables']['transactions']['Row'];
@@ -135,6 +148,25 @@ const buildDbTransactionUpdates = (updates: Partial<Transaction>) => {
   if (updates.recurrenceType !== undefined) dbUpdates.recurrence_type = updates.recurrenceType;
   if (updates.recurrenceInterval !== undefined) dbUpdates.recurrence_interval = updates.recurrenceInterval || null;
   if (updates.recurrenceEndDate !== undefined) dbUpdates.recurrence_end_date = updates.recurrenceEndDate || null;
+  if (updates.installmentNumber !== undefined) dbUpdates.installment_number = updates.installmentNumber || null;
+  if (updates.totalInstallments !== undefined) dbUpdates.total_installments = updates.totalInstallments || null;
+  if (updates.parentTransactionId !== undefined) dbUpdates.parent_transaction_id = updates.parentTransactionId || null;
+  if (updates.groupId !== undefined) dbUpdates.group_id = updates.groupId || null;
+
+  if (updates.recurrenceType === 'none') {
+    dbUpdates.recurrence_interval = null;
+    dbUpdates.recurrence_end_date = null;
+    dbUpdates.installment_number = null;
+    dbUpdates.total_installments = null;
+    dbUpdates.parent_transaction_id = null;
+    dbUpdates.group_id = null;
+  }
+
+  if (updates.recurrenceType === 'subscription') {
+    dbUpdates.installment_number = null;
+    dbUpdates.total_installments = null;
+    dbUpdates.parent_transaction_id = null;
+  }
 
   return dbUpdates;
 };
@@ -868,6 +900,118 @@ export const useFinanceStore = create<FinanceState>((set, get) => ({
       console.error('Failed to insert recurring transactions:', error);
       toast.error('Erro ao salvar transacoes recorrentes.');
       return false;
+    }
+
+    await get().refreshData();
+    return true;
+  },
+
+  replaceTransactionWithRecurringTransactions: async (
+    id,
+    baseTransaction,
+    count,
+    interval,
+    splitAmount
+  ) => {
+    const transaction = get().transactions.find((item) => item.id === id);
+    if (!transaction) return false;
+
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return false;
+
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('current_workspace_id')
+      .eq('id', user.id)
+      .maybeSingle();
+
+    const groupId = transaction.groupId || crypto.randomUUID();
+    const amountPerTransaction = splitAmount
+      ? baseTransaction.amount / count
+      : baseTransaction.amount;
+    const baseDate = parseISO(baseTransaction.date);
+
+    const buildSeriesRow = (index: number) => ({
+      user_id: user.id,
+      workspace_id: profile?.current_workspace_id || null,
+      title: splitAmount
+        ? `${baseTransaction.title} (${index + 1}/${count})`
+        : baseTransaction.title,
+      amount: amountPerTransaction,
+      type: baseTransaction.type,
+      status: baseTransaction.status,
+      category_id: baseTransaction.categoryId || null,
+      date: format(addDateByInterval(baseDate, index, interval), 'yyyy-MM-dd'),
+      notes: baseTransaction.notes || null,
+      recurrence_type: baseTransaction.recurrenceType,
+      installment_number: splitAmount ? index + 1 : null,
+      total_installments: splitAmount ? count : null,
+      parent_transaction_id: null,
+      group_id: groupId,
+      recurrence_interval: interval,
+      recurrence_end_date: baseTransaction.recurrenceEndDate || null,
+      notify: baseTransaction.notify,
+    });
+
+    const firstRow = buildSeriesRow(0);
+    const remainingRows = Array.from({ length: count - 1 }, (_, index) =>
+      buildSeriesRow(index + 1)
+    );
+
+    const { data: updatedRows, error: updateError } = await supabase
+      .from('transactions')
+      .update({
+        title: firstRow.title,
+        amount: firstRow.amount,
+        type: firstRow.type,
+        status: firstRow.status,
+        category_id: firstRow.category_id,
+        date: firstRow.date,
+        notes: firstRow.notes,
+        recurrence_type: firstRow.recurrence_type,
+        installment_number: firstRow.installment_number,
+        total_installments: firstRow.total_installments,
+        parent_transaction_id: firstRow.parent_transaction_id,
+        group_id: firstRow.group_id,
+        recurrence_interval: firstRow.recurrence_interval,
+        recurrence_end_date: firstRow.recurrence_end_date,
+        notify: firstRow.notify,
+      })
+      .eq('id', id)
+      .select('id');
+
+    if (updateError) {
+      console.error('Failed to convert transaction into recurring series:', updateError);
+      toast.error(getFinanceErrorMessage(updateError, 'Nao foi possivel salvar a recorrencia.'));
+      return false;
+    }
+
+    const validation = validateAffectedTransactionIds(
+      [id],
+      (updatedRows || []).map((item) => item.id)
+    );
+
+    if (!validation.ok) {
+      console.error('Recurring conversion touched an unexpected set of records.', {
+        expectedIds: validation.expectedIds,
+        updatedIds: validation.affectedIds,
+      });
+      toast.error('A recorrencia nao foi aplicada com seguranca. Recarregue e tente novamente.');
+      return false;
+    }
+
+    if (remainingRows.length > 0) {
+      const { error: insertError } = await supabase
+        .from('transactions')
+        .insert(remainingRows);
+
+      if (insertError) {
+        console.error('Failed to insert remaining recurring transactions:', insertError);
+        toast.error(getFinanceErrorMessage(insertError, 'Nao foi possivel criar as proximas parcelas.'));
+        return false;
+      }
     }
 
     await get().refreshData();
