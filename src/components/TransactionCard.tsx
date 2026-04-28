@@ -255,31 +255,25 @@ export const TransactionCard: React.FC<TransactionCardProps> = ({
               </div>
 
               <div className={`${compact ? 'mt-2' : 'mt-3'} flex items-center justify-between gap-3`}>
-                <span
-                  className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${
-                    isPending
-                      ? 'bg-pending/10 text-pending'
-                      : isIncome
-                      ? 'bg-income/10 text-income'
-                      : 'bg-primary/10 text-primary'
-                  }`}
-                >
-                  {statusLabel}
-                </span>
-
                 <button
+                  type="button"
                   onClick={handleStatusToggle}
                   aria-label={toggleLabel}
                   title={toggleLabel}
-                  className={`touch-btn relative flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full border transition-all duration-200 ${
+                  className={`inline-flex h-5 items-center gap-1 rounded-full border px-1.5 text-[10px] font-medium transition-colors ${
                     isPending
-                      ? 'border-border/60 bg-transparent text-muted-foreground hover:bg-muted/50'
+                      ? 'border-pending/15 bg-pending/5 text-pending hover:bg-pending/10'
                       : isIncome
-                      ? 'border-income/25 bg-income/10 text-income'
-                      : 'border-primary/25 bg-primary/10 text-primary'
+                      ? 'border-income/20 bg-income/10 text-income hover:bg-income/15'
+                      : 'border-primary/20 bg-primary/10 text-primary hover:bg-primary/15'
                   }`}
                 >
-                  {isPending ? <Circle className="h-3 w-3" /> : <Check className="h-3 w-3" />}
+                  {isPending ? (
+                    <Circle className="h-2.5 w-2.5" />
+                  ) : (
+                    <Check className="h-2.5 w-2.5" />
+                  )}
+                  {statusLabel}
                   <span className="sr-only">{toggleLabel}</span>
                 </button>
               </div>
