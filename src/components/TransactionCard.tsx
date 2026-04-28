@@ -12,9 +12,14 @@ import { toast } from 'sonner';
 interface TransactionCardProps {
   transaction: Transaction;
   onEdit: (transaction: Transaction) => void;
+  compact?: boolean;
 }
 
-export const TransactionCard: React.FC<TransactionCardProps> = ({ transaction, onEdit }) => {
+export const TransactionCard: React.FC<TransactionCardProps> = ({
+  transaction,
+  onEdit,
+  compact = false,
+}) => {
   const [swipeOffset, setSwipeOffset] = React.useState(0);
   const [isDeleting, setIsDeleting] = React.useState(false);
   const [showDeleteModal, setShowDeleteModal] = React.useState(false);
@@ -129,18 +134,20 @@ export const TransactionCard: React.FC<TransactionCardProps> = ({ transaction, o
         <div
           onClick={() => onEdit(transaction)}
           className={`
-            relative bg-card border border-border rounded-xl p-4
+            relative bg-card border border-border rounded-xl ${compact ? 'p-3' : 'p-4'}
             active:scale-[0.98] transition-transform duration-100
             cursor-pointer group
           `}
         >
-          <div className="flex items-start gap-3">
+          <div className={compact ? 'flex items-start gap-2.5' : 'flex items-start gap-3'}>
             <div
-              className="mt-0.5 flex h-9 w-9 items-center justify-center rounded-full flex-shrink-0"
+              className={`mt-0.5 flex items-center justify-center rounded-full flex-shrink-0 ${
+                compact ? 'h-8 w-8' : 'h-9 w-9'
+              }`}
               style={{ backgroundColor: category?.color + '20' }}
             >
               <IconComponent
-                className="h-4 w-4"
+                className={compact ? 'h-3.5 w-3.5' : 'h-4 w-4'}
                 style={{ color: category?.color }}
               />
             </div>
@@ -151,8 +158,8 @@ export const TransactionCard: React.FC<TransactionCardProps> = ({ transaction, o
                   <h4 className="truncate text-sm font-medium text-foreground">
                     {transaction.title}
                   </h4>
-                  <div className="mt-0.5 flex items-center gap-2">
-                    <span className="text-xs text-muted-foreground">
+                  <div className="mt-0.5 flex min-w-0 items-center gap-2">
+                    <span className="truncate text-xs text-muted-foreground">
                       {category?.name}
                     </span>
                     {transaction.installmentNumber && (
@@ -167,7 +174,7 @@ export const TransactionCard: React.FC<TransactionCardProps> = ({ transaction, o
                   <div className="text-right flex-shrink-0">
                     <p
                       className={`
-                        font-mono text-sm font-semibold
+                        font-mono ${compact ? 'text-xs' : 'text-sm'} font-semibold
                         ${isIncome ? 'text-income' : 'text-expense'}
                         ${isPending ? 'opacity-60' : ''}
                       `}
@@ -189,7 +196,7 @@ export const TransactionCard: React.FC<TransactionCardProps> = ({ transaction, o
                 </div>
               </div>
 
-              <div className="mt-3 flex items-center justify-between gap-3">
+              <div className={`${compact ? 'mt-2' : 'mt-3'} flex items-center justify-between gap-3`}>
                 <span
                   className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${
                     isPending

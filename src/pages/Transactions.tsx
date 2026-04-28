@@ -5,8 +5,6 @@ import {
   Loader2,
   Plus,
   Search,
-  Settings2,
-  SlidersHorizontal,
   WalletCards,
 } from 'lucide-react';
 import { BottomNav } from '@/components/BottomNav';
@@ -50,7 +48,6 @@ const Transactions: React.FC = () => {
   const [filterCategoryId, setFilterCategoryId] = useState<'all' | string>('all');
   const [showFilters, setShowFilters] = useState(false);
   const [selectedMonth, setSelectedMonth] = useState(new Date());
-  const [showCycleSettings, setShowCycleSettings] = useState(false);
   const [defaultType, setDefaultType] = useState<TransactionType>('expense');
 
   const transactions = useTransactions();
@@ -178,40 +175,30 @@ const Transactions: React.FC = () => {
   return (
     <div className="min-h-screen bg-background pb-[calc(var(--app-bottom-nav-height,0px)+1rem+env(safe-area-inset-bottom,0px))] md:pl-[var(--app-sidebar-width,88px)]">
       <header className="sticky top-0 z-30 border-b border-border/50 bg-background/90 px-4 py-3 backdrop-blur-xl sm:px-6 lg:px-8">
-        <div className="mx-auto max-w-7xl rounded-[24px] border border-border/60 bg-card p-4 shadow-[var(--shadow-sm)]">
+        <div className="mx-auto max-w-7xl rounded-2xl border border-border/60 bg-card/90 p-3 shadow-[var(--shadow-sm)] sm:p-4">
           <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
             <div className="max-w-lg">
-              <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-[0.22em] text-primary">
+              <p className="mb-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
                 Financas
               </p>
-              <h1 className="text-xl font-semibold sm:text-2xl">Fluxo em Kanban</h1>
+              <h1 className="text-xl font-semibold sm:text-2xl">Organize seus lancamentos</h1>
               <p className="mt-1 text-sm text-muted-foreground">
-                Veja o que pagar, receber e concluir sem deixar o topo tomar a tela.
+                Pague, receba, confirme e ajuste o mes sem poluir a tela.
               </p>
             </div>
 
             <div className="grid grid-cols-2 gap-2 sm:flex">
               <button
                 onClick={() => openForm('income')}
-                className="rounded-xl border border-income/20 bg-income/10 px-4 py-2.5 text-sm font-medium text-income"
+                className="rounded-xl border border-border bg-background px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted/50"
               >
                 Nova receita
               </button>
               <button
                 onClick={() => openForm('expense')}
-                className="rounded-xl border border-expense/20 bg-expense/10 px-4 py-2.5 text-sm font-medium text-expense"
+                className="rounded-xl bg-primary px-3 py-2 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90"
               >
                 Nova despesa
-              </button>
-              <button
-                onClick={() => setShowCycleSettings((current) => !current)}
-                className={`col-span-2 flex items-center justify-center rounded-xl border px-4 py-2.5 sm:col-span-1 ${
-                  showCycleSettings
-                    ? 'border-primary bg-primary text-primary-foreground'
-                    : 'border-border bg-muted/60 text-muted-foreground'
-                }`}
-              >
-                <Settings2 className="h-5 w-5" />
               </button>
             </div>
           </div>
@@ -222,55 +209,50 @@ const Transactions: React.FC = () => {
             className="mt-4"
           />
 
-          <div className="mt-3 grid gap-3 md:grid-cols-[1fr_auto]">
+          <div className="mt-3 grid gap-2 lg:grid-cols-[minmax(0,1fr)_auto]">
             <div className="relative">
-              <Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" />
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <input
                 type="text"
                 value={searchQuery}
                 onChange={(event) => setSearchQuery(event.target.value)}
-                placeholder="Buscar por nome, categoria ou anotacao"
-                className="w-full rounded-xl border border-border bg-background py-2.5 pl-12 pr-14 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                placeholder="Buscar lancamento"
+                className="h-10 w-full rounded-xl border border-border bg-background pl-10 pr-12 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
               />
               <button
                 onClick={() => setShowFilters((current) => !current)}
-                className={`absolute right-2 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-lg ${
+                className={`absolute right-1.5 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-lg ${
                   showFilters ? 'bg-primary text-primary-foreground' : 'text-muted-foreground'
                 }`}
+                aria-label="Mostrar filtros"
               >
-                <Filter className="h-5 w-5" />
+                <Filter className="h-4 w-4" />
               </button>
             </div>
 
-            <div className="grid grid-cols-3 gap-2">
-              <div className="rounded-xl border border-income/20 bg-income/10 px-3 py-2.5 text-center">
-                <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
-                  Entradas
-                </p>
-                <p className="mt-2 text-sm font-semibold text-income">
+            <div className="flex gap-2 overflow-x-auto pb-1 lg:pb-0">
+              <div className="min-w-[112px] rounded-xl border border-border bg-background px-3 py-2">
+                <p className="text-[11px] text-muted-foreground">Entradas</p>
+                <p className="mt-0.5 text-sm font-semibold text-income">
                   {formatCurrency(summary.income)}
                 </p>
               </div>
-              <div className="rounded-xl border border-expense/20 bg-expense/10 px-3 py-2.5 text-center">
-                <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
-                  Saidas
-                </p>
-                <p className="mt-2 text-sm font-semibold text-expense">
+              <div className="min-w-[112px] rounded-xl border border-border bg-background px-3 py-2">
+                <p className="text-[11px] text-muted-foreground">Saidas</p>
+                <p className="mt-0.5 text-sm font-semibold text-expense">
                   {formatCurrency(summary.expense)}
                 </p>
               </div>
               <div
-                className={`rounded-xl border px-3 py-2.5 text-center ${
+                className={`min-w-[112px] rounded-xl border bg-background px-3 py-2 ${
                   summary.balance >= 0
-                    ? 'border-primary/20 bg-primary/10'
-                    : 'border-expense/20 bg-expense/10'
+                    ? 'border-border'
+                    : 'border-expense/30'
                 }`}
               >
-                <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
-                  Saldo
-                </p>
+                <p className="text-[11px] text-muted-foreground">Saldo</p>
                 <p
-                  className={`mt-2 text-sm font-semibold ${
+                  className={`mt-0.5 text-sm font-semibold ${
                     summary.balance >= 0 ? 'text-primary' : 'text-expense'
                   }`}
                 >
@@ -279,45 +261,26 @@ const Transactions: React.FC = () => {
               </div>
             </div>
           </div>
-        </div>
 
-        <AnimatePresence>
-          {showCycleSettings && (
-            <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: 'auto' }}
-              exit={{ opacity: 0, height: 0 }}
-              className="overflow-hidden px-1 pt-3"
+          <div className="mt-2 flex items-center gap-2 overflow-x-auto text-xs text-muted-foreground">
+            <span className="shrink-0">Fechamento</span>
+            <select
+              value={settings.cycleStartDay}
+              onChange={(event) =>
+                updateSettings({ cycleStartDay: Number(event.target.value) })
+              }
+              className="h-8 rounded-lg border border-border bg-background px-2 text-xs font-medium text-foreground"
+              aria-label="Dia de fechamento do mes"
             >
-              <div className="rounded-[20px] border border-border bg-card p-3.5">
-                <div className="mb-3 flex items-center gap-2">
-                  <SlidersHorizontal className="h-4 w-4 text-primary" />
-                  <div>
-                    <h2 className="text-sm font-semibold">Ciclo financeiro</h2>
-                    <p className="text-xs text-muted-foreground">
-                      Ajuste o dia de virada para acompanhar seu fechamento real.
-                    </p>
-                  </div>
-                </div>
-                <div className="grid grid-cols-7 gap-2">
-                  {cycleDays.map((day) => (
-                    <button
-                      key={day}
-                      onClick={() => updateSettings({ cycleStartDay: day })}
-                      className={`rounded-xl py-2 text-sm font-medium transition-colors ${
-                        settings.cycleStartDay === day
-                          ? 'bg-primary text-primary-foreground'
-                          : 'bg-muted text-muted-foreground hover:bg-accent'
-                      }`}
-                    >
-                      {day}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
+              {cycleDays.map((day) => (
+                <option key={day} value={day}>
+                  Dia {day}
+                </option>
+              ))}
+            </select>
+            <span className="shrink-0">usado para alinhar seu mes real.</span>
+          </div>
+        </div>
       </header>
 
       <main className="mx-auto max-w-7xl space-y-5 px-4 py-5 sm:px-6 lg:px-8">
@@ -327,33 +290,41 @@ const Transactions: React.FC = () => {
               initial={{ opacity: 0, y: -12 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -12 }}
-              className="rounded-[24px] border border-border bg-card p-4"
+              className="rounded-2xl border border-border bg-card p-3"
             >
-              <div className="mb-4">
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                  Filtros
-                </p>
-                <h2 className="mt-1 text-lg font-semibold">Refinar quadro</h2>
+              <div className="mb-3 flex items-center justify-between gap-3">
+                <p className="text-sm font-semibold">Filtros</p>
+                <button
+                  onClick={() => {
+                    setFilterType('all');
+                    setFilterStatus('all');
+                    setFilterCategoryId('all');
+                    setSearchQuery('');
+                  }}
+                  className="text-xs font-medium text-muted-foreground"
+                >
+                  Limpar
+                </button>
               </div>
 
-              <div className="space-y-3">
-                <div className="flex gap-2">
+              <div className="grid gap-2 lg:grid-cols-[1fr_1fr_180px]">
+                <div className="flex gap-1 rounded-xl bg-muted/50 p-1">
                   {(['all', 'income', 'expense'] as const).map((type) => (
                     <button
                       key={type}
                       onClick={() => setFilterType(type)}
-                      className={`flex-1 rounded-xl py-2 text-sm font-medium transition-colors ${
+                      className={`h-8 flex-1 rounded-lg px-2 text-xs font-medium transition-colors ${
                         filterType === type
                           ? type === 'income'
-                            ? 'bg-income text-income-foreground'
+                            ? 'bg-income text-white'
                             : type === 'expense'
-                            ? 'bg-expense text-expense-foreground'
+                            ? 'bg-expense text-white'
                             : 'bg-primary text-primary-foreground'
-                          : 'bg-muted text-muted-foreground'
+                          : 'text-muted-foreground'
                       }`}
                     >
                       {type === 'all'
-                        ? 'Tudo'
+                        ? 'Todos'
                         : type === 'income'
                         ? 'Receitas'
                         : 'Despesas'}
@@ -361,33 +332,15 @@ const Transactions: React.FC = () => {
                   ))}
                 </div>
 
-                <div>
-                  <label className="mb-2 block text-sm font-medium text-muted-foreground">
-                    Categoria
-                  </label>
-                  <select
-                    value={filterCategoryId}
-                    onChange={(event) => setFilterCategoryId(event.target.value)}
-                    className="w-full rounded-xl border border-border bg-background px-4 py-3 text-sm text-foreground"
-                  >
-                    <option value="all">Todas as categorias</option>
-                    {categories.map((category) => (
-                      <option key={category.id} value={category.id}>
-                        {category.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="flex gap-2">
+                <div className="flex gap-1 rounded-xl bg-muted/50 p-1">
                   {(['all', 'completed', 'pending'] as const).map((status) => (
                     <button
                       key={status}
                       onClick={() => setFilterStatus(status)}
-                      className={`flex-1 rounded-xl py-2 text-sm font-medium transition-colors ${
+                      className={`h-8 flex-1 rounded-lg px-2 text-xs font-medium transition-colors ${
                         filterStatus === status
                           ? 'bg-primary text-primary-foreground'
-                          : 'bg-muted text-muted-foreground'
+                          : 'text-muted-foreground'
                       }`}
                     >
                       {status === 'all'
@@ -398,6 +351,19 @@ const Transactions: React.FC = () => {
                     </button>
                   ))}
                 </div>
+
+                <select
+                  value={filterCategoryId}
+                  onChange={(event) => setFilterCategoryId(event.target.value)}
+                  className="h-10 rounded-xl border border-border bg-background px-3 text-xs font-medium text-foreground"
+                >
+                  <option value="all">Categorias</option>
+                  {categories.map((category) => (
+                    <option key={category.id} value={category.id}>
+                      {category.name}
+                    </option>
+                  ))}
+                </select>
               </div>
             </motion.section>
           )}
@@ -416,20 +382,20 @@ const Transactions: React.FC = () => {
             </p>
           </motion.div>
         ) : (
-          <section className="flex gap-4 overflow-x-auto pb-2 lg:grid lg:grid-cols-3 lg:overflow-visible">
+          <section className="flex gap-3 overflow-x-auto pb-2 lg:grid lg:grid-cols-3 lg:overflow-visible">
             {kanbanColumns.map((column, index) => (
               <motion.div
                 key={column.id}
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: index * 0.05 }}
-                className="min-h-[360px] min-w-[272px] rounded-[24px] border border-border bg-card p-3.5 lg:min-w-0"
+                className="min-h-[320px] min-w-[252px] rounded-2xl border border-border bg-card p-2.5 lg:min-w-0"
               >
-                <div className={`rounded-[20px] border px-3.5 py-3.5 ${column.tone}`}>
+                <div className={`rounded-xl border px-3 py-3 ${column.tone}`}>
                   <div className="flex items-start justify-between gap-4">
                     <div>
                       <p className="text-base font-semibold text-foreground">{column.title}</p>
-                      <p className="mt-1 text-xs leading-5 text-muted-foreground sm:text-sm">
+                      <p className="mt-1 hidden text-xs leading-5 text-muted-foreground sm:block">
                         {column.description}
                       </p>
                     </div>
@@ -442,9 +408,9 @@ const Transactions: React.FC = () => {
                   </p>
                 </div>
 
-                <div className="mt-3 space-y-2.5">
+                <div className="mt-2.5 space-y-2">
                   {column.items.length === 0 ? (
-                    <div className="rounded-[20px] border border-dashed border-border bg-muted/20 p-5 text-center text-sm text-muted-foreground">
+                    <div className="rounded-xl border border-dashed border-border bg-muted/20 p-4 text-center text-xs text-muted-foreground">
                       {column.empty}
                     </div>
                   ) : (
@@ -453,6 +419,7 @@ const Transactions: React.FC = () => {
                         key={transaction.id}
                         transaction={transaction}
                         onEdit={setEditTransaction}
+                        compact
                       />
                     ))
                   )}

@@ -68,3 +68,18 @@
   - workspace
   - falhas de permissao, sincronizacao e contagem divergente
 - Helpers de serie/escopo foram separados para facilitar revisao e reduzir risco de logica opaca no store.
+
+## 2026-04-28 - Direcao do Festometro
+
+- Usuario definiu que o Festometro deve priorizar organizacao de valores entre participantes e lista do que comprar com quantidade.
+- Direcao escolhida: gerenciador completo de eventos, com visual mais divertido e fluxo principal simples.
+- Tipos de evento devem ser ampliados de forma organizada e minimalista, sem transformar a tela em catalogo confuso.
+- Percentual de crianca deve virar configuracao avancada.
+- Ao salvar evento, o app deve perguntar antes de criar despesa no financeiro.
+- Lista de compras entrou no roadmap como plus importante da ferramenta.
+- Primeira implementacao aplicada em `src/pages/Leisure.tsx`:
+  - fluxo inicial mais simples
+  - opcoes avancadas recolhidas
+  - novos tipos de evento
+  - consumo economico/padrao/generoso
+  - toggle para criar despesa no financeiro antes de salvar

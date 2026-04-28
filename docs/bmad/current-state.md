@@ -12,6 +12,7 @@
 - `Transactions`: central operacional para busca, filtro e manutencao de lancamentos.
 - `Budgets`: acompanhamento por categoria.
 - `Analytics`: leitura historica e tendencias.
+- `Festometro`: deve evoluir para gerenciador completo de eventos, com foco em valores entre participantes, itens a comprar e quantidades.
 - `Settings`: equipe, tema, exportacao/importacao e preferencias.
 
 ## Ajustes concluidos nesta etapa
@@ -32,6 +33,7 @@
 - Criacao de uma linguagem mais minimalista, coerente e responsiva para desktop e mobile.
 - Consolidacao de headers, cards, grids e estados vazios para diminuir poluicao visual.
 - Ajuste das paginas secundarias para manter identidade propria sem quebrar simplicidade.
+- Festometro definido como diferencial mais divertido do produto, mas com configuracoes avancadas recolhidas para nao pesar o fluxo principal.
 
 ## Pontos de atencao
 

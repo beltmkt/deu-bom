@@ -65,8 +65,19 @@ interface Participant {
   amountDue: number;
 }
 
-type EventType = 'bbq' | 'pizza' | 'party';
+type EventType =
+  | 'bbq'
+  | 'pizza'
+  | 'party'
+  | 'birthday'
+  | 'happyHour'
+  | 'dinner'
+  | 'trip'
+  | 'corporate'
+  | 'shower'
+  | 'custom';
 type Duration = '4h' | '6h' | '8h+';
+type ConsumptionMode = 'economy' | 'standard' | 'generous';
 
 interface CalculatedItem {
   name: string;
@@ -100,9 +111,16 @@ const formatEventParticipants = (rows: EventParticipantRow[] | null): Participan
   }));
 
 const EVENT_TYPES = [
-  { id: 'bbq' as EventType, label: 'Churrasco/BBQ', icon: ChefHat },
-  { id: 'pizza' as EventType, label: 'Pizza Party', icon: Pizza },
-  { id: 'party' as EventType, label: 'Festa Geral', icon: PartyPopper },
+  { id: 'bbq' as EventType, label: 'Churrasco', icon: ChefHat },
+  { id: 'pizza' as EventType, label: 'Pizza', icon: Pizza },
+  { id: 'party' as EventType, label: 'Festa', icon: PartyPopper },
+  { id: 'birthday' as EventType, label: 'Aniversario', icon: PartyPopper },
+  { id: 'happyHour' as EventType, label: 'Happy hour', icon: Users },
+  { id: 'dinner' as EventType, label: 'Almoco/jantar', icon: ChefHat },
+  { id: 'trip' as EventType, label: 'Viagem', icon: Calendar },
+  { id: 'corporate' as EventType, label: 'Empresa', icon: Users },
+  { id: 'shower' as EventType, label: 'Cha/evento', icon: Baby },
+  { id: 'custom' as EventType, label: 'Personalizado', icon: Calculator },
 ];
 
 const DURATIONS = [
@@ -115,6 +133,18 @@ const DURATION_MULTIPLIER: Record<Duration, number> = {
   '4h': 0.8,
   '6h': 1.0,
   '8h+': 1.3,
+};
+
+const CONSUMPTION_MODES = [
+  { id: 'economy' as ConsumptionMode, label: 'Economico', multiplier: 0.85 },
+  { id: 'standard' as ConsumptionMode, label: 'Padrao', multiplier: 1 },
+  { id: 'generous' as ConsumptionMode, label: 'Generoso', multiplier: 1.2 },
+];
+
+const CONSUMPTION_MULTIPLIER: Record<ConsumptionMode, number> = {
+  economy: 0.85,
+  standard: 1,
+  generous: 1.2,
 };
 
 const BASE_CONSUMPTION = {
@@ -147,6 +177,61 @@ const BASE_CONSUMPTION = {
       { name: 'Refrigerante', baseQtyAdult: 0.4, baseQtyChild: 0.6, unit: 'L', defaultPrice: 6, category: 'bebidas' },
       { name: 'Água', baseQtyAdult: 0.4, baseQtyChild: 0.4, unit: 'L', defaultPrice: 3, category: 'bebidas' },
       { name: 'Suco', baseQtyAdult: 0.2, baseQtyChild: 0.4, unit: 'L', defaultPrice: 8, category: 'bebidas' },
+    ],
+  },
+  birthday: {
+    items: [
+      { name: 'Salgados', baseQtyAdult: 10, baseQtyChild: 8, unit: 'un', defaultPrice: 0.8, category: 'outros' },
+      { name: 'Docinhos', baseQtyAdult: 4, baseQtyChild: 6, unit: 'un', defaultPrice: 1.2, category: 'outros' },
+      { name: 'Bolo', baseQtyAdult: 1, baseQtyChild: 1, unit: 'fatia', defaultPrice: 8, category: 'outros' },
+      { name: 'Refrigerante', baseQtyAdult: 0.4, baseQtyChild: 0.6, unit: 'L', defaultPrice: 6, category: 'bebidas' },
+      { name: 'Agua', baseQtyAdult: 0.3, baseQtyChild: 0.3, unit: 'L', defaultPrice: 3, category: 'bebidas' },
+    ],
+  },
+  happyHour: {
+    items: [
+      { name: 'Petiscos', baseQtyAdult: 8, baseQtyChild: 4, unit: 'un', defaultPrice: 1.5, category: 'outros' },
+      { name: 'Cerveja', baseQtyAdult: 1.4, baseQtyChild: 0, unit: 'L', defaultPrice: 8, category: 'bebidas' },
+      { name: 'Refrigerante', baseQtyAdult: 0.25, baseQtyChild: 0.5, unit: 'L', defaultPrice: 6, category: 'bebidas' },
+      { name: 'Agua', baseQtyAdult: 0.25, baseQtyChild: 0.3, unit: 'L', defaultPrice: 3, category: 'bebidas' },
+    ],
+  },
+  dinner: {
+    items: [
+      { name: 'Prato principal', baseQtyAdult: 1, baseQtyChild: 0.6, unit: 'porcao', defaultPrice: 28, category: 'outros' },
+      { name: 'Acompanhamento', baseQtyAdult: 1, baseQtyChild: 0.7, unit: 'porcao', defaultPrice: 10, category: 'acompanhamentos' },
+      { name: 'Bebida', baseQtyAdult: 0.5, baseQtyChild: 0.5, unit: 'L', defaultPrice: 7, category: 'bebidas' },
+      { name: 'Sobremesa', baseQtyAdult: 1, baseQtyChild: 1, unit: 'un', defaultPrice: 8, category: 'outros' },
+    ],
+  },
+  trip: {
+    items: [
+      { name: 'Alimentacao', baseQtyAdult: 1, baseQtyChild: 0.7, unit: 'dia', defaultPrice: 45, category: 'outros' },
+      { name: 'Bebidas', baseQtyAdult: 1, baseQtyChild: 0.7, unit: 'dia', defaultPrice: 12, category: 'bebidas' },
+      { name: 'Extras', baseQtyAdult: 1, baseQtyChild: 0.5, unit: 'cota', defaultPrice: 25, category: 'outros' },
+    ],
+  },
+  corporate: {
+    items: [
+      { name: 'Salgados', baseQtyAdult: 10, baseQtyChild: 6, unit: 'un', defaultPrice: 0.9, category: 'outros' },
+      { name: 'Doces', baseQtyAdult: 3, baseQtyChild: 5, unit: 'un', defaultPrice: 1.2, category: 'outros' },
+      { name: 'Refrigerante', baseQtyAdult: 0.4, baseQtyChild: 0.5, unit: 'L', defaultPrice: 6, category: 'bebidas' },
+      { name: 'Agua', baseQtyAdult: 0.4, baseQtyChild: 0.4, unit: 'L', defaultPrice: 3, category: 'bebidas' },
+    ],
+  },
+  shower: {
+    items: [
+      { name: 'Salgados', baseQtyAdult: 9, baseQtyChild: 7, unit: 'un', defaultPrice: 0.8, category: 'outros' },
+      { name: 'Docinhos', baseQtyAdult: 4, baseQtyChild: 6, unit: 'un', defaultPrice: 1.2, category: 'outros' },
+      { name: 'Bolo', baseQtyAdult: 1, baseQtyChild: 1, unit: 'fatia', defaultPrice: 8, category: 'outros' },
+      { name: 'Bebidas', baseQtyAdult: 0.5, baseQtyChild: 0.6, unit: 'L', defaultPrice: 7, category: 'bebidas' },
+    ],
+  },
+  custom: {
+    items: [
+      { name: 'Comida', baseQtyAdult: 1, baseQtyChild: 0.6, unit: 'porcao', defaultPrice: 25, category: 'outros' },
+      { name: 'Bebida', baseQtyAdult: 0.6, baseQtyChild: 0.5, unit: 'L', defaultPrice: 7, category: 'bebidas' },
+      { name: 'Extras', baseQtyAdult: 1, baseQtyChild: 0.5, unit: 'cota', defaultPrice: 12, category: 'outros' },
     ],
   },
 };
@@ -183,6 +268,7 @@ const Leisure: React.FC = () => {
   // Calculator states
   const [eventType, setEventType] = useState<EventType>('bbq');
   const [duration, setDuration] = useState<Duration>('4h');
+  const [consumptionMode, setConsumptionMode] = useState<ConsumptionMode>('standard');
   const [adultsCount, setAdultsCount] = useState(10);
   const [childrenCount, setChildrenCount] = useState(5);
   const [calculatedItems, setCalculatedItems] = useState<CalculatedItem[]>([]);
@@ -190,6 +276,8 @@ const Leisure: React.FC = () => {
   const [eventDate, setEventDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [eventTime, setEventTime] = useState('12:00');
   const [addToCalendar, setAddToCalendar] = useState(false);
+  const [showAdvancedOptions, setShowAdvancedOptions] = useState(false);
+  const [createFinancialExpense, setCreateFinancialExpense] = useState(true);
   const [showCalculatorResult, setShowCalculatorResult] = useState(false);
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [showSaveConfirmation, setShowSaveConfirmation] = useState(false);
@@ -355,7 +443,8 @@ const Leisure: React.FC = () => {
 
   // Calculator functions
   const calculateItems = () => {
-    const multiplier = DURATION_MULTIPLIER[duration];
+    const multiplier =
+      DURATION_MULTIPLIER[duration] * CONSUMPTION_MULTIPLIER[consumptionMode];
     const baseItems = BASE_CONSUMPTION[eventType].items;
     
     const items: CalculatedItem[] = baseItems.map((item) => {
@@ -463,50 +552,51 @@ const Leisure: React.FC = () => {
         await supabase.from('event_items').insert(itemsToInsert);
       }
 
-      // Find or create an events/leisure category for the transaction
-      let categoryId: string | null = null;
-      const { data: existingCategories } = await supabase
-        .from('categories')
-        .select('id')
-        .eq('user_id', user.id)
-        .or('name.ilike.%festômetro%,name.ilike.%lazer%,name.ilike.%festa%')
-        .limit(1);
-
-      if (existingCategories && existingCategories.length > 0) {
-        categoryId = existingCategories[0].id;
-      } else {
-        // Create a new events category
-        const { data: newCategory } = await supabase
-          .from('categories')
-          .insert({
-            user_id: user.id,
-            workspace_id: currentWorkspace.id,
-            name: 'Eventos',
-            type: 'expense',
-            color: '#f59e0b',
-            icon: 'PartyPopper',
-          })
-          .select()
-          .single();
-        
-        if (newCategory) {
-          categoryId = newCategory.id;
-        }
-      }
-
-      // Create the transaction as expense
       const transactionDescription = `${eventLabel}: ${adultsCount} adultos, ${childrenCount} crianças`;
-      await supabase.from('transactions').insert({
-        user_id: user.id,
-        workspace_id: currentWorkspace.id,
-        title: finalName,
-        amount: calculatedTotal,
-        type: 'expense',
-        date: eventDate || format(new Date(), 'yyyy-MM-dd'),
-        category_id: categoryId,
-        notes: transactionDescription,
-        status: 'pending',
-      });
+
+      if (createFinancialExpense) {
+        // Find or create an events/leisure category for the transaction.
+        let categoryId: string | null = null;
+        const { data: existingCategories } = await supabase
+          .from('categories')
+          .select('id')
+          .eq('user_id', user.id)
+          .or('name.ilike.%festômetro%,name.ilike.%lazer%,name.ilike.%festa%')
+          .limit(1);
+
+        if (existingCategories && existingCategories.length > 0) {
+          categoryId = existingCategories[0].id;
+        } else {
+          const { data: newCategory } = await supabase
+            .from('categories')
+            .insert({
+              user_id: user.id,
+              workspace_id: currentWorkspace.id,
+              name: 'Eventos',
+              type: 'expense',
+              color: '#f59e0b',
+              icon: 'PartyPopper',
+            })
+            .select()
+            .single();
+
+          if (newCategory) {
+            categoryId = newCategory.id;
+          }
+        }
+
+        await supabase.from('transactions').insert({
+          user_id: user.id,
+          workspace_id: currentWorkspace.id,
+          title: finalName,
+          amount: calculatedTotal,
+          type: 'expense',
+          date: eventDate || format(new Date(), 'yyyy-MM-dd'),
+          category_id: categoryId,
+          notes: transactionDescription,
+          status: 'pending',
+        });
+      }
 
       // Add to Google Calendar if requested (using the toggle state, not the parameter)
       if (addToCalendar && eventDate) {
@@ -572,8 +662,11 @@ const Leisure: React.FC = () => {
     setAdultsCount(10);
     setChildrenCount(5);
     setEventType('bbq');
-    setDuration('4h');
+      setDuration('4h');
+    setConsumptionMode('standard');
     setChildrenPercentage(50);
+    setCreateFinancialExpense(true);
+    setShowAdvancedOptions(false);
     setEditingIndex(null);
     setShowAddItemForm(false);
     setNewItemName('');
@@ -783,18 +876,10 @@ const Leisure: React.FC = () => {
       {/* Header */}
       <PageIntro
         eyebrow="Festometro"
-        title="Planejamento e rateio de eventos"
-        description="Uma área prática para estimar consumo, organizar participantes e acompanhar custos do começo ao fim."
+        title="Planeje, compre e divida sem confusao"
+        description="Monte o evento, veja o que comprar e organize quanto cada participante precisa pagar."
       >
-        <div className="grid gap-3 lg:grid-cols-[1fr_auto] lg:items-center">
-          <div>
-            <h1 className="text-2xl font-bold">Festometro</h1>
-            <p className="text-sm text-muted-foreground">Calcule, salve e acompanhe cada evento</p>
-          </div>
-        </div>
-        
-        {/* View Mode Tabs */}
-        <div className="flex gap-2 mt-4 rounded-xl bg-muted p-1">
+        <div className="flex gap-2 rounded-xl bg-muted p-1">
           <button
             onClick={() => setViewMode('calculator')}
             className={`flex-1 py-2 px-4 rounded-lg font-medium transition-all flex items-center justify-center gap-2 ${
@@ -804,7 +889,7 @@ const Leisure: React.FC = () => {
             }`}
           >
             <Calculator className="w-4 h-4" />
-            Calculadora
+              Calculadora
           </button>
           <button
             onClick={() => setViewMode('events')}
@@ -815,7 +900,10 @@ const Leisure: React.FC = () => {
             }`}
           >
             <PartyPopper className="w-4 h-4" />
-            Eventos ({events.length})
+            Eventos
+            <span className="rounded-full bg-background/80 px-2 py-0.5 text-xs">
+              {events.length}
+            </span>
           </button>
         </div>
       </PageIntro>
@@ -825,83 +913,24 @@ const Leisure: React.FC = () => {
           // Calculator View
           !showCalculatorResult ? (
             <div className="space-y-6">
-              {/* Event Name */}
-              <div>
-                <label className="block text-sm font-medium text-muted-foreground mb-2">
-                  Nome do Evento (opcional)
-                </label>
-                <input
-                  type="text"
-                  value={eventName}
-                  onChange={(e) => setEventName(e.target.value)}
-                  placeholder="Ex: Churrasco de Fim de Ano"
-                  className="w-full px-4 py-4 rounded-xl bg-card border border-border text-foreground placeholder:text-muted-foreground"
-                />
+              <div className="rounded-2xl border border-primary/20 bg-primary/5 p-4">
+                <p className="text-sm font-semibold">Monte a estimativa em poucos passos</p>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Escolha o evento, informe as pessoas e selecione o perfil de consumo. Detalhes ficam nas opcoes avancadas.
+                </p>
               </div>
 
-              {/* Event Date */}
-              <div>
-                <label className="block text-sm font-medium text-muted-foreground mb-2">
-                  Data do Evento
-                </label>
-                <input
-                  type="date"
-                  value={eventDate}
-                  onChange={(e) => setEventDate(e.target.value)}
-                  className="w-full px-4 py-4 rounded-xl bg-card border border-border text-foreground"
-                />
-              </div>
-
-              {/* Event Time */}
-              <div>
-                <label className="block text-sm font-medium text-muted-foreground mb-2">
-                  Horário do Evento
-                </label>
-                <input
-                  type="time"
-                  value={eventTime}
-                  onChange={(e) => setEventTime(e.target.value)}
-                  className="w-full px-4 py-4 rounded-xl bg-card border border-border text-foreground"
-                />
-              </div>
-
-              {/* Add to Google Calendar Toggle */}
-              <div className="bg-card border border-border rounded-2xl p-4">
-                <label className="flex items-center justify-between cursor-pointer">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-                      <Calendar className="w-5 h-5 text-primary" />
-                    </div>
-                    <div>
-                      <p className="font-medium">Adicionar ao Google Agenda?</p>
-                      <p className="text-sm text-muted-foreground">
-                        Salvar evento na sua agenda
-                      </p>
-                    </div>
-                  </div>
-                  <div 
-                    className={`relative w-12 h-7 rounded-full transition-colors ${addToCalendar ? 'bg-primary' : 'bg-muted'}`}
-                    onClick={() => setAddToCalendar(!addToCalendar)}
-                  >
-                    <div 
-                      className={`absolute top-1 w-5 h-5 rounded-full bg-white shadow transition-transform ${addToCalendar ? 'translate-x-6' : 'translate-x-1'}`} 
-                    />
-                  </div>
-                </label>
-              </div>
-
-              {/* Event Type */}
               <div>
                 <label className="block text-sm font-medium text-muted-foreground mb-3">
                   Tipo de Evento
                 </label>
-                <div className="grid grid-cols-3 gap-2">
+                <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
                   {EVENT_TYPES.map((type) => (
                     <button
                       key={type.id}
                       onClick={() => setEventType(type.id)}
                       className={`
-                        flex flex-col items-center gap-2 p-4 rounded-xl transition-all border
+                        flex min-h-[88px] flex-col items-center justify-center gap-2 rounded-xl border p-3 transition-all
                         ${eventType === type.id
                           ? 'bg-primary/20 border-primary text-primary'
                           : 'bg-muted border-border text-muted-foreground hover:bg-muted/80'
@@ -915,32 +944,6 @@ const Leisure: React.FC = () => {
                 </div>
               </div>
 
-              {/* Duration */}
-              <div>
-                <label className="block text-sm font-medium text-muted-foreground mb-3">
-                  <Clock className="w-4 h-4 inline mr-2" />
-                  Duração
-                </label>
-                <div className="grid grid-cols-3 gap-2">
-                  {DURATIONS.map((dur) => (
-                    <button
-                      key={dur.id}
-                      onClick={() => setDuration(dur.id)}
-                      className={`
-                        py-3 px-4 rounded-xl transition-all border text-sm font-medium
-                        ${duration === dur.id
-                          ? 'bg-primary/20 border-primary text-primary'
-                          : 'bg-muted border-border text-muted-foreground hover:bg-muted/80'
-                        }
-                      `}
-                    >
-                      {dur.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* People Count */}
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="rounded-2xl border border-border bg-card p-4">
                   <div className="mb-4 flex items-center justify-between gap-3">
@@ -1028,41 +1031,51 @@ const Leisure: React.FC = () => {
                 </div>
               </div>
 
-              {/* Children Percentage */}
-              <div className="bg-card border border-border rounded-2xl p-4">
-                <div className="mb-4 flex items-center justify-between gap-3">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-                      <Percent className="w-5 h-5 text-primary" />
-                    </div>
-                    <div>
-                      <p className="font-medium">Percentual Criancas</p>
-                      <p className="text-sm text-muted-foreground">
-                        Criancas pagam {childrenPercentage}% do valor de adulto
-                      </p>
-                    </div>
-                  </div>
-                  <div className="min-w-[4.5rem] rounded-2xl bg-primary/10 px-3 py-2 text-center text-lg font-semibold text-primary">
-                    {childrenPercentage}%
+              <div className="grid gap-4 lg:grid-cols-2">
+                <div>
+                  <label className="mb-3 block text-sm font-medium text-muted-foreground">
+                    <Clock className="mr-2 inline h-4 w-4" />
+                    Duracao
+                  </label>
+                  <div className="grid grid-cols-3 gap-2">
+                    {DURATIONS.map((dur) => (
+                      <button
+                        key={dur.id}
+                        onClick={() => setDuration(dur.id)}
+                        className={`rounded-xl border px-3 py-3 text-sm font-medium transition-all ${
+                          duration === dur.id
+                            ? 'border-primary bg-primary/20 text-primary'
+                            : 'border-border bg-muted text-muted-foreground hover:bg-muted/80'
+                        }`}
+                      >
+                        {dur.label}
+                      </button>
+                    ))}
                   </div>
                 </div>
-                <input
-                  type="range"
-                  min="0"
-                  max="100"
-                  step="10"
-                  value={childrenPercentage}
-                  onChange={(e) => setChildrenPercentage(Number(e.target.value))}
-                  className="w-full accent-primary"
-                />
-                <div className="mt-2 flex justify-between text-xs text-muted-foreground">
-                  <span>0%</span>
-                  <span>50%</span>
-                  <span>100%</span>
+
+                <div>
+                  <label className="mb-3 block text-sm font-medium text-muted-foreground">
+                    Perfil de consumo
+                  </label>
+                  <div className="grid grid-cols-3 gap-2">
+                    {CONSUMPTION_MODES.map((mode) => (
+                      <button
+                        key={mode.id}
+                        onClick={() => setConsumptionMode(mode.id)}
+                        className={`rounded-xl border px-3 py-3 text-sm font-medium transition-all ${
+                          consumptionMode === mode.id
+                            ? 'border-primary bg-primary/20 text-primary'
+                            : 'border-border bg-muted text-muted-foreground hover:bg-muted/80'
+                        }`}
+                      >
+                        {mode.label}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </div>
 
-              {/* Total People Summary */}
               <div className="bg-muted rounded-xl p-4">
                 <div className="flex items-center justify-between">
                   <span className="text-muted-foreground">Total de pessoas</span>
@@ -1070,7 +1083,123 @@ const Leisure: React.FC = () => {
                 </div>
               </div>
 
-              {/* Calculate Button */}
+              <div className="rounded-2xl border border-border bg-card p-4">
+                <button
+                  onClick={() => setShowAdvancedOptions((current) => !current)}
+                  className="flex w-full items-center justify-between text-left"
+                >
+                  <div>
+                    <p className="text-sm font-semibold">Opcoes avancadas</p>
+                    <p className="text-xs text-muted-foreground">
+                      Nome, data, agenda e regra para criancas.
+                    </p>
+                  </div>
+                  <ChevronDown
+                    className={`h-4 w-4 text-muted-foreground transition-transform ${
+                      showAdvancedOptions ? 'rotate-180' : ''
+                    }`}
+                  />
+                </button>
+
+                <AnimatePresence>
+                  {showAdvancedOptions && (
+                    <motion.div
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: 'auto' }}
+                      exit={{ opacity: 0, height: 0 }}
+                      className="mt-4 space-y-4 overflow-hidden"
+                    >
+                      <div>
+                        <label className="mb-2 block text-sm font-medium text-muted-foreground">
+                          Nome do evento
+                        </label>
+                        <input
+                          type="text"
+                          value={eventName}
+                          onChange={(e) => setEventName(e.target.value)}
+                          placeholder="Ex: Churrasco de fim de ano"
+                          className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground placeholder:text-muted-foreground"
+                        />
+                      </div>
+
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        <div>
+                          <label className="mb-2 block text-sm font-medium text-muted-foreground">
+                            Data
+                          </label>
+                          <input
+                            type="date"
+                            value={eventDate}
+                            onChange={(e) => setEventDate(e.target.value)}
+                            className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground"
+                          />
+                        </div>
+                        <div>
+                          <label className="mb-2 block text-sm font-medium text-muted-foreground">
+                            Horario
+                          </label>
+                          <input
+                            type="time"
+                            value={eventTime}
+                            onChange={(e) => setEventTime(e.target.value)}
+                            className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground"
+                          />
+                        </div>
+                      </div>
+
+                      <label className="flex cursor-pointer items-center justify-between gap-3 rounded-xl bg-muted/50 p-3">
+                        <div>
+                          <p className="text-sm font-medium">Adicionar ao Google Agenda</p>
+                          <p className="text-xs text-muted-foreground">
+                            Abre a agenda quando o evento for salvo.
+                          </p>
+                        </div>
+                        <span
+                          className={`relative h-7 w-12 rounded-full transition-colors ${
+                            addToCalendar ? 'bg-primary' : 'bg-muted'
+                          }`}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={addToCalendar}
+                            onChange={(e) => setAddToCalendar(e.target.checked)}
+                            className="sr-only"
+                          />
+                          <span
+                            className={`absolute top-1 h-5 w-5 rounded-full bg-white shadow transition-transform ${
+                              addToCalendar ? 'translate-x-6' : 'translate-x-1'
+                            }`}
+                          />
+                        </span>
+                      </label>
+
+                      <div>
+                        <div className="mb-3 flex items-center justify-between gap-3">
+                          <div>
+                            <p className="text-sm font-medium">Percentual de criancas</p>
+                            <p className="text-xs text-muted-foreground">
+                              Criancas pagam {childrenPercentage}% do valor adulto.
+                            </p>
+                          </div>
+                          <div className="min-w-[4rem] rounded-xl bg-primary/10 px-3 py-2 text-center text-sm font-semibold text-primary">
+                            {childrenPercentage}%
+                          </div>
+                        </div>
+                        <input
+                          type="range"
+                          min="0"
+                          max="100"
+                          step="10"
+                          value={childrenPercentage}
+                          onChange={(e) => setChildrenPercentage(Number(e.target.value))}
+                          className="w-full accent-primary"
+                        />
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+
               <button
                 onClick={calculateItems}
                 disabled={adultsCount + childrenCount === 0}
@@ -1101,7 +1230,7 @@ const Leisure: React.FC = () => {
                   </span>
                 </div>
                 <div className="text-sm text-muted-foreground">
-                  {EVENT_TYPES.find((e) => e.id === eventType)?.label} • {DURATIONS.find((d) => d.id === duration)?.label}
+                  {EVENT_TYPES.find((e) => e.id === eventType)?.label} • {DURATIONS.find((d) => d.id === duration)?.label} • {CONSUMPTION_MODES.find((mode) => mode.id === consumptionMode)?.label}
                 </div>
               </div>
 
@@ -1834,6 +1963,32 @@ const Leisure: React.FC = () => {
                   </p>
                 )}
               </div>
+
+              <label className="flex cursor-pointer items-center justify-between gap-3 rounded-xl border border-border bg-muted/30 p-4">
+                <div>
+                  <p className="text-sm font-medium">Criar despesa no financeiro?</p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    O evento sera salvo de qualquer forma. Voce pode ligar ou desligar antes de confirmar.
+                  </p>
+                </div>
+                <span
+                  className={`relative h-7 w-12 shrink-0 rounded-full transition-colors ${
+                    createFinancialExpense ? 'bg-primary' : 'bg-muted'
+                  }`}
+                >
+                  <input
+                    type="checkbox"
+                    checked={createFinancialExpense}
+                    onChange={(e) => setCreateFinancialExpense(e.target.checked)}
+                    className="sr-only"
+                  />
+                  <span
+                    className={`absolute top-1 h-5 w-5 rounded-full bg-white shadow transition-transform ${
+                      createFinancialExpense ? 'translate-x-6' : 'translate-x-1'
+                    }`}
+                  />
+                </span>
+              </label>
 
               <div className="space-y-3">
                 <button

@@ -2,7 +2,6 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import {
   ArrowRight,
-  Clock3,
   Loader2,
   Plus,
   TrendingDown,
@@ -79,6 +78,21 @@ const Dashboard: React.FC = () => {
     [monthlyTransactions]
   );
 
+  const pendingExpenseTotal = useMemo(
+    () =>
+      pendingExpenses.reduce(
+        (total, transaction) => total + transaction.amount,
+        0
+      ),
+    [pendingExpenses]
+  );
+
+  const pendingIncomeTotal = useMemo(
+    () =>
+      pendingIncome.reduce((total, transaction) => total + transaction.amount, 0),
+    [pendingIncome]
+  );
+
   const topCategory = useMemo(() => {
     const totals = monthlyTransactions
       .filter(
@@ -117,30 +131,78 @@ const Dashboard: React.FC = () => {
     );
   };
 
+  const nextStep = useMemo(() => {
+    if (monthlyTransactions.length === 0) {
+      return {
+        label: 'Comece pelo basico',
+        title: 'Cadastre a primeira receita ou despesa.',
+        description:
+          'Com poucos lancamentos o app ja mostra saldo, pendencias e o que precisa de atencao.',
+      };
+    }
+
+    if (summary.completedBalance < 0) {
+      return {
+        label: 'Atencao ao saldo',
+        title: `Seu saldo confirmado esta negativo em ${formatCurrency(Math.abs(summary.completedBalance))}.`,
+        description:
+          'Revise despesas, pendencias e entradas ainda nao confirmadas antes de assumir novos compromissos.',
+      };
+    }
+
+    if (pendingExpenses.length > 0) {
+      return {
+        label: 'Proxima acao',
+        title: `Voce tem ${formatCurrency(pendingExpenseTotal)} em despesas pendentes.`,
+        description:
+          'Atualize o que ja foi pago para manter o calculo do mes confiavel.',
+      };
+    }
+
+    if (pendingIncome.length > 0) {
+      return {
+        label: 'Acompanhe entradas',
+        title: `Ainda ha ${formatCurrency(pendingIncomeTotal)} para receber.`,
+        description:
+          'Confirme as entradas quando cairem para enxergar melhor a grana disponivel.',
+      };
+    }
+
+    return {
+      label: 'Mes em ordem',
+      title: 'Seus principais lancamentos ja estao atualizados.',
+      description:
+        'Mantenha o habito de registrar mudancas para nao perder a visao real do mes.',
+    };
+  }, [
+    monthlyTransactions.length,
+    pendingExpenseTotal,
+    pendingExpenses.length,
+    pendingIncome.length,
+    pendingIncomeTotal,
+    summary.completedBalance,
+  ]);
+
   const quickCards = [
     {
-      label: 'Saldo livre',
+      label: 'Saldo confirmado',
       value: formatCurrency(summary.completedBalance),
-      tone:
+      accent:
         summary.completedBalance >= 0
-          ? 'border-primary/20 bg-primary/10 text-primary'
-          : 'border-expense/20 bg-expense/10 text-expense',
+          ? 'text-income bg-income/10'
+          : 'text-expense bg-expense/10',
       icon: Wallet,
     },
     {
       label: 'A pagar',
-      value: formatCurrency(
-        pendingExpenses.reduce((total, transaction) => total + transaction.amount, 0)
-      ),
-      tone: 'border-expense/20 bg-expense/10 text-expense',
+      value: formatCurrency(pendingExpenseTotal),
+      accent: 'text-expense bg-expense/10',
       icon: TrendingDown,
     },
     {
       label: 'A receber',
-      value: formatCurrency(
-        pendingIncome.reduce((total, transaction) => total + transaction.amount, 0)
-      ),
-      tone: 'border-income/20 bg-income/10 text-income',
+      value: formatCurrency(pendingIncomeTotal),
+      accent: 'text-income bg-income/10',
       icon: TrendingUp,
     },
   ];
@@ -159,28 +221,28 @@ const Dashboard: React.FC = () => {
   return (
     <div className="min-h-screen bg-background pb-[calc(var(--app-bottom-nav-height,0px)+1rem+env(safe-area-inset-bottom,0px))] md:pl-[var(--app-sidebar-width,88px)]">
       <header className="sticky top-0 z-30 border-b border-border/50 bg-background/90 px-4 py-4 backdrop-blur-xl sm:px-6 lg:px-8">
-        <div className="mx-auto max-w-7xl rounded-[28px] border border-border/60 bg-card p-5 shadow-[var(--shadow-sm)]">
+        <div className="mx-auto max-w-7xl rounded-2xl border border-border/60 bg-card/90 p-4 shadow-[var(--shadow-sm)]">
           <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
             <div className="max-w-xl">
-              <p className="mb-2 text-xs font-semibold uppercase tracking-[0.24em] text-primary">
-                Visao geral
+              <p className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                Inicio
               </p>
-              <h1 className="text-2xl font-semibold">Seu financeiro em um relance</h1>
+              <h1 className="text-2xl font-semibold">Como esta sua grana agora</h1>
               <p className="mt-1 text-sm text-muted-foreground">
-                Menos informacao solta, mais clareza para decidir o que pagar, receber e acompanhar.
+                O essencial do mes para entender saldo, pendencias e proximo passo.
               </p>
             </div>
 
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
               <button
                 onClick={() => handleAddTransaction('income')}
-                className="touch-btn rounded-2xl border border-income/20 bg-income/10 px-4 py-3 text-sm font-medium text-income"
+                className="touch-btn rounded-xl border border-border bg-background px-4 py-3 text-sm font-medium text-foreground transition-colors hover:bg-muted/50"
               >
                 Nova receita
               </button>
               <button
                 onClick={() => handleAddTransaction('expense')}
-                className="touch-btn rounded-2xl border border-expense/20 bg-expense/10 px-4 py-3 text-sm font-medium text-expense"
+                className="touch-btn rounded-xl bg-primary px-4 py-3 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90"
               >
                 Nova despesa
               </button>
@@ -200,47 +262,52 @@ const Dashboard: React.FC = () => {
           {quickCards.map((card) => (
             <div
               key={card.label}
-              className={`rounded-[24px] border p-5 ${card.tone}`}
+              className="rounded-2xl border border-border bg-card p-5"
             >
               <div className="flex items-center justify-between">
-                <p className="text-sm font-medium text-foreground">{card.label}</p>
-                <card.icon className="h-5 w-5" />
+                <p className="text-sm font-medium text-muted-foreground">{card.label}</p>
+                <span className={`rounded-full p-2 ${card.accent}`}>
+                  <card.icon className="h-4 w-4" />
+                </span>
               </div>
-              <p className="mt-4 text-2xl font-semibold">{card.value}</p>
+              <p className="mt-4 text-2xl font-semibold text-foreground">{card.value}</p>
             </div>
           ))}
         </section>
 
-        <section className="grid gap-4 lg:grid-cols-[1.5fr_1fr]">
+        <section className="grid gap-4 lg:grid-cols-[1.35fr_1fr]">
           <motion.div
             initial={{ opacity: 0, y: 14 }}
             animate={{ opacity: 1, y: 0 }}
-            className="rounded-[28px] border border-border bg-card p-6"
+            className="rounded-2xl border border-border bg-card p-6"
           >
             <div className="flex items-center justify-between gap-4">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                  Foco do mes
+                  {nextStep.label}
                 </p>
-                <h2 className="mt-1 text-xl font-semibold">O que pede atencao agora</h2>
+                <h2 className="mt-1 text-xl font-semibold">{nextStep.title}</h2>
+                <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
+                  {nextStep.description}
+                </p>
               </div>
-              <Clock3 className="h-5 w-5 text-primary" />
             </div>
 
-            <div className="mt-5 grid gap-3 sm:grid-cols-2">
-              <div className="rounded-2xl bg-muted/60 p-4">
-                <p className="text-sm font-medium">Pendencias abertas</p>
+            <div className="mt-5 grid gap-3 sm:grid-cols-3">
+              <div className="rounded-xl bg-muted/40 p-4">
+                <p className="text-sm font-medium text-muted-foreground">Pendencias</p>
                 <p className="mt-2 text-2xl font-semibold">{summary.pendingCount}</p>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  lancamentos aguardando confirmacao.
-                </p>
               </div>
 
-              <div className="rounded-2xl bg-muted/60 p-4">
-                <p className="text-sm font-medium">Movimento do mes</p>
+              <div className="rounded-xl bg-muted/40 p-4">
+                <p className="text-sm font-medium text-muted-foreground">Lancamentos</p>
                 <p className="mt-2 text-2xl font-semibold">{monthlyTransactions.length}</p>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  registros usados para montar o panorama atual.
+              </div>
+
+              <div className="rounded-xl bg-muted/40 p-4">
+                <p className="text-sm font-medium text-muted-foreground">Projetado</p>
+                <p className="mt-2 text-2xl font-semibold">
+                  {formatCurrency(summary.balance)}
                 </p>
               </div>
             </div>
@@ -250,9 +317,9 @@ const Dashboard: React.FC = () => {
               className="mt-5 flex items-center justify-between rounded-2xl border border-border/70 px-4 py-4 transition-colors hover:bg-muted/40"
             >
               <div>
-                <p className="text-sm font-medium">Abrir financas em Kanban</p>
+                <p className="text-sm font-medium">Ver detalhes do mes</p>
                 <p className="text-sm text-muted-foreground">
-                  veja a fila de contas e arrume o fluxo sem poluicao visual.
+                  Abra a lista completa para ajustar pagamentos, recebimentos e recorrencias.
                 </p>
               </div>
               <ArrowRight className="h-4 w-4 text-muted-foreground" />
@@ -263,23 +330,15 @@ const Dashboard: React.FC = () => {
             initial={{ opacity: 0, y: 14 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.05 }}
-            className="rounded-[28px] border border-border bg-card p-6"
+            className="rounded-2xl border border-border bg-card p-6"
           >
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-              Destaque
+              Leitura discreta
             </p>
-            <h2 className="mt-1 text-xl font-semibold">Leitura objetiva</h2>
+            <h2 className="mt-1 text-xl font-semibold">Para onde a grana foi</h2>
 
-            <div className="mt-5 space-y-4">
-              <div>
-                <p className="text-sm text-muted-foreground">Saldo projetado</p>
-                <p className="mt-1 text-2xl font-semibold">
-                  {formatCurrency(summary.balance)}
-                </p>
-              </div>
-
-              <div className="rounded-2xl border border-border/70 bg-muted/40 p-4">
-                <p className="text-sm font-medium">Maior peso do mes</p>
+            <div className="mt-5 rounded-xl border border-border/70 bg-muted/30 p-4">
+              <p className="text-sm font-medium">Maior peso do mes</p>
                 {topCategory?.category ? (
                   <>
                     <p className="mt-2 text-lg font-semibold">
@@ -291,24 +350,23 @@ const Dashboard: React.FC = () => {
                   </>
                 ) : (
                   <p className="mt-2 text-sm text-muted-foreground">
-                    Assim que houver despesas concluidas, o app destaca a categoria mais pesada.
+                    Quando houver despesas concluidas, o app destaca a categoria mais pesada.
                   </p>
                 )}
-              </div>
             </div>
           </motion.div>
         </section>
 
-        <section className="rounded-[28px] border border-border bg-card p-6">
+        <section className="rounded-2xl border border-border bg-card p-6">
           <div className="mb-4 flex items-center justify-between">
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
                 Recentes
               </p>
-              <h2 className="mt-1 text-xl font-semibold">Ultimos lancamentos</h2>
+              <h2 className="mt-1 text-xl font-semibold">Ultimos movimentos</h2>
             </div>
             <Link to="/transactions" className="text-sm font-medium text-primary">
-              Ver Kanban
+              Ver todos
             </Link>
           </div>
 
