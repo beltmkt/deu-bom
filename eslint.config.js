@@ -13,6 +13,7 @@ export default tseslint.config(
       ".gemini",
       ".github/skills",
       "vite.config.ts",
+      "vite.config.ts.timestamp-*.mjs",
     ],
   },
   {

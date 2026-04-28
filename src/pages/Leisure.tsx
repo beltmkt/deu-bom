@@ -247,7 +247,8 @@ const Leisure: React.FC = () => {
   const [loading, setLoading] = useState(false);
   
   // View mode: 'calculator' | 'events'
-  const [viewMode, setViewMode] = useState<'calculator' | 'events'>('calculator');
+  const [viewMode, setViewMode] = useState<'calculator' | 'events'>('events');
+  const [showCreateEventModal, setShowCreateEventModal] = useState(false);
   
   // Form states
   const [showItemForm, setShowItemForm] = useState(false);
@@ -317,7 +318,6 @@ const Leisure: React.FC = () => {
       
       if (formattedEvents.length > 0 && !selectedEvent) {
         setSelectedEvent(formattedEvents[0]);
-        setViewMode((current) => (current === 'calculator' ? 'events' : current));
       }
     } catch (error) {
       console.error('Failed to load events:', error);
@@ -614,6 +614,7 @@ const Leisure: React.FC = () => {
       
       // Reset calculator
       resetCalculator();
+      setShowCreateEventModal(false);
       setShowSaveConfirmation(false);
       setSavedEventData(null);
       
@@ -677,6 +678,7 @@ const Leisure: React.FC = () => {
 
   const cancelCalculation = () => {
     resetCalculator();
+    setShowCreateEventModal(false);
     setViewMode('events');
   };
 
@@ -854,6 +856,32 @@ const Leisure: React.FC = () => {
   const totalBudget = items.reduce((sum, item) => sum + (item.quantity * item.unitPrice), 0);
   const totalPaid = participants.filter(p => p.paid).reduce((sum, p) => sum + p.amountDue, 0);
   const totalPending = participants.filter(p => !p.paid).reduce((sum, p) => sum + p.amountDue, 0);
+  const eventsTotalBudget = events.reduce((sum, event) => sum + event.totalBudget, 0);
+  const eventsPeopleCount = events.reduce(
+    (sum, event) => sum + event.adultsCount + event.childrenCount,
+    0
+  );
+  const todayDate = format(new Date(), 'yyyy-MM-dd');
+  const eventColumns = useMemo(
+    () => [
+      {
+        id: 'upcoming',
+        title: 'Proximos',
+        events: events.filter((event) => event.eventDate && event.eventDate >= todayDate),
+      },
+      {
+        id: 'planning',
+        title: 'Sem data',
+        events: events.filter((event) => !event.eventDate),
+      },
+      {
+        id: 'past',
+        title: 'Finalizados',
+        events: events.filter((event) => event.eventDate && event.eventDate < todayDate),
+      },
+    ],
+    [events, todayDate]
+  );
 
   const itemCategories = [
     { value: 'carnes', label: 'Carnes' },
@@ -876,35 +904,33 @@ const Leisure: React.FC = () => {
       {/* Header */}
       <PageIntro
         eyebrow="Festometro"
-        title="Planeje, compre e divida sem confusao"
-        description="Monte o evento, veja o que comprar e organize quanto cada participante precisa pagar."
+        title="Eventos e rateios"
+        description="Acompanhe eventos criados, valores previstos, participantes e pagamentos sem abrir a criacao de cara."
+        actions={
+          <button
+            onClick={() => {
+              resetCalculator();
+              setShowCreateEventModal(true);
+            }}
+            className="rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground"
+          >
+            Novo evento
+          </button>
+        }
       >
-        <div className="flex gap-2 rounded-xl bg-muted p-1">
-          <button
-            onClick={() => setViewMode('calculator')}
-            className={`flex-1 py-2 px-4 rounded-lg font-medium transition-all flex items-center justify-center gap-2 ${
-              viewMode === 'calculator'
-                ? 'bg-card shadow-md text-foreground'
-                : 'text-muted-foreground'
-            }`}
-          >
-            <Calculator className="w-4 h-4" />
-              Calculadora
-          </button>
-          <button
-            onClick={() => setViewMode('events')}
-            className={`flex-1 py-2 px-4 rounded-lg font-medium transition-all flex items-center justify-center gap-2 ${
-              viewMode === 'events'
-                ? 'bg-card shadow-md text-foreground'
-                : 'text-muted-foreground'
-            }`}
-          >
-            <PartyPopper className="w-4 h-4" />
-            Eventos
-            <span className="rounded-full bg-background/80 px-2 py-0.5 text-xs">
-              {events.length}
-            </span>
-          </button>
+        <div className="grid gap-2 sm:grid-cols-3">
+          <div className="rounded-xl border border-border bg-background/70 px-3 py-2">
+            <p className="text-xs text-muted-foreground">Eventos</p>
+            <p className="mt-1 text-lg font-semibold">{events.length}</p>
+          </div>
+          <div className="rounded-xl border border-border bg-background/70 px-3 py-2">
+            <p className="text-xs text-muted-foreground">Pessoas</p>
+            <p className="mt-1 text-lg font-semibold">{eventsPeopleCount}</p>
+          </div>
+          <div className="rounded-xl border border-border bg-background/70 px-3 py-2">
+            <p className="text-xs text-muted-foreground">Previsto</p>
+            <p className="mt-1 text-lg font-semibold">{formatCurrency(eventsTotalBudget)}</p>
+          </div>
         </div>
       </PageIntro>
 
@@ -913,58 +939,58 @@ const Leisure: React.FC = () => {
           // Calculator View
           !showCalculatorResult ? (
             <div className="space-y-6">
-              <div className="rounded-2xl border border-primary/20 bg-primary/5 p-4">
-                <p className="text-sm font-semibold">Monte a estimativa em poucos passos</p>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  Escolha o evento, informe as pessoas e selecione o perfil de consumo. Detalhes ficam nas opcoes avancadas.
+              <div className="flex items-center justify-between gap-3">
+                <button
+                  onClick={() => setViewMode('events')}
+                  className="text-sm font-medium text-primary"
+                >
+                  Voltar para eventos
+                </button>
+                <span className="rounded-full bg-muted px-3 py-1 text-xs text-muted-foreground">
+                  Novo evento
+                </span>
+              </div>
+
+              <div className="rounded-2xl border border-border bg-card p-4">
+                <label className="mb-2 block text-sm font-medium text-muted-foreground">
+                  Tipo de evento
+                </label>
+                <select
+                  value={eventType}
+                  onChange={(event) => setEventType(event.target.value as EventType)}
+                  className="h-12 w-full rounded-xl border border-border bg-background px-4 text-sm font-medium text-foreground"
+                >
+                  {EVENT_TYPES.map((type) => (
+                    <option key={type.id} value={type.id}>
+                      {type.label}
+                    </option>
+                  ))}
+                </select>
+                <p className="mt-2 text-xs text-muted-foreground">
+                  Os itens e quantidades sao sugeridos a partir desse tipo.
                 </p>
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-muted-foreground mb-3">
-                  Tipo de Evento
-                </label>
-                <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
-                  {EVENT_TYPES.map((type) => (
-                    <button
-                      key={type.id}
-                      onClick={() => setEventType(type.id)}
-                      className={`
-                        flex min-h-[88px] flex-col items-center justify-center gap-2 rounded-xl border p-3 transition-all
-                        ${eventType === type.id
-                          ? 'bg-primary/20 border-primary text-primary'
-                          : 'bg-muted border-border text-muted-foreground hover:bg-muted/80'
-                        }
-                      `}
-                    >
-                      <type.icon className="w-6 h-6" />
-                      <span className="text-xs text-center font-medium">{type.label}</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div className="grid gap-4 md:grid-cols-2">
-                <div className="rounded-2xl border border-border bg-card p-4">
-                  <div className="mb-4 flex items-center justify-between gap-3">
+              <div className="grid gap-3 md:grid-cols-2">
+                <div className="rounded-2xl border border-border bg-card p-3">
+                  <div className="mb-3 flex items-center justify-between gap-3">
                     <div className="flex items-center gap-2">
-                      <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+                      <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10 text-primary">
                         <User className="h-4 w-4" />
                       </div>
                       <div>
                         <p className="text-sm font-medium">Adultos</p>
-                        <p className="text-xs text-muted-foreground">Pagam valor integral</p>
                       </div>
                     </div>
-                    <div className="min-w-[3rem] rounded-2xl bg-muted px-3 py-2 text-center text-2xl font-bold tabular-nums">
+                    <div className="min-w-[3rem] rounded-xl bg-muted px-3 py-1.5 text-center text-xl font-bold tabular-nums">
                       {adultsCount}
                     </div>
                   </div>
-                  <div className="grid grid-cols-[52px_1fr_52px] gap-3 sm:grid-cols-[56px_1fr_56px]">
+                  <div className="grid grid-cols-[44px_1fr_44px] gap-2">
                     <button
                       type="button"
                       onClick={() => setAdultsCount(Math.max(0, adultsCount - 1))}
-                      className="flex h-12 items-center justify-center rounded-2xl border border-border bg-muted text-foreground transition-colors hover:bg-muted/80 active:scale-[0.98] sm:h-14"
+                      className="flex h-10 items-center justify-center rounded-xl border border-border bg-muted text-foreground transition-colors hover:bg-muted/80 active:scale-[0.98]"
                       aria-label="Diminuir adultos"
                     >
                       <Minus className="h-4 w-4" />
@@ -975,38 +1001,37 @@ const Leisure: React.FC = () => {
                       onChange={(e) =>
                         setAdultsCount(Math.max(0, Number.parseInt(e.target.value, 10) || 0))
                       }
-                      className="h-12 rounded-2xl border border-border bg-background px-4 text-center text-xl font-semibold tabular-nums outline-none transition-colors focus:border-primary sm:h-14"
+                      className="h-10 rounded-xl border border-border bg-background px-4 text-center text-lg font-semibold tabular-nums outline-none transition-colors focus:border-primary"
                     />
                     <button
                       type="button"
                       onClick={() => setAdultsCount(adultsCount + 1)}
-                      className="flex h-12 items-center justify-center rounded-2xl border border-primary/20 bg-primary/10 text-primary transition-colors hover:bg-primary/15 active:scale-[0.98] sm:h-14"
+                      className="flex h-10 items-center justify-center rounded-xl border border-primary/20 bg-primary/10 text-primary transition-colors hover:bg-primary/15 active:scale-[0.98]"
                       aria-label="Aumentar adultos"
                     >
                       <Plus className="h-4 w-4" />
                     </button>
                   </div>
                 </div>
-                <div className="rounded-2xl border border-border bg-card p-4">
-                  <div className="mb-4 flex items-center justify-between gap-3">
+                <div className="rounded-2xl border border-border bg-card p-3">
+                  <div className="mb-3 flex items-center justify-between gap-3">
                     <div className="flex items-center gap-2">
-                      <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-warning/10 text-warning">
+                      <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-warning/10 text-warning">
                         <Baby className="h-4 w-4" />
                       </div>
                       <div>
                         <p className="text-sm font-medium">Criancas</p>
-                        <p className="text-xs text-muted-foreground">Rateio infantil separado</p>
                       </div>
                     </div>
-                    <div className="min-w-[3rem] rounded-2xl bg-muted px-3 py-2 text-center text-2xl font-bold tabular-nums">
+                    <div className="min-w-[3rem] rounded-xl bg-muted px-3 py-1.5 text-center text-xl font-bold tabular-nums">
                       {childrenCount}
                     </div>
                   </div>
-                  <div className="grid grid-cols-[52px_1fr_52px] gap-3 sm:grid-cols-[56px_1fr_56px]">
+                  <div className="grid grid-cols-[44px_1fr_44px] gap-2">
                     <button
                       type="button"
                       onClick={() => setChildrenCount(Math.max(0, childrenCount - 1))}
-                      className="flex h-12 items-center justify-center rounded-2xl border border-border bg-muted text-foreground transition-colors hover:bg-muted/80 active:scale-[0.98] sm:h-14"
+                      className="flex h-10 items-center justify-center rounded-xl border border-border bg-muted text-foreground transition-colors hover:bg-muted/80 active:scale-[0.98]"
                       aria-label="Diminuir criancas"
                     >
                       <Minus className="h-4 w-4" />
@@ -1017,12 +1042,12 @@ const Leisure: React.FC = () => {
                       onChange={(e) =>
                         setChildrenCount(Math.max(0, Number.parseInt(e.target.value, 10) || 0))
                       }
-                      className="h-12 rounded-2xl border border-border bg-background px-4 text-center text-xl font-semibold tabular-nums outline-none transition-colors focus:border-primary sm:h-14"
+                      className="h-10 rounded-xl border border-border bg-background px-4 text-center text-lg font-semibold tabular-nums outline-none transition-colors focus:border-primary"
                     />
                     <button
                       type="button"
                       onClick={() => setChildrenCount(childrenCount + 1)}
-                      className="flex h-12 items-center justify-center rounded-2xl border border-primary/20 bg-primary/10 text-primary transition-colors hover:bg-primary/15 active:scale-[0.98] sm:h-14"
+                      className="flex h-10 items-center justify-center rounded-xl border border-primary/20 bg-primary/10 text-primary transition-colors hover:bg-primary/15 active:scale-[0.98]"
                       aria-label="Aumentar criancas"
                     >
                       <Plus className="h-4 w-4" />
@@ -1427,43 +1452,100 @@ const Leisure: React.FC = () => {
         ) : (
           // Events View
           <>
-            {/* Create Event Button */}
-            <button
-              onClick={() => setViewMode('calculator')}
-              className="w-full py-4 rounded-xl font-semibold bg-primary text-primary-foreground flex items-center justify-center gap-2 mb-4"
-            >
-              <Plus className="w-5 h-5" />
-              Criar Novo Evento
-            </button>
-
-            {/* Event Selector */}
             {events.length > 0 && (
-              <div className="relative">
-                <select
-                  value={selectedEvent?.id || ''}
-                  onChange={(e) => {
-                    const event = events.find(ev => ev.id === e.target.value);
-                    setSelectedEvent(event || null);
-                  }}
-                  className="w-full px-4 py-4 rounded-xl bg-card border border-border text-foreground appearance-none pr-10"
-                >
-                  {events.map(event => (
-                    <option key={event.id} value={event.id}>
-                      {event.name} {event.eventDate && `- ${format(new Date(event.eventDate), 'dd/MM/yyyy', { locale: ptBR })}`}
-                    </option>
+              <section className="space-y-3">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <h2 className="text-sm font-semibold">Quadro de eventos</h2>
+                    <p className="text-xs text-muted-foreground">
+                      Toque em um card para acompanhar itens, pessoas e pagamentos.
+                    </p>
+                  </div>
+                  {events.length > 1 && (
+                    <button
+                      onClick={() => setShowEventDeleteModal(true)}
+                      className="rounded-lg border border-border px-3 py-2 text-xs font-medium text-muted-foreground"
+                    >
+                      Organizar
+                    </button>
+                  )}
+                </div>
+
+                <div className="grid gap-3 lg:grid-cols-3">
+                  {eventColumns.map((column) => (
+                    <div key={column.id} className="rounded-2xl border border-border bg-card/70 p-3">
+                      <div className="mb-3 flex items-center justify-between">
+                        <p className="text-sm font-medium">{column.title}</p>
+                        <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
+                          {column.events.length}
+                        </span>
+                      </div>
+
+                      <div className="space-y-2">
+                        {column.events.map((event) => {
+                          const peopleCount = event.adultsCount + event.childrenCount;
+                          const isSelected = selectedEvent?.id === event.id;
+
+                          return (
+                            <button
+                              key={event.id}
+                              type="button"
+                              onClick={() => setSelectedEvent(event)}
+                              className={`w-full rounded-xl border p-3 text-left transition-all ${
+                                isSelected
+                                  ? 'border-primary bg-primary/10'
+                                  : 'border-border bg-background hover:border-primary/40'
+                              }`}
+                            >
+                              <div className="flex items-start justify-between gap-3">
+                                <div className="min-w-0">
+                                  <p className="truncate text-sm font-medium">{event.name}</p>
+                                  <p className="mt-1 text-xs text-muted-foreground">
+                                    {event.eventDate
+                                      ? format(new Date(event.eventDate), 'dd/MM/yyyy', { locale: ptBR })
+                                      : 'Sem data'}
+                                  </p>
+                                </div>
+                                <p className="shrink-0 text-sm font-semibold">
+                                  {formatCurrency(event.totalBudget)}
+                                </p>
+                              </div>
+                              <div className="mt-3 flex items-center justify-between text-xs text-muted-foreground">
+                                <span>{peopleCount} pessoas</span>
+                                <span>{event.childrenPercentage}% criancas</span>
+                              </div>
+                            </button>
+                          );
+                        })}
+
+                        {column.events.length === 0 && (
+                          <div className="rounded-xl border border-dashed border-border p-4 text-center text-xs text-muted-foreground">
+                            Sem eventos aqui
+                          </div>
+                        )}
+                      </div>
+                    </div>
                   ))}
-                </select>
-                <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground pointer-events-none" />
-              </div>
+                </div>
+              </section>
             )}
 
             {events.length === 0 && (
-              <div className="text-center py-12">
-                <Calculator className="w-16 h-16 mx-auto text-muted-foreground mb-4" />
-                <h2 className="text-lg font-semibold mb-2">Nenhum evento ainda</h2>
-                <p className="text-muted-foreground">
-                  Clique no botão acima para criar seu primeiro evento
+              <div className="rounded-2xl border border-dashed border-border bg-card p-8 text-center">
+                <Calculator className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
+                <h2 className="text-lg font-semibold mb-2">Nenhum evento criado</h2>
+                <p className="mx-auto max-w-sm text-sm text-muted-foreground">
+                  Crie um evento quando quiser calcular compras, participantes e rateio.
                 </p>
+                <button
+                  onClick={() => {
+                    resetCalculator();
+                    setShowCreateEventModal(true);
+                  }}
+                  className="mt-5 rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground"
+                >
+                  Criar primeiro evento
+                </button>
               </div>
             )}
 
@@ -1738,6 +1820,373 @@ const Leisure: React.FC = () => {
           </>
         )}
       </div>
+
+      {/* Create Event Modal */}
+      <AnimatePresence>
+        {showCreateEventModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 bg-black/50 p-3 backdrop-blur-sm sm:p-6"
+            onClick={cancelCalculation}
+          >
+            <motion.div
+              initial={{ y: 28, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ y: 28, opacity: 0 }}
+              transition={{ type: 'spring', damping: 28, stiffness: 260 }}
+              onClick={(event) => event.stopPropagation()}
+              className="mx-auto flex max-h-[92vh] w-full max-w-3xl flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-2xl"
+            >
+              <div className="flex items-center justify-between border-b border-border px-4 py-3">
+                <div>
+                  <p className="text-xs font-medium uppercase tracking-[0.16em] text-muted-foreground">
+                    Novo evento
+                  </p>
+                  <h2 className="text-lg font-semibold">
+                    {showCalculatorResult ? 'Conferir estimativa' : 'Configurar rateio'}
+                  </h2>
+                </div>
+                <button
+                  type="button"
+                  onClick={cancelCalculation}
+                  className="flex h-9 w-9 items-center justify-center rounded-full bg-muted text-muted-foreground"
+                  aria-label="Fechar criacao de evento"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+
+              <div className="overflow-y-auto px-4 py-4">
+                {!showCalculatorResult ? (
+                  <div className="space-y-4">
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <div>
+                        <label className="mb-1.5 block text-xs font-medium text-muted-foreground">
+                          Nome do evento
+                        </label>
+                        <input
+                          type="text"
+                          value={eventName}
+                          onChange={(event) => setEventName(event.target.value)}
+                          placeholder="Ex: Churrasco de sabado"
+                          className="h-11 w-full rounded-xl border border-border bg-background px-3 text-sm text-foreground outline-none focus:border-primary"
+                        />
+                      </div>
+                      <div>
+                        <label className="mb-1.5 block text-xs font-medium text-muted-foreground">
+                          Tipo
+                        </label>
+                        <select
+                          value={eventType}
+                          onChange={(event) => setEventType(event.target.value as EventType)}
+                          className="h-11 w-full rounded-xl border border-border bg-background px-3 text-sm text-foreground outline-none focus:border-primary"
+                        >
+                          {EVENT_TYPES.map((type) => (
+                            <option key={type.id} value={type.id}>
+                              {type.label}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+
+                    <div className="grid gap-3 sm:grid-cols-3">
+                      <div>
+                        <label className="mb-1.5 block text-xs font-medium text-muted-foreground">
+                          Adultos
+                        </label>
+                        <div className="grid h-11 grid-cols-[36px_1fr_36px] overflow-hidden rounded-xl border border-border bg-background">
+                          <button type="button" onClick={() => setAdultsCount(Math.max(0, adultsCount - 1))}>
+                            <Minus className="mx-auto h-4 w-4" />
+                          </button>
+                          <input
+                            type="number"
+                            value={adultsCount}
+                            onChange={(event) =>
+                              setAdultsCount(Math.max(0, Number.parseInt(event.target.value, 10) || 0))
+                            }
+                            className="bg-transparent text-center text-sm font-semibold outline-none"
+                          />
+                          <button type="button" onClick={() => setAdultsCount(adultsCount + 1)}>
+                            <Plus className="mx-auto h-4 w-4" />
+                          </button>
+                        </div>
+                      </div>
+                      <div>
+                        <label className="mb-1.5 block text-xs font-medium text-muted-foreground">
+                          Criancas
+                        </label>
+                        <div className="grid h-11 grid-cols-[36px_1fr_36px] overflow-hidden rounded-xl border border-border bg-background">
+                          <button type="button" onClick={() => setChildrenCount(Math.max(0, childrenCount - 1))}>
+                            <Minus className="mx-auto h-4 w-4" />
+                          </button>
+                          <input
+                            type="number"
+                            value={childrenCount}
+                            onChange={(event) =>
+                              setChildrenCount(Math.max(0, Number.parseInt(event.target.value, 10) || 0))
+                            }
+                            className="bg-transparent text-center text-sm font-semibold outline-none"
+                          />
+                          <button type="button" onClick={() => setChildrenCount(childrenCount + 1)}>
+                            <Plus className="mx-auto h-4 w-4" />
+                          </button>
+                        </div>
+                      </div>
+                      <div>
+                        <label className="mb-1.5 block text-xs font-medium text-muted-foreground">
+                          Criancas pagam
+                        </label>
+                        <select
+                          value={childrenPercentage}
+                          onChange={(event) => setChildrenPercentage(Number(event.target.value))}
+                          className="h-11 w-full rounded-xl border border-border bg-background px-3 text-sm text-foreground outline-none focus:border-primary"
+                        >
+                          {[0, 25, 50, 75, 100].map((value) => (
+                            <option key={value} value={value}>
+                              {value}%
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <div>
+                        <label className="mb-1.5 block text-xs font-medium text-muted-foreground">
+                          Duracao
+                        </label>
+                        <select
+                          value={duration}
+                          onChange={(event) => setDuration(event.target.value as Duration)}
+                          className="h-11 w-full rounded-xl border border-border bg-background px-3 text-sm text-foreground outline-none focus:border-primary"
+                        >
+                          {DURATIONS.map((item) => (
+                            <option key={item.id} value={item.id}>
+                              {item.label}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="mb-1.5 block text-xs font-medium text-muted-foreground">
+                          Perfil
+                        </label>
+                        <div className="grid grid-cols-3 rounded-xl border border-border bg-background p-1">
+                          {CONSUMPTION_MODES.map((mode) => (
+                            <button
+                              key={mode.id}
+                              type="button"
+                              onClick={() => setConsumptionMode(mode.id)}
+                              className={`rounded-lg px-2 py-2 text-xs font-medium transition-all ${
+                                consumptionMode === mode.id
+                                  ? 'bg-primary text-primary-foreground shadow-sm'
+                                  : 'text-muted-foreground'
+                              }`}
+                            >
+                              {mode.label}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => setShowAdvancedOptions((current) => !current)}
+                      className="flex w-full items-center justify-between rounded-xl border border-border bg-background px-3 py-3 text-left"
+                    >
+                      <span className="text-sm font-medium">Data e agenda</span>
+                      <ChevronDown
+                        className={`h-4 w-4 text-muted-foreground transition-transform ${
+                          showAdvancedOptions ? 'rotate-180' : ''
+                        }`}
+                      />
+                    </button>
+
+                    <AnimatePresence>
+                      {showAdvancedOptions && (
+                        <motion.div
+                          initial={{ height: 0, opacity: 0 }}
+                          animate={{ height: 'auto', opacity: 1 }}
+                          exit={{ height: 0, opacity: 0 }}
+                          className="overflow-hidden"
+                        >
+                          <div className="grid gap-3 rounded-xl bg-muted/40 p-3 sm:grid-cols-2">
+                            <input
+                              type="date"
+                              value={eventDate}
+                              onChange={(event) => setEventDate(event.target.value)}
+                              className="h-10 rounded-xl border border-border bg-background px-3 text-sm"
+                            />
+                            <input
+                              type="time"
+                              value={eventTime}
+                              onChange={(event) => setEventTime(event.target.value)}
+                              className="h-10 rounded-xl border border-border bg-background px-3 text-sm"
+                            />
+                            <label className="flex items-center justify-between rounded-xl border border-border bg-background px-3 py-2 sm:col-span-2">
+                              <span className="text-sm">Adicionar ao Google Agenda</span>
+                              <input
+                                type="checkbox"
+                                checked={addToCalendar}
+                                onChange={(event) => setAddToCalendar(event.target.checked)}
+                                className="h-4 w-4 accent-primary"
+                              />
+                            </label>
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    <div className="rounded-xl border border-primary/20 bg-primary/10 p-4">
+                      <div className="flex items-center justify-between gap-3">
+                        <div>
+                          <p className="text-sm font-medium">
+                            {eventName || `${EVENT_TYPES.find((event) => event.id === eventType)?.label} - ${adultsCount + childrenCount} pessoas`}
+                          </p>
+                          <p className="mt-1 text-xs text-muted-foreground">
+                            {adultsCount} adultos, {childrenCount} criancas
+                          </p>
+                        </div>
+                        <p className="text-xl font-bold text-primary">{formatCurrency(calculatedTotal)}</p>
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <p className="text-sm font-semibold">Itens sugeridos</p>
+                        <button
+                          type="button"
+                          onClick={() => setShowAddItemForm(true)}
+                          className="text-xs font-medium text-primary"
+                        >
+                          Adicionar
+                        </button>
+                      </div>
+
+                      <AnimatePresence>
+                        {showAddItemForm && (
+                          <motion.div
+                            initial={{ height: 0, opacity: 0 }}
+                            animate={{ height: 'auto', opacity: 1 }}
+                            exit={{ height: 0, opacity: 0 }}
+                            className="overflow-hidden"
+                          >
+                            <div className="grid gap-2 rounded-xl border border-border bg-muted/30 p-3 sm:grid-cols-[1fr_80px_90px_110px]">
+                              <input
+                                type="text"
+                                value={newItemName}
+                                onChange={(event) => setNewItemName(event.target.value)}
+                                placeholder="Item"
+                                className="h-10 rounded-lg border border-border bg-background px-3 text-sm"
+                              />
+                              <input
+                                type="number"
+                                value={newItemQuantity}
+                                onChange={(event) => setNewItemQuantity(parseFloat(event.target.value) || 0)}
+                                step="0.1"
+                                className="h-10 rounded-lg border border-border bg-background px-3 text-sm"
+                              />
+                              <select
+                                value={newItemUnit}
+                                onChange={(event) => setNewItemUnit(event.target.value)}
+                                className="h-10 rounded-lg border border-border bg-background px-3 text-sm"
+                              >
+                                <option value="un">un</option>
+                                <option value="kg">kg</option>
+                                <option value="L">L</option>
+                                <option value="pacote">pacote</option>
+                              </select>
+                              <button
+                                type="button"
+                                onClick={addCustomItem}
+                                disabled={!newItemName || newItemPrice <= 0}
+                                className="h-10 rounded-lg bg-primary px-3 text-sm font-medium text-primary-foreground disabled:opacity-50"
+                              >
+                                Incluir
+                              </button>
+                              <input
+                                type="number"
+                                value={newItemPrice}
+                                onChange={(event) => setNewItemPrice(parseFloat(event.target.value) || 0)}
+                                placeholder="Preco"
+                                step="0.01"
+                                className="h-10 rounded-lg border border-border bg-background px-3 text-sm sm:col-span-4"
+                              />
+                            </div>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+
+                      {calculatedItems.map((item, index) => (
+                        <div key={`${item.name}-${index}`} className="rounded-xl border border-border bg-background p-3">
+                          <div className="flex items-center justify-between gap-3">
+                            <div className="min-w-0">
+                              <p className="truncate text-sm font-medium">{item.name}</p>
+                              <p className="text-xs text-muted-foreground">
+                                {item.quantity.toFixed(1)} {item.unit} x {formatCurrency(item.pricePerUnit)}
+                              </p>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <p className="text-sm font-semibold">{formatCurrency(item.total)}</p>
+                              <button type="button" onClick={() => removeCalculatedItem(index)}>
+                                <Trash2 className="h-4 w-4 text-expense" />
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div className="border-t border-border px-4 py-3">
+                {!showCalculatorResult ? (
+                  <button
+                    type="button"
+                    onClick={calculateItems}
+                    disabled={adultsCount + childrenCount === 0}
+                    className="flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground disabled:opacity-50"
+                  >
+                    <Calculator className="h-4 w-4" />
+                    Calcular estimativa
+                  </button>
+                ) : (
+                  <div className="grid grid-cols-2 gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setShowCalculatorResult(false)}
+                      className="h-11 rounded-xl border border-border bg-background text-sm font-semibold text-muted-foreground"
+                    >
+                      Ajustar
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (!canEdit) {
+                          toast.error('Sem permissao para salvar neste espaco');
+                          return;
+                        }
+                        handleSaveClick();
+                      }}
+                      disabled={!canEdit}
+                      className="h-11 rounded-xl bg-primary text-sm font-semibold text-primary-foreground disabled:opacity-50"
+                    >
+                      Salvar evento
+                    </button>
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Item Form Modal */}
       <AnimatePresence>
