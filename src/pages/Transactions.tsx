@@ -10,6 +10,7 @@ import {
 import { BottomNav } from '@/components/BottomNav';
 import { MonthSwitcher } from '@/components/MonthSwitcher';
 import { TransactionCard } from '@/components/TransactionCard';
+import { TransactionUpdateModal } from '@/components/TransactionDeleteModal';
 import { TransactionForm } from '@/components/TransactionForm';
 import {
   useCategories,
@@ -25,6 +26,7 @@ import {
 } from '@/utils/transactionInsights';
 import { formatCurrency } from '@/utils/currency';
 import type { Transaction, TransactionType } from '@/types/finance';
+import { toast } from 'sonner';
 
 type ColumnId = 'pay' | 'receive' | 'done';
 
@@ -49,12 +51,18 @@ const Transactions: React.FC = () => {
   const [showFilters, setShowFilters] = useState(false);
   const [selectedMonth, setSelectedMonth] = useState(new Date());
   const [defaultType, setDefaultType] = useState<TransactionType>('expense');
+  const [draggingTransactionId, setDraggingTransactionId] = useState<string | null>(null);
+  const [dropTargetColumn, setDropTargetColumn] = useState<ColumnId | null>(null);
+  const [pendingDragTransaction, setPendingDragTransaction] = useState<Transaction | null>(null);
+  const [pendingDragUpdates, setPendingDragUpdates] =
+    useState<Partial<Transaction> | null>(null);
+  const [isResolvingDragScope, setIsResolvingDragScope] = useState(false);
 
   const transactions = useTransactions();
   const categories = useCategories();
   const loading = useFinanceLoading();
   const settings = useSettings();
-  const { initialize, initialized, updateSettings } = useFinanceStore();
+  const { initialize, initialized, updateSettings, updateTransaction } = useFinanceStore();
 
   useEffect(() => {
     if (!initialized) {
@@ -159,6 +167,88 @@ const Transactions: React.FC = () => {
     setDefaultType(type);
     setEditTransaction(null);
     setIsFormOpen(true);
+  };
+
+  const isRecurringTransaction = (transaction: Transaction) =>
+    Boolean(
+      transaction.groupId ||
+        transaction.parentTransactionId ||
+        (transaction.totalInstallments && transaction.totalInstallments > 1)
+    );
+
+  const getUpdatesForColumn = (
+    transaction: Transaction,
+    columnId: ColumnId
+  ): Partial<Transaction> | null => {
+    const nextType: TransactionType =
+      columnId === 'receive' ? 'income' : columnId === 'pay' ? 'expense' : transaction.type;
+    const nextStatus = columnId === 'done' ? 'completed' : 'pending';
+    const currentCategory = categories.find((category) => category.id === transaction.categoryId);
+    const fallbackCategory = categories.find((category) => category.type === nextType);
+    const nextCategoryId =
+      currentCategory?.type === nextType
+        ? transaction.categoryId
+        : fallbackCategory?.id || transaction.categoryId;
+
+    const updates: Partial<Transaction> = {};
+
+    if (transaction.status !== nextStatus) updates.status = nextStatus;
+    if (transaction.type !== nextType) updates.type = nextType;
+    if (transaction.categoryId !== nextCategoryId) updates.categoryId = nextCategoryId;
+
+    return Object.keys(updates).length > 0 ? updates : null;
+  };
+
+  const applyDragUpdates = async (
+    transaction: Transaction,
+    updates: Partial<Transaction>,
+    scope: 'single' | 'future' | 'all' = 'single'
+  ) => {
+    const success =
+      scope === 'single'
+        ? await updateTransaction(transaction.id, updates, false)
+        : scope === 'future'
+          ? await updateTransaction(transaction.id, updates, true)
+          : await updateTransaction(transaction.id, updates, false, true);
+
+    if (success) {
+      toast.success('Card movido.');
+    }
+
+    return success;
+  };
+
+  const handleDropOnColumn = async (columnId: ColumnId) => {
+    const transaction = transactions.find((item) => item.id === draggingTransactionId);
+    setDropTargetColumn(null);
+
+    if (!transaction) return;
+
+    const updates = getUpdatesForColumn(transaction, columnId);
+    if (!updates) return;
+
+    if (isRecurringTransaction(transaction)) {
+      setPendingDragTransaction(transaction);
+      setPendingDragUpdates(updates);
+      return;
+    }
+
+    await applyDragUpdates(transaction, updates);
+  };
+
+  const handleDragScopeConfirm = async (scope: 'single' | 'future' | 'all') => {
+    if (!pendingDragTransaction || !pendingDragUpdates || isResolvingDragScope) return;
+
+    setIsResolvingDragScope(true);
+    try {
+      const success = await applyDragUpdates(pendingDragTransaction, pendingDragUpdates, scope);
+      if (!success) return;
+
+      setPendingDragTransaction(null);
+      setPendingDragUpdates(null);
+    } finally {
+      setIsResolvingDragScope(false);
+    }
   };
 
   if (loading) {
@@ -393,10 +483,31 @@ const Transactions: React.FC = () => {
             {kanbanColumns.map((column, index) => (
               <motion.div
                 key={column.id}
+                onDragEnter={() => setDropTargetColumn(column.id)}
+                onDragOver={(event) => {
+                  event.preventDefault();
+                  event.dataTransfer.dropEffect = 'move';
+                  setDropTargetColumn(column.id);
+                }}
+                onDragLeave={(event) => {
+                  if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
+                    setDropTargetColumn((current) =>
+                      current === column.id ? null : current
+                    );
+                  }
+                }}
+                onDrop={(event) => {
+                  event.preventDefault();
+                  void handleDropOnColumn(column.id);
+                }}
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: index * 0.05 }}
-                className="min-h-[320px] min-w-[252px] rounded-2xl border border-border bg-card p-2.5 lg:min-w-0"
+                className={`min-h-[320px] min-w-[252px] rounded-2xl border bg-card p-2.5 transition-colors lg:min-w-0 ${
+                  dropTargetColumn === column.id
+                    ? 'border-primary/60 bg-primary/5'
+                    : 'border-border'
+                }`}
               >
                 <div className={`rounded-xl border px-3 py-3 ${column.tone}`}>
                   <div className="flex items-start justify-between gap-4">
@@ -427,6 +538,13 @@ const Transactions: React.FC = () => {
                         transaction={transaction}
                         onEdit={setEditTransaction}
                         compact
+                        draggable
+                        isDragging={draggingTransactionId === transaction.id}
+                        onDragStart={(item) => setDraggingTransactionId(item.id)}
+                        onDragEnd={() => {
+                          setDraggingTransactionId(null);
+                          setDropTargetColumn(null);
+                        }}
                       />
                     ))
                   )}
@@ -457,6 +575,18 @@ const Transactions: React.FC = () => {
         }}
         editTransaction={editTransaction}
         defaultType={defaultType}
+      />
+
+      <TransactionUpdateModal
+        isOpen={Boolean(pendingDragTransaction)}
+        onClose={() => {
+          if (isResolvingDragScope) return;
+          setPendingDragTransaction(null);
+          setPendingDragUpdates(null);
+        }}
+        onConfirm={handleDragScopeConfirm}
+        transactionTitle={pendingDragTransaction?.title || ''}
+        isSubmitting={isResolvingDragScope}
       />
     </div>
   );

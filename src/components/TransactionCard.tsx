@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Check, Circle, Trash2, icons } from 'lucide-react';
+import { Check, Circle, GripVertical, Trash2, icons } from 'lucide-react';
 import { useSwipeable } from 'react-swipeable';
 import { useFinanceStore, useCategoryById } from '@/stores/financeStore';
 import { formatCurrency } from '@/utils/currency';
@@ -16,13 +16,22 @@ interface TransactionCardProps {
   transaction: Transaction;
   onEdit: (transaction: Transaction) => void;
   compact?: boolean;
+  draggable?: boolean;
+  isDragging?: boolean;
+  onDragStart?: (transaction: Transaction) => void;
+  onDragEnd?: () => void;
 }
 
 export const TransactionCard: React.FC<TransactionCardProps> = ({
   transaction,
   onEdit,
   compact = false,
+  draggable = false,
+  isDragging = false,
+  onDragStart,
+  onDragEnd,
 }) => {
+  const didDragRef = React.useRef(false);
   const [swipeOffset, setSwipeOffset] = React.useState(0);
   const [isDeleting, setIsDeleting] = React.useState(false);
   const [showDeleteModal, setShowDeleteModal] = React.useState(false);
@@ -146,9 +155,22 @@ export const TransactionCard: React.FC<TransactionCardProps> = ({
     <>
       <motion.div
         {...handlers}
+        draggable={draggable}
+        onDragStart={(event) => {
+          didDragRef.current = true;
+          event.dataTransfer.effectAllowed = 'move';
+          event.dataTransfer.setData('text/plain', transaction.id);
+          onDragStart?.(transaction);
+        }}
+        onDragEnd={() => {
+          window.setTimeout(() => {
+            didDragRef.current = false;
+          }, 0);
+          onDragEnd?.();
+        }}
         initial={{ opacity: 0, y: 20 }}
         animate={{ 
-          opacity: isDeleting ? 0 : 1, 
+          opacity: isDeleting ? 0 : isDragging ? 0.55 : 1,
           y: isDeleting ? -20 : 0,
           x: -swipeOffset,
         }}
@@ -165,11 +187,14 @@ export const TransactionCard: React.FC<TransactionCardProps> = ({
 
         {/* Card content */}
         <div
-          onClick={() => onEdit(transaction)}
+          onClick={() => {
+            if (didDragRef.current) return;
+            onEdit(transaction);
+          }}
           className={`
             relative bg-card border border-border rounded-xl ${compact ? 'p-3' : 'p-4'}
             active:scale-[0.98] transition-transform duration-100
-            cursor-pointer group
+            cursor-pointer group ${draggable ? 'select-none' : ''}
           `}
         >
           <div className={compact ? 'flex items-start gap-2.5' : 'flex items-start gap-3'}>
@@ -245,26 +270,25 @@ export const TransactionCard: React.FC<TransactionCardProps> = ({
                 <button
                   onClick={handleStatusToggle}
                   aria-label={toggleLabel}
-                  className={`touch-btn relative flex h-5 w-9 flex-shrink-0 items-center rounded-full border px-1 transition-all duration-200 ${
+                  title={toggleLabel}
+                  className={`touch-btn relative flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full border transition-all duration-200 ${
                     isPending
-                      ? 'border-border/70 bg-muted/40'
+                      ? 'border-border/60 bg-transparent text-muted-foreground hover:bg-muted/50'
                       : isIncome
-                      ? 'border-income/15 bg-income/5'
-                      : 'border-primary/15 bg-primary/5'
+                      ? 'border-income/25 bg-income/10 text-income'
+                      : 'border-primary/25 bg-primary/10 text-primary'
                   }`}
                 >
-                  <span
-                    className={`absolute left-1 flex h-3 w-3 items-center justify-center rounded-full shadow-sm transition-all duration-200 ${
-                      isPending
-                        ? 'translate-x-0 bg-background text-muted-foreground'
-                        : 'translate-x-3 bg-background text-primary'
-                    }`}
-                  >
-                    <Check className="h-2 w-2" />
-                  </span>
+                  {isPending ? <Circle className="h-3 w-3" /> : <Check className="h-3 w-3" />}
                   <span className="sr-only">{toggleLabel}</span>
                 </button>
               </div>
+
+              {draggable ? (
+                <div className="mt-2 flex items-center justify-end text-muted-foreground/60">
+                  <GripVertical className="h-3.5 w-3.5" aria-hidden="true" />
+                </div>
+              ) : null}
             </div>
           </div>
         </div>
