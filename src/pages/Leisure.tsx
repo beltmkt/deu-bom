@@ -249,6 +249,8 @@ const Leisure: React.FC = () => {
   // View mode: 'calculator' | 'events'
   const [viewMode, setViewMode] = useState<'calculator' | 'events'>('events');
   const [showCreateEventModal, setShowCreateEventModal] = useState(false);
+  const [showParticipantsList, setShowParticipantsList] = useState(false);
+  const [showItemsList, setShowItemsList] = useState(false);
   
   // Form states
   const [showItemForm, setShowItemForm] = useState(false);
@@ -316,15 +318,15 @@ const Leisure: React.FC = () => {
 
       setEvents(formattedEvents);
       
-      if (selectedEvent && !formattedEvents.some((event) => event.id === selectedEvent.id)) {
-        setSelectedEvent(null);
-      }
+      setSelectedEvent((current) =>
+        current && !formattedEvents.some((event) => event.id === current.id) ? null : current
+      );
     } catch (error) {
       console.error('Failed to load events:', error);
     } finally {
       setLoading(false);
     }
-  }, [currentWorkspace, selectedEvent]);
+  }, [currentWorkspace]);
 
   useEffect(() => {
     if (!workspaceLoading && currentWorkspace) {
@@ -357,6 +359,9 @@ const Leisure: React.FC = () => {
   useEffect(() => {
     if (selectedEvent?.id) {
       loadEventDetails(selectedEvent.id);
+    } else {
+      setItems([]);
+      setParticipants([]);
     }
   }, [selectedEvent?.id, loadEventDetails]);
 
@@ -429,12 +434,23 @@ const Leisure: React.FC = () => {
       }
     }
 
-    await loadEvents();
     const refreshedDetails = await refreshEventDetails(eventId);
+    const eventPatch = {
+      totalBudget: totalBudgetValue,
+      adultsCount: adults.length,
+      childrenCount: children.length,
+      childrenPercentage: effectiveChildrenPercentage,
+    };
+
+    setEvents((currentEvents) =>
+      currentEvents.map((event) =>
+        event.id === eventId ? { ...event, ...eventPatch } : event
+      )
+    );
 
     if (selectedEvent?.id === eventId) {
       setSelectedEvent((current) =>
-        current ? { ...current, totalBudget: totalBudgetValue, adultsCount: adults.length, childrenCount: children.length, childrenPercentage: effectiveChildrenPercentage } : current
+        current ? { ...current, ...eventPatch } : current
       );
     }
 
@@ -851,6 +867,23 @@ const Leisure: React.FC = () => {
       console.error('Failed to update children percentage:', error);
       toast.error('Erro ao recalcular rateio');
     }
+  };
+
+  const closeSelectedEvent = () => {
+    setSelectedEvent(null);
+    setShowParticipantsList(false);
+    setShowItemsList(false);
+  };
+
+  const toggleSelectedEvent = (event: Event) => {
+    if (selectedEvent?.id === event.id) {
+      closeSelectedEvent();
+      return;
+    }
+
+    setSelectedEvent(event);
+    setShowParticipantsList(false);
+    setShowItemsList(false);
   };
 
   const totalBudget = items.reduce((sum, item) => sum + (item.quantity * item.unitPrice), 0);
@@ -1490,7 +1523,7 @@ const Leisure: React.FC = () => {
                             <button
                               key={event.id}
                               type="button"
-                              onClick={() => setSelectedEvent(event)}
+                              onClick={() => toggleSelectedEvent(event)}
                               className={`w-full rounded-xl border p-3 text-left transition-all ${
                                 isSelected
                                   ? 'border-primary bg-primary/10'
@@ -1579,10 +1612,11 @@ const Leisure: React.FC = () => {
                       </div>
                       <button
                         type="button"
-                        onClick={() => setSelectedEvent(null)}
-                        className="h-9 rounded-xl border border-border px-3 text-xs font-medium text-muted-foreground"
+                        onClick={closeSelectedEvent}
+                        className="flex h-9 w-9 items-center justify-center rounded-full border border-border text-muted-foreground"
+                        aria-label="Fechar detalhes do evento"
                       >
-                        Fechar
+                        <X className="h-4 w-4" />
                       </button>
                     </div>
                   </div>
@@ -1684,47 +1718,72 @@ const Leisure: React.FC = () => {
                   </div>
                 </div>
 
-                <div className="grid gap-4 xl:grid-cols-2">
+                <div className="grid gap-3 xl:grid-cols-2">
                 {/* Participants Section */}
                 <section className="bg-card border border-border rounded-2xl overflow-hidden">
-                  <div className="flex items-center justify-between p-4 border-b border-border">
-                    <div className="flex items-center gap-3">
-                      <Users className="w-5 h-5 text-primary" />
-                      <h3 className="font-semibold">Participantes ({participants.length})</h3>
-                    </div>
+                  <div className="flex items-center justify-between gap-3 border-b border-border p-3">
+                    <button
+                      type="button"
+                      onClick={() => setShowParticipantsList((current) => !current)}
+                      className="flex min-w-0 flex-1 items-center gap-3 text-left"
+                    >
+                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                        <Users className="h-4 w-4" />
+                      </div>
+                      <div className="min-w-0">
+                        <h3 className="text-sm font-semibold">Participantes</h3>
+                        <p className="text-xs text-muted-foreground">
+                          {participants.length} pessoas, {participants.filter((participant) => participant.paid).length} pagas
+                        </p>
+                      </div>
+                      <ChevronDown
+                        className={`ml-auto h-4 w-4 text-muted-foreground transition-transform ${
+                          showParticipantsList ? 'rotate-180' : ''
+                        }`}
+                      />
+                    </button>
                     {canEdit && (
                       <button
+                        type="button"
                         onClick={() => setShowParticipantForm(true)}
-                        className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center"
+                        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10"
                       >
-                        <Plus className="w-4 h-4 text-primary" />
+                        <Plus className="h-4 w-4 text-primary" />
                       </button>
                     )}
                   </div>
+                  <AnimatePresence initial={false}>
+                    {showParticipantsList && (
+                      <motion.div
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: 'auto', opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        className="overflow-hidden"
+                      >
                   <div className="divide-y divide-border">
                     {participants.map(participant => (
-                      <div key={participant.id} className="flex items-center justify-between p-4">
-                        <div className="flex items-center gap-3">
-                          <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                      <div key={participant.id} className="flex items-center justify-between gap-3 p-3">
+                        <div className="flex min-w-0 items-center gap-3">
+                          <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${
                             participant.isChild ? 'bg-warning/10' : 'bg-primary/10'
                           }`}>
                             {participant.isChild ? (
-                              <Baby className="w-5 h-5 text-warning" />
+                              <Baby className="h-4 w-4 text-warning" />
                             ) : (
-                              <User className="w-5 h-5 text-primary" />
+                              <User className="h-4 w-4 text-primary" />
                             )}
                           </div>
-                          <div>
-                            <p className="font-medium">{participant.name}</p>
-                            <p className="text-sm text-muted-foreground">
+                          <div className="min-w-0">
+                            <p className="truncate text-sm font-medium">{participant.name}</p>
+                            <p className="truncate text-xs text-muted-foreground">
                               {participant.isChild ? 'Criança' : 'Adulto'}
                               {participant.email && ` • ${participant.email}`}
                             </p>
                           </div>
                         </div>
-                        <div className="flex items-center gap-3">
+                        <div className="flex shrink-0 items-center gap-2">
                           <div className="text-right">
-                            <p className="font-medium">{formatCurrency(participant.amountDue)}</p>
+                            <p className="text-sm font-medium">{formatCurrency(participant.amountDue)}</p>
                             <p className={`text-xs ${participant.paid ? 'text-income' : 'text-expense'}`}>
                               {participant.paid ? 'Pago' : 'Pendente'}
                             </p>
@@ -1732,76 +1791,107 @@ const Leisure: React.FC = () => {
                           <button
                             onClick={() => toggleParticipantPaid(participant)}
                             disabled={!canEdit}
-                            className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                            className={`flex h-8 w-8 items-center justify-center rounded-full ${
                               participant.paid ? 'bg-income/10' : 'bg-muted'
                             } ${!canEdit ? 'cursor-not-allowed opacity-50' : ''}`}
                             title={canEdit ? 'Alterar pagamento' : 'Somente editores podem alterar pagamento'}
                           >
-                            <Check className={`w-4 h-4 ${participant.paid ? 'text-income' : 'text-muted-foreground'}`} />
+                            <Check className={`h-4 w-4 ${participant.paid ? 'text-income' : 'text-muted-foreground'}`} />
                           </button>
                           {canEdit && (
                             <button
                               onClick={() => removeParticipant(participant.id)}
-                              className="w-8 h-8 rounded-full bg-expense/10 flex items-center justify-center"
+                              className="flex h-8 w-8 items-center justify-center rounded-full bg-expense/10"
                             >
-                              <Trash2 className="w-4 h-4 text-expense" />
+                              <Trash2 className="h-4 w-4 text-expense" />
                             </button>
                           )}
                         </div>
                       </div>
                     ))}
                     {participants.length === 0 && (
-                      <div className="p-8 text-center text-muted-foreground">
+                      <div className="p-5 text-center text-sm text-muted-foreground">
                         Adicione participantes para calcular a divisão
                       </div>
                     )}
                   </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
                 </section>
 
                 {/* Items Section */}
                 <section className="bg-card border border-border rounded-2xl overflow-hidden">
-                  <div className="flex items-center justify-between p-4 border-b border-border">
-                    <div className="flex items-center gap-3">
-                      <ShoppingCart className="w-5 h-5 text-primary" />
-                      <h3 className="font-semibold">Itens ({items.length})</h3>
-                    </div>
+                  <div className="flex items-center justify-between gap-3 border-b border-border p-3">
+                    <button
+                      type="button"
+                      onClick={() => setShowItemsList((current) => !current)}
+                      className="flex min-w-0 flex-1 items-center gap-3 text-left"
+                    >
+                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                        <ShoppingCart className="h-4 w-4" />
+                      </div>
+                      <div className="min-w-0">
+                        <h3 className="text-sm font-semibold">Itens</h3>
+                        <p className="text-xs text-muted-foreground">
+                          {items.length} itens, {formatCurrency(totalBudget)}
+                        </p>
+                      </div>
+                      <ChevronDown
+                        className={`ml-auto h-4 w-4 text-muted-foreground transition-transform ${
+                          showItemsList ? 'rotate-180' : ''
+                        }`}
+                      />
+                    </button>
                     {canEdit && (
                       <button
+                        type="button"
                         onClick={() => setShowItemForm(true)}
-                        className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center"
+                        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10"
                       >
-                        <Plus className="w-4 h-4 text-primary" />
+                        <Plus className="h-4 w-4 text-primary" />
                       </button>
                     )}
                   </div>
+                  <AnimatePresence initial={false}>
+                    {showItemsList && (
+                      <motion.div
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: 'auto', opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        className="overflow-hidden"
+                      >
                   <div className="divide-y divide-border">
                     {items.map(item => (
-                      <div key={item.id} className="flex items-center justify-between p-4">
-                        <div>
-                          <p className="font-medium">{item.name}</p>
-                          <p className="text-sm text-muted-foreground">
+                      <div key={item.id} className="flex items-center justify-between gap-3 p-3">
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-medium">{item.name}</p>
+                          <p className="text-xs text-muted-foreground">
                             {item.quantity}x {formatCurrency(item.unitPrice)}
                           </p>
                         </div>
-                        <div className="flex items-center gap-3">
-                          <p className="font-medium">{formatCurrency(item.quantity * item.unitPrice)}</p>
+                        <div className="flex shrink-0 items-center gap-2">
+                          <p className="text-sm font-medium">{formatCurrency(item.quantity * item.unitPrice)}</p>
                           {canEdit && (
                             <button
                               onClick={() => removeItem(item.id)}
-                              className="w-8 h-8 rounded-full bg-expense/10 flex items-center justify-center"
+                              className="flex h-8 w-8 items-center justify-center rounded-full bg-expense/10"
                             >
-                              <Trash2 className="w-4 h-4 text-expense" />
+                              <Trash2 className="h-4 w-4 text-expense" />
                             </button>
                           )}
                         </div>
                       </div>
                     ))}
                     {items.length === 0 && (
-                      <div className="p-8 text-center text-muted-foreground">
+                      <div className="p-5 text-center text-sm text-muted-foreground">
                         Adicione itens para calcular o total
                       </div>
                     )}
                   </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
                 </section>
                 </div>
 
