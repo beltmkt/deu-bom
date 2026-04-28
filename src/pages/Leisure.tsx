@@ -251,6 +251,9 @@ const Leisure: React.FC = () => {
   const [showCreateEventModal, setShowCreateEventModal] = useState(false);
   const [showParticipantsList, setShowParticipantsList] = useState(false);
   const [showItemsList, setShowItemsList] = useState(false);
+  const [expandedEventMetric, setExpandedEventMetric] = useState<
+    'people' | 'budget' | 'payments' | 'children' | null
+  >(null);
   
   // Form states
   const [showItemForm, setShowItemForm] = useState(false);
@@ -873,6 +876,7 @@ const Leisure: React.FC = () => {
     setSelectedEvent(null);
     setShowParticipantsList(false);
     setShowItemsList(false);
+    setExpandedEventMetric(null);
   };
 
   const toggleSelectedEvent = (event: Event) => {
@@ -884,11 +888,17 @@ const Leisure: React.FC = () => {
     setSelectedEvent(event);
     setShowParticipantsList(false);
     setShowItemsList(false);
+    setExpandedEventMetric(null);
   };
 
   const totalBudget = items.reduce((sum, item) => sum + (item.quantity * item.unitPrice), 0);
   const totalPaid = participants.filter(p => p.paid).reduce((sum, p) => sum + p.amountDue, 0);
   const totalPending = participants.filter(p => !p.paid).reduce((sum, p) => sum + p.amountDue, 0);
+  const adultsInEvent = participants.filter((participant) => !participant.isChild);
+  const childrenInEvent = participants.filter((participant) => participant.isChild);
+  const paidParticipantsCount = participants.filter((participant) => participant.paid).length;
+  const adultShare = adultsInEvent.length > 0 ? adultsInEvent[0]?.amountDue || 0 : 0;
+  const childShare = childrenInEvent.length > 0 ? childrenInEvent[0]?.amountDue || 0 : adultShare * (selectedEvent?.childrenPercentage || 0) / 100;
   const eventsTotalBudget = events.reduce((sum, event) => sum + event.totalBudget, 0);
   const eventsPeopleCount = events.reduce(
     (sum, event) => sum + event.adultsCount + event.childrenCount,
@@ -1597,18 +1607,36 @@ const Leisure: React.FC = () => {
                     </div>
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
                       <div className="grid grid-cols-3 gap-2 text-center">
-                        <div className="rounded-xl bg-muted/60 px-3 py-2">
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setExpandedEventMetric((current) => current === 'people' ? null : 'people')
+                          }
+                          className="rounded-xl bg-muted/60 px-3 py-2 text-center"
+                        >
                           <p className="text-xs text-muted-foreground">Adultos</p>
-                          <p className="text-base font-semibold">{participants.filter((p) => !p.isChild).length}</p>
-                        </div>
-                        <div className="rounded-xl bg-muted/60 px-3 py-2">
+                          <p className="text-base font-semibold">{adultsInEvent.length}</p>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setExpandedEventMetric((current) => current === 'children' ? null : 'children')
+                          }
+                          className="rounded-xl bg-muted/60 px-3 py-2 text-center"
+                        >
                           <p className="text-xs text-muted-foreground">Criancas</p>
-                          <p className="text-base font-semibold">{participants.filter((p) => p.isChild).length}</p>
-                        </div>
-                        <div className="rounded-xl bg-muted/60 px-3 py-2">
+                          <p className="text-base font-semibold">{childrenInEvent.length}</p>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setExpandedEventMetric((current) => current === 'budget' ? null : 'budget')
+                          }
+                          className="rounded-xl bg-muted/60 px-3 py-2 text-center"
+                        >
                           <p className="text-xs text-muted-foreground">Itens</p>
                           <p className="text-base font-semibold">{items.length}</p>
-                        </div>
+                        </button>
                       </div>
                       <button
                         type="button"
@@ -1622,101 +1650,146 @@ const Leisure: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Summary Cards */}
-                <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
-                  <div className="bg-card border border-border rounded-2xl p-4">
-                    <p className="text-sm text-muted-foreground mb-1">Total Gasto</p>
-                    <p className="text-2xl font-bold">{formatCurrency(totalBudget)}</p>
-                  </div>
-                  <div className="bg-card border border-border rounded-2xl p-4">
-                    <p className="text-sm text-muted-foreground mb-1">Por Adulto</p>
-                    <p className="text-2xl font-bold text-primary">
-                      {formatCurrency(
-                        participants.filter(p => !p.isChild).length > 0
-                          ? participants.filter(p => !p.isChild)[0]?.amountDue || 0
-                          : 0
-                      )}
-                    </p>
-                  </div>
-                  <div className="bg-income/10 border border-income/20 rounded-2xl p-4">
-                    <p className="text-sm text-income mb-1">Pago</p>
-                    <p className="text-2xl font-bold text-income">{formatCurrency(totalPaid)}</p>
-                  </div>
-                  <div className="bg-expense/10 border border-expense/20 rounded-2xl p-4">
-                    <p className="text-sm text-expense mb-1">Pendente</p>
-                    <p className="text-2xl font-bold text-expense">{formatCurrency(totalPending)}</p>
-                  </div>
+                <div className="grid gap-3 xl:grid-cols-4">
+                  <button
+                    type="button"
+                    onClick={() => setExpandedEventMetric((current) => current === 'people' ? null : 'people')}
+                    className={`rounded-2xl border p-4 text-left transition-all ${
+                      expandedEventMetric === 'people' ? 'border-primary bg-primary/10' : 'border-border bg-card'
+                    }`}
+                  >
+                    <p className="text-sm text-muted-foreground">Pessoas</p>
+                    <p className="mt-1 text-2xl font-bold">{participants.length}</p>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setExpandedEventMetric((current) => current === 'budget' ? null : 'budget')}
+                    className={`rounded-2xl border p-4 text-left transition-all ${
+                      expandedEventMetric === 'budget' ? 'border-primary bg-primary/10' : 'border-border bg-card'
+                    }`}
+                  >
+                    <p className="text-sm text-muted-foreground">Total</p>
+                    <p className="mt-1 text-2xl font-bold">{formatCurrency(totalBudget)}</p>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setExpandedEventMetric((current) => current === 'payments' ? null : 'payments')}
+                    className={`rounded-2xl border p-4 text-left transition-all ${
+                      expandedEventMetric === 'payments' ? 'border-primary bg-primary/10' : 'border-income/20 bg-income/10'
+                    }`}
+                  >
+                    <p className="text-sm text-income">Pago</p>
+                    <p className="mt-1 text-2xl font-bold text-income">{formatCurrency(totalPaid)}</p>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setExpandedEventMetric((current) => current === 'children' ? null : 'children')}
+                    className={`rounded-2xl border p-4 text-left transition-all ${
+                      expandedEventMetric === 'children' ? 'border-primary bg-primary/10' : 'border-border bg-card'
+                    }`}
+                  >
+                    <p className="text-sm text-muted-foreground">Rateio infantil</p>
+                    <p className="mt-1 text-2xl font-bold text-primary">{selectedEvent.childrenPercentage}%</p>
+                  </button>
                 </div>
 
-                {/* Children Percentage */}
-                <div className="bg-card border border-border rounded-2xl p-4">
-                  <div className="mb-4 flex items-center justify-between gap-3">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-                      <Percent className="w-5 h-5 text-primary" />
-                    </div>
-                    <div>
-                      <p className="font-medium">Percentual Criancas</p>
-                      <p className="text-sm text-muted-foreground">
-                        Criancas pagam {selectedEvent.childrenPercentage}% do valor de adulto
-                      </p>
-                    </div>
-                  </div>
-                  <div className="min-w-[4.5rem] rounded-2xl bg-primary/10 px-3 py-2 text-center text-lg font-semibold text-primary">
-                    {selectedEvent.childrenPercentage}%
-                  </div>
-                </div>
-                  <input
-                    type="range"
-                    min="0"
-                    max="100"
-                    step="10"
-                    value={selectedEvent.childrenPercentage}
-                    onChange={(e) => updateChildrenPercentageForEvent(Number(e.target.value))}
-                    className="w-full accent-primary"
-                    disabled={!canEdit}
-                  />
-                  <div className="mt-2 flex justify-between text-xs text-muted-foreground">
-                    <span>0%</span>
-                    <span>50%</span>
-                    <span>100%</span>
-                  </div>
-                  {!canEdit && (
-                    <p className="mt-3 text-xs text-muted-foreground">
-                      Somente editores podem alterar esse rateio.
-                    </p>
-                  )}
-                </div>
-
-                <div className="bg-card border border-border rounded-2xl p-4">
-                  <p className="text-sm font-medium">Leitura rapida do evento</p>
-                  <div className="mt-4 grid grid-cols-2 gap-3">
-                    <div className="rounded-xl bg-muted/50 p-3">
-                      <p className="text-xs text-muted-foreground">Valor por adulto</p>
-                      <p className="mt-1 font-semibold text-primary">
-                        {formatCurrency(
-                          participants.filter((p) => !p.isChild).length > 0
-                            ? participants.filter((p) => !p.isChild)[0]?.amountDue || 0
-                            : 0
+                <AnimatePresence initial={false}>
+                  {expandedEventMetric && (
+                    <motion.div
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: 'auto', opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      className="overflow-hidden"
+                    >
+                      <div className="rounded-2xl border border-border bg-card p-4">
+                        {expandedEventMetric === 'people' && (
+                          <div className="grid gap-3 sm:grid-cols-3">
+                            <div className="rounded-xl bg-muted/50 p-3">
+                              <p className="text-xs text-muted-foreground">Adultos</p>
+                              <p className="mt-1 text-lg font-semibold">{adultsInEvent.length}</p>
+                            </div>
+                            <div className="rounded-xl bg-muted/50 p-3">
+                              <p className="text-xs text-muted-foreground">Criancas</p>
+                              <p className="mt-1 text-lg font-semibold">{childrenInEvent.length}</p>
+                            </div>
+                            <div className="rounded-xl bg-muted/50 p-3">
+                              <p className="text-xs text-muted-foreground">Itens</p>
+                              <p className="mt-1 text-lg font-semibold">{items.length}</p>
+                            </div>
+                          </div>
                         )}
-                      </p>
-                    </div>
-                    <div className="rounded-xl bg-muted/50 p-3">
-                      <p className="text-xs text-muted-foreground">Pagantes</p>
-                      <p className="mt-1 font-semibold">
-                        {participants.filter((p) => p.paid).length}/{participants.length}
-                      </p>
-                    </div>
-                    <div className="rounded-xl bg-muted/50 p-3">
-                      <p className="text-xs text-muted-foreground">Pago</p>
-                      <p className="mt-1 font-semibold text-income">{formatCurrency(totalPaid)}</p>
-                    </div>
-                    <div className="rounded-xl bg-muted/50 p-3">
-                      <p className="text-xs text-muted-foreground">Pendente</p>
-                      <p className="mt-1 font-semibold text-expense">{formatCurrency(totalPending)}</p>
-                    </div>
-                  </div>
-                </div>
+
+                        {expandedEventMetric === 'budget' && (
+                          <div className="grid gap-3 sm:grid-cols-3">
+                            <div className="rounded-xl bg-muted/50 p-3">
+                              <p className="text-xs text-muted-foreground">Por adulto</p>
+                              <p className="mt-1 text-lg font-semibold text-primary">{formatCurrency(adultShare)}</p>
+                            </div>
+                            <div className="rounded-xl bg-muted/50 p-3">
+                              <p className="text-xs text-muted-foreground">Por crianca</p>
+                              <p className="mt-1 text-lg font-semibold">{formatCurrency(childShare)}</p>
+                            </div>
+                            <div className="rounded-xl bg-muted/50 p-3">
+                              <p className="text-xs text-muted-foreground">Total em itens</p>
+                              <p className="mt-1 text-lg font-semibold">{items.length}</p>
+                            </div>
+                          </div>
+                        )}
+
+                        {expandedEventMetric === 'payments' && (
+                          <div className="grid gap-3 sm:grid-cols-3">
+                            <div className="rounded-xl bg-muted/50 p-3">
+                              <p className="text-xs text-muted-foreground">Pagantes</p>
+                              <p className="mt-1 text-lg font-semibold">{paidParticipantsCount}/{participants.length}</p>
+                            </div>
+                            <div className="rounded-xl bg-income/10 p-3">
+                              <p className="text-xs text-income">Pago</p>
+                              <p className="mt-1 text-lg font-semibold text-income">{formatCurrency(totalPaid)}</p>
+                            </div>
+                            <div className="rounded-xl bg-expense/10 p-3">
+                              <p className="text-xs text-expense">Pendente</p>
+                              <p className="mt-1 text-lg font-semibold text-expense">{formatCurrency(totalPending)}</p>
+                            </div>
+                          </div>
+                        )}
+
+                        {expandedEventMetric === 'children' && (
+                          <div className="space-y-3">
+                            <div className="flex items-center justify-between gap-3">
+                              <div className="flex items-center gap-3">
+                                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                                  <Percent className="h-5 w-5" />
+                                </div>
+                                <div>
+                                  <p className="text-sm font-semibold">Criancas pagam {selectedEvent.childrenPercentage}%</p>
+                                  <p className="text-xs text-muted-foreground">Referencia sobre o valor de adulto.</p>
+                                </div>
+                              </div>
+                              <p className="text-lg font-bold text-primary">{formatCurrency(childShare)}</p>
+                            </div>
+                            <div className="grid grid-cols-5 gap-2 rounded-xl border border-border bg-background p-1">
+                              {[0, 25, 50, 75, 100].map((percentage) => (
+                                <button
+                                  key={percentage}
+                                  type="button"
+                                  onClick={() => updateChildrenPercentageForEvent(percentage)}
+                                  disabled={!canEdit}
+                                  className={`rounded-lg px-2 py-2 text-sm font-semibold transition-all ${
+                                    selectedEvent.childrenPercentage === percentage
+                                      ? 'bg-primary text-primary-foreground shadow-sm'
+                                      : 'text-muted-foreground hover:bg-muted'
+                                  } ${!canEdit ? 'cursor-not-allowed opacity-50' : ''}`}
+                                >
+                                  {percentage}%
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
 
                 <div className="grid gap-3 xl:grid-cols-2">
                 {/* Participants Section */}
