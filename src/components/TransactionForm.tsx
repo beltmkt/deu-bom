@@ -60,7 +60,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
   );
   const [installments, setInstallments] = useState(2);
   const [showCategoryPicker, setShowCategoryPicker] = useState(false);
-  const [showAdvancedFields, setShowAdvancedFields] = useState(false);
+  const [showAdvancedFields, setShowAdvancedFields] = useState(true);
   const [showUpdateScopeModal, setShowUpdateScopeModal] = useState(false);
   const [pendingUpdateData, setPendingUpdateData] =
     useState<Record<string, unknown> | null>(null);
@@ -87,7 +87,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
     setOccurrences(12);
     setEndDate(format(addMonths(new Date(), 12), 'yyyy-MM-dd'));
     setShowCategoryPicker(false);
-    setShowAdvancedFields(false);
+    setShowAdvancedFields(true);
     setShowUpdateScopeModal(false);
     setPendingUpdateData(null);
     setPendingUpdateTransactionId(null);
@@ -559,10 +559,9 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
                 className="flex w-full items-center justify-between gap-4 px-4 py-3.5 text-left"
               >
                 <div>
-                  <p className="text-sm font-medium">Mais opcoes</p>
+                  <p className="text-sm font-medium">Recorrencia e parcelas</p>
                   <p className="mt-1 text-xs text-muted-foreground">
-                    Parcelamento, recorrencia e observacoes ficam aqui para manter o
-                    fluxo principal simples.
+                    Use recorrente para salario mensal e parcelado para dividas em varias vezes.
                   </p>
                 </div>
                 <ChevronDown
@@ -584,10 +583,11 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
                       {!editTransaction ? (
                         <div className="mb-6">
                           <label className="mb-2 block text-sm font-medium text-muted-foreground">
-                            Tipo de transacao
+                            Como esse lancamento se repete?
                           </label>
                           <div className="grid grid-cols-3 gap-2 rounded-xl bg-muted p-1">
                             <button
+                              type="button"
                               onClick={() => setRecurrenceType('none')}
                               className={`py-3 rounded-lg text-sm font-medium transition-all ${
                                 recurrenceType === 'none'
@@ -598,6 +598,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
                               Unica
                             </button>
                             <button
+                              type="button"
                               onClick={() => setRecurrenceType('installment')}
                               className={`py-3 rounded-lg text-sm font-medium transition-all ${
                                 recurrenceType === 'installment'
@@ -608,6 +609,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
                               Parcelado
                             </button>
                             <button
+                              type="button"
                               onClick={() => setRecurrenceType('subscription')}
                               className={`py-3 rounded-lg text-sm font-medium transition-all ${
                                 recurrenceType === 'subscription'
@@ -616,6 +618,30 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
                               }`}
                             >
                               Recorrente
+                            </button>
+                          </div>
+                          <div className="mt-3 grid grid-cols-2 gap-2">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setType('income');
+                                setRecurrenceType('subscription');
+                                setRecurrenceInterval('monthly');
+                                setEndCondition('never');
+                              }}
+                              className="rounded-xl border border-income/20 bg-income/10 px-3 py-2 text-left text-xs font-medium text-income"
+                            >
+                              Salario mensal
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setType('expense');
+                                setRecurrenceType('installment');
+                              }}
+                              className="rounded-xl border border-expense/20 bg-expense/10 px-3 py-2 text-left text-xs font-medium text-expense"
+                            >
+                              Divida parcelada
                             </button>
                           </div>
 
