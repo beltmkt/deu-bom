@@ -316,8 +316,8 @@ const Leisure: React.FC = () => {
 
       setEvents(formattedEvents);
       
-      if (formattedEvents.length > 0 && !selectedEvent) {
-        setSelectedEvent(formattedEvents[0]);
+      if (selectedEvent && !formattedEvents.some((event) => event.id === selectedEvent.id)) {
+        setSelectedEvent(null);
       }
     } catch (error) {
       console.error('Failed to load events:', error);
@@ -1559,22 +1559,31 @@ const Leisure: React.FC = () => {
                       <p className="text-sm text-muted-foreground">
                         {selectedEvent.eventDate
                           ? format(new Date(selectedEvent.eventDate), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })
-                          : 'Sem data definida'}
+                        : 'Sem data definida'}
                       </p>
                     </div>
-                    <div className="grid grid-cols-3 gap-3 text-center">
-                      <div className="rounded-xl bg-muted/60 px-4 py-3">
-                        <p className="text-xs text-muted-foreground">Adultos</p>
-                        <p className="text-lg font-semibold">{participants.filter((p) => !p.isChild).length}</p>
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+                      <div className="grid grid-cols-3 gap-2 text-center">
+                        <div className="rounded-xl bg-muted/60 px-3 py-2">
+                          <p className="text-xs text-muted-foreground">Adultos</p>
+                          <p className="text-base font-semibold">{participants.filter((p) => !p.isChild).length}</p>
+                        </div>
+                        <div className="rounded-xl bg-muted/60 px-3 py-2">
+                          <p className="text-xs text-muted-foreground">Criancas</p>
+                          <p className="text-base font-semibold">{participants.filter((p) => p.isChild).length}</p>
+                        </div>
+                        <div className="rounded-xl bg-muted/60 px-3 py-2">
+                          <p className="text-xs text-muted-foreground">Itens</p>
+                          <p className="text-base font-semibold">{items.length}</p>
+                        </div>
                       </div>
-                      <div className="rounded-xl bg-muted/60 px-4 py-3">
-                        <p className="text-xs text-muted-foreground">Criancas</p>
-                        <p className="text-lg font-semibold">{participants.filter((p) => p.isChild).length}</p>
-                      </div>
-                      <div className="rounded-xl bg-muted/60 px-4 py-3">
-                        <p className="text-xs text-muted-foreground">Itens</p>
-                        <p className="text-lg font-semibold">{items.length}</p>
-                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setSelectedEvent(null)}
+                        className="h-9 rounded-xl border border-border px-3 text-xs font-medium text-muted-foreground"
+                      >
+                        Fechar
+                      </button>
                     </div>
                   </div>
                 </div>
@@ -2195,62 +2204,65 @@ const Leisure: React.FC = () => {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50"
+            className="fixed inset-0 z-50 bg-black/50 p-3 backdrop-blur-sm sm:flex sm:items-center sm:justify-center sm:p-6"
             onClick={() => setShowItemForm(false)}
           >
             <motion.div
-              initial={{ y: '100%' }}
-              animate={{ y: 0 }}
-              exit={{ y: '100%' }}
-              transition={{ type: 'spring', damping: 25 }}
+              initial={{ y: 24, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ y: 24, opacity: 0 }}
+              transition={{ type: 'spring', damping: 28, stiffness: 260 }}
               onClick={(e) => e.stopPropagation()}
-              className="absolute bottom-0 left-0 right-0 bg-card rounded-t-3xl p-6"
+              className="absolute bottom-0 left-0 right-0 rounded-t-2xl border border-border bg-card p-4 shadow-2xl sm:static sm:max-w-lg sm:rounded-2xl"
             >
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-lg font-semibold">Adicionar Item</h2>
+              <div className="mb-4 flex items-center justify-between">
+                <div>
+                  <p className="text-xs font-medium uppercase tracking-[0.16em] text-muted-foreground">Item</p>
+                  <h2 className="text-base font-semibold">Adicionar item</h2>
+                </div>
                 <button
                   onClick={() => setShowItemForm(false)}
-                  className="w-10 h-10 rounded-full bg-muted flex items-center justify-center"
+                  className="flex h-8 w-8 items-center justify-center rounded-full bg-muted"
                 >
-                  <X className="w-5 h-5" />
+                  <X className="h-4 w-4" />
                 </button>
               </div>
               
-              <div className="space-y-4">
+              <div className="space-y-3">
                 <div>
-                  <label className="block text-sm font-medium text-muted-foreground mb-2">
-                    Nome do Item
+                  <label className="mb-1.5 block text-xs font-medium text-muted-foreground">
+                    Nome
                   </label>
                   <input
                     type="text"
                     value={itemName}
                     onChange={(e) => setItemName(e.target.value)}
                     placeholder="Ex: Picanha"
-                    className="w-full px-4 py-4 rounded-xl bg-input border border-border text-foreground placeholder:text-muted-foreground"
+                    className="h-10 w-full rounded-xl border border-border bg-background px-3 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:border-primary"
                   />
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-sm font-medium text-muted-foreground mb-2">
-                      Quantidade
+                    <label className="mb-1.5 block text-xs font-medium text-muted-foreground">
+                      Qtd
                     </label>
                     <input
                       type="number"
                       min="1"
                       value={itemQuantity}
                       onChange={(e) => setItemQuantity(Number(e.target.value))}
-                      className="w-full px-4 py-4 rounded-xl bg-input border border-border text-foreground"
+                      className="h-10 w-full rounded-xl border border-border bg-background px-3 text-sm text-foreground outline-none focus:border-primary"
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-muted-foreground mb-2">
+                    <label className="mb-1.5 block text-xs font-medium text-muted-foreground">
                       Categoria
                     </label>
                     <select
                       value={itemCategory}
                       onChange={(e) => setItemCategory(e.target.value)}
-                      className="w-full px-4 py-4 rounded-xl bg-input border border-border text-foreground"
+                      className="h-10 w-full rounded-xl border border-border bg-background px-3 text-sm text-foreground outline-none focus:border-primary"
                     >
                       {itemCategories.map(cat => (
                         <option key={cat.value} value={cat.value}>{cat.label}</option>
@@ -2260,18 +2272,22 @@ const Leisure: React.FC = () => {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-muted-foreground mb-2">
+                  <label className="mb-1.5 block text-xs font-medium text-muted-foreground">
                     Preço Unitário
                   </label>
-                  <CurrencyInput value={itemPrice} onChange={setItemPrice} />
+                  <CurrencyInput
+                    value={itemPrice}
+                    onChange={setItemPrice}
+                    className="h-10 py-0 text-sm"
+                  />
                 </div>
 
                 <button
                   onClick={addItem}
                   disabled={!itemName || itemPrice <= 0}
-                  className="w-full py-4 rounded-xl bg-primary text-primary-foreground font-semibold disabled:opacity-50"
+                  className="h-11 w-full rounded-xl bg-primary text-sm font-semibold text-primary-foreground disabled:opacity-50"
                 >
-                  Adicionar Item
+                  Adicionar item
                 </button>
               </div>
             </motion.div>
@@ -2286,30 +2302,33 @@ const Leisure: React.FC = () => {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50"
+            className="fixed inset-0 z-50 bg-black/50 p-3 backdrop-blur-sm sm:flex sm:items-center sm:justify-center sm:p-6"
             onClick={() => setShowParticipantForm(false)}
           >
             <motion.div
-              initial={{ y: '100%' }}
-              animate={{ y: 0 }}
-              exit={{ y: '100%' }}
-              transition={{ type: 'spring', damping: 25 }}
+              initial={{ y: 24, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ y: 24, opacity: 0 }}
+              transition={{ type: 'spring', damping: 28, stiffness: 260 }}
               onClick={(e) => e.stopPropagation()}
-              className="absolute bottom-0 left-0 right-0 bg-card rounded-t-3xl p-6"
+              className="absolute bottom-0 left-0 right-0 rounded-t-2xl border border-border bg-card p-4 shadow-2xl sm:static sm:max-w-lg sm:rounded-2xl"
             >
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-lg font-semibold">Adicionar Participante</h2>
+              <div className="mb-4 flex items-center justify-between">
+                <div>
+                  <p className="text-xs font-medium uppercase tracking-[0.16em] text-muted-foreground">Participante</p>
+                  <h2 className="text-base font-semibold">Adicionar participante</h2>
+                </div>
                 <button
                   onClick={() => setShowParticipantForm(false)}
-                  className="w-10 h-10 rounded-full bg-muted flex items-center justify-center"
+                  className="flex h-8 w-8 items-center justify-center rounded-full bg-muted"
                 >
-                  <X className="w-5 h-5" />
+                  <X className="h-4 w-4" />
                 </button>
               </div>
               
-              <div className="space-y-4">
+              <div className="space-y-3">
                 <div>
-                  <label className="block text-sm font-medium text-muted-foreground mb-2">
+                  <label className="mb-1.5 block text-xs font-medium text-muted-foreground">
                     Nome
                   </label>
                   <input
@@ -2317,28 +2336,28 @@ const Leisure: React.FC = () => {
                     value={participantName}
                     onChange={(e) => setParticipantName(e.target.value)}
                     placeholder="Nome do participante"
-                    className="w-full px-4 py-4 rounded-xl bg-input border border-border text-foreground placeholder:text-muted-foreground"
+                    className="h-10 w-full rounded-xl border border-border bg-background px-3 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:border-primary"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-muted-foreground mb-2">
-                    <Mail className="w-4 h-4 inline mr-2" />
-                    Email (opcional - para convite de agenda)
+                  <label className="mb-1.5 block text-xs font-medium text-muted-foreground">
+                    <Mail className="mr-1.5 inline h-3.5 w-3.5" />
+                    Email opcional
                   </label>
                   <input
                     type="email"
                     value={participantEmail}
                     onChange={(e) => setParticipantEmail(e.target.value)}
                     placeholder="email@exemplo.com"
-                    className="w-full px-4 py-4 rounded-xl bg-input border border-border text-foreground placeholder:text-muted-foreground"
+                    className="h-10 w-full rounded-xl border border-border bg-background px-3 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:border-primary"
                   />
                 </div>
 
-                <div className="grid grid-cols-2 gap-2 p-1 bg-muted rounded-xl">
+                <div className="grid grid-cols-2 gap-1 rounded-xl border border-border bg-background p-1">
                   <button
                     onClick={() => setParticipantIsChild(false)}
-                    className={`py-3 rounded-lg font-medium transition-all ${
+                    className={`rounded-lg py-2 text-sm font-medium transition-all ${
                       !participantIsChild
                         ? 'bg-card shadow-md text-foreground'
                         : 'text-muted-foreground'
@@ -2348,7 +2367,7 @@ const Leisure: React.FC = () => {
                   </button>
                   <button
                     onClick={() => setParticipantIsChild(true)}
-                    className={`py-3 rounded-lg font-medium transition-all ${
+                    className={`rounded-lg py-2 text-sm font-medium transition-all ${
                       participantIsChild
                         ? 'bg-card shadow-md text-foreground'
                         : 'text-muted-foreground'
@@ -2361,9 +2380,9 @@ const Leisure: React.FC = () => {
                 <button
                   onClick={addParticipant}
                   disabled={!participantName}
-                  className="w-full py-4 rounded-xl bg-primary text-primary-foreground font-semibold disabled:opacity-50"
+                  className="h-11 w-full rounded-xl bg-primary text-sm font-semibold text-primary-foreground disabled:opacity-50"
                 >
-                  Adicionar Participante
+                  Adicionar participante
                 </button>
               </div>
             </motion.div>
