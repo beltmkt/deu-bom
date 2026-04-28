@@ -224,7 +224,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
         );
         if (!success) return;
 
-        toast.success('Transacao atualizada!');
+        toast.success('Transacao atualizada e sincronizada!');
         onClose();
         resetForm();
       } finally {
@@ -323,7 +323,14 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
 
       if (!success) return;
 
-      toast.success('Transacao atualizada!');
+      const scopeLabel =
+        scope === 'single'
+          ? 'este lancamento'
+          : scope === 'future'
+            ? 'este e os proximos lancamentos'
+            : 'toda a serie';
+
+      toast.success(`Atualizacao aplicada em ${scopeLabel}.`);
       setShowUpdateScopeModal(false);
       setPendingUpdateData(null);
       setPendingUpdateTransactionId(null);

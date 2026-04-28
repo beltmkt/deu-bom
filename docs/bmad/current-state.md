@@ -21,6 +21,8 @@
   - operar series por `group_id` e `parent_transaction_id`
   - revalidar dados com `refreshData()` apos criar, editar e excluir
   - reduzir risco de transacoes "voltarem" apos refresh
+- Helpers de serie/escopo extraidos para facilitar revisao de `single`, `future` e `all`.
+- Checklist QA de confiabilidade financeira criado em `docs/qa/core-finance-reliability.md`.
 - Dashboard e Transactions redesenhadas com identidade distinta.
 - Utilitarios compartilhados de agrupamento e resumo para reduzir duplicidade.
 
@@ -36,3 +38,4 @@
 - Alguns textos antigos ainda aparecem com encoding inconsistente em partes do projeto.
 - Ainda falta auditoria completa das demais telas para alinhamento visual com a nova direcao.
 - O fluxo de importacao/exportacao merece revisao separada para validacao e feedback detalhado.
+- O checklist QA novo precisa ser executado manualmente em ambiente com dados reais de teste.

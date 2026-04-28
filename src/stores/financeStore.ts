@@ -5,6 +5,12 @@ import type { Database } from '@/integrations/supabase/types';
 import { toast } from 'sonner';
 import { z } from 'zod';
 import type { Transaction, Category, Budget, UserSettings } from '@/types/finance';
+import {
+  getScopedTransactionIds,
+  getTransactionSeries,
+  getUniqueTransactionIds,
+  validateAffectedTransactionIds,
+} from '@/utils/transactionSeries';
 
 const defaultCategories: Omit<Category, 'id'>[] = [
   { name: 'Salario', icon: 'Wallet', color: '#22c55e', type: 'income' },
@@ -132,58 +138,6 @@ const buildDbTransactionUpdates = (updates: Partial<Transaction>) => {
 
   return dbUpdates;
 };
-
-const getTransactionSeries = (
-  transactions: Transaction[],
-  target: Transaction
-) => {
-  const rootId = target.parentTransactionId || target.id;
-
-  return transactions
-    .filter((transaction) => {
-      if (transaction.id === target.id) return true;
-      if (target.groupId && transaction.groupId === target.groupId) return true;
-      if (transaction.parentTransactionId && transaction.parentTransactionId === rootId) return true;
-      if (target.parentTransactionId && transaction.id === target.parentTransactionId) return true;
-      return false;
-    })
-    .sort((first, second) => {
-      const firstOrder = first.installmentNumber ?? Number.MAX_SAFE_INTEGER;
-      const secondOrder = second.installmentNumber ?? Number.MAX_SAFE_INTEGER;
-
-      if (firstOrder !== secondOrder) {
-        return firstOrder - secondOrder;
-      }
-
-      return parseISO(first.date).getTime() - parseISO(second.date).getTime();
-    });
-};
-
-const getScopedTransactionIds = (
-  transactions: Transaction[],
-  target: Transaction,
-  scope: 'single' | 'future' | 'all'
-) => {
-  if (scope === 'single') {
-    return [target.id];
-  }
-
-  const relatedTransactions = getTransactionSeries(transactions, target);
-
-  if (scope === 'all') {
-    return relatedTransactions.map((transaction) => transaction.id);
-  }
-
-  const targetIndex = relatedTransactions.findIndex(
-    (transaction) => transaction.id === target.id
-  );
-
-  return relatedTransactions
-    .slice(targetIndex >= 0 ? targetIndex : 0)
-    .map((transaction) => transaction.id);
-};
-
-const getUniqueTransactionIds = (ids: string[]) => [...new Set(ids)];
 
 const addDateByInterval = (
   date: Date,
@@ -315,6 +269,23 @@ const applySnapshot = (
   });
 };
 
+const getFinanceErrorMessage = (error: unknown, fallback: string) => {
+  const message =
+    typeof error === 'object' && error && 'message' in error
+      ? String((error as { message?: unknown }).message || '')
+      : '';
+
+  if (/permission|policy|rls|not authorized|unauthorized|denied/i.test(message)) {
+    return 'Nao foi possivel concluir: verifique sua permissao neste workspace.';
+  }
+
+  if (/network|fetch|timeout|connection/i.test(message)) {
+    return 'Nao foi possivel sincronizar agora. Verifique a conexao e tente novamente.';
+  }
+
+  return fallback;
+};
+
 export const useFinanceStore = create<FinanceState>((set, get) => ({
   transactions: [],
   categories: [],
@@ -336,7 +307,7 @@ export const useFinanceStore = create<FinanceState>((set, get) => ({
       }
     } catch (error) {
       console.error('Failed to initialize finance store:', error);
-      toast.error('Nao foi possivel carregar seus dados financeiros.');
+      toast.error(getFinanceErrorMessage(error, 'Nao foi possivel carregar seus dados financeiros.'));
       set({ loading: false, initialized: true });
     }
   },
@@ -350,7 +321,7 @@ export const useFinanceStore = create<FinanceState>((set, get) => ({
       }
     } catch (error) {
       console.error('Failed to refresh finance data:', error);
-      toast.error('Nao foi possivel sincronizar os dados.');
+      toast.error(getFinanceErrorMessage(error, 'Nao foi possivel sincronizar os dados.'));
     }
   },
 
@@ -388,7 +359,7 @@ export const useFinanceStore = create<FinanceState>((set, get) => ({
 
     if (error) {
       console.error('Failed to add transaction:', error);
-      toast.error('Nao foi possivel salvar a transacao.');
+      toast.error(getFinanceErrorMessage(error, 'Nao foi possivel salvar a transacao.'));
       return false;
     }
 
@@ -444,7 +415,7 @@ export const useFinanceStore = create<FinanceState>((set, get) => ({
 
         if (error) {
           console.error('Failed to update recurring transaction series:', error);
-          toast.error('Nao foi possivel atualizar a serie da transacao.');
+          toast.error(getFinanceErrorMessage(error, 'Nao foi possivel atualizar a serie da transacao.'));
           return false;
         }
 
@@ -460,12 +431,17 @@ export const useFinanceStore = create<FinanceState>((set, get) => ({
         updatedIds.push(item.id);
       }
 
-      if (updatedIds.length !== scopedTransactions.length) {
+      const validation = validateAffectedTransactionIds(
+        scopedTransactions.map(({ item }) => item.id),
+        updatedIds
+      );
+
+      if (!validation.ok) {
         console.error('Recurring update count mismatch.', {
-          expected: scopedTransactions.length,
-          updated: updatedIds.length,
+          expectedIds: validation.expectedIds,
+          updatedIds: validation.affectedIds,
         });
-        toast.error('A atualizacao da serie nao foi concluida como esperado.');
+        toast.error('A serie nao foi sincronizada com seguranca. Recarregue e tente novamente.');
         return false;
       }
 
@@ -490,17 +466,21 @@ export const useFinanceStore = create<FinanceState>((set, get) => ({
 
     if (error) {
       console.error('Failed to update transaction:', error);
-      toast.error('Nao foi possivel atualizar a transacao.');
+      toast.error(getFinanceErrorMessage(error, 'Nao foi possivel atualizar a transacao.'));
       return false;
     }
 
-    const updatedIds = getUniqueTransactionIds((data || []).map((item) => item.id));
-    if (updatedIds.length !== ids.length) {
+    const validation = validateAffectedTransactionIds(
+      ids,
+      (data || []).map((item) => item.id)
+    );
+
+    if (!validation.ok) {
       console.error('Update affected an unexpected number of records.', {
-        expectedIds: ids,
-        updatedIds,
+        expectedIds: validation.expectedIds,
+        updatedIds: validation.affectedIds,
       });
-      toast.error('A atualizacao nao foi aplicada com seguranca.');
+      toast.error('A atualizacao nao foi sincronizada com seguranca. Recarregue e tente novamente.');
       return false;
     }
 
@@ -530,17 +510,21 @@ export const useFinanceStore = create<FinanceState>((set, get) => ({
 
     if (error) {
       console.error('Failed to delete transaction:', error);
-      toast.error('Nao foi possivel excluir a transacao.');
+      toast.error(getFinanceErrorMessage(error, 'Nao foi possivel excluir a transacao.'));
       return false;
     }
 
-    const deletedIds = getUniqueTransactionIds((data || []).map((item) => item.id));
-    if (deletedIds.length !== ids.length) {
+    const validation = validateAffectedTransactionIds(
+      ids,
+      (data || []).map((item) => item.id)
+    );
+
+    if (!validation.ok) {
       console.error('Delete affected an unexpected number of records.', {
-        expectedIds: ids,
-        deletedIds,
+        expectedIds: validation.expectedIds,
+        deletedIds: validation.affectedIds,
       });
-      toast.error('A exclusao nao foi aplicada com seguranca.');
+      toast.error('A exclusao nao foi sincronizada com seguranca. Recarregue e tente novamente.');
       return false;
     }
 

@@ -55,3 +55,16 @@
 - Normalizar textos com encoding quebrado em todo o projeto.
 - Revisar Festometro internamente com mais profundidade visual e funcional.
 - Tratar o backlog de lint antigo fora da frente visual.
+
+## 2026-04-27 - PRD e confiabilidade financeira
+
+- PRD completo criado em `_bmad-output/planning-artifacts/prd.md`.
+- Primeira frente derivada do PRD selecionada: confiabilidade do nucleo financeiro e QA critico.
+- Criado checklist manual em `docs/qa/core-finance-reliability.md` cobrindo:
+  - CRUD basico
+  - recorrencias e parcelas
+  - reload e persistencia
+  - balanco mensal
+  - workspace
+  - falhas de permissao, sincronizacao e contagem divergente
+- Helpers de serie/escopo foram separados para facilitar revisao e reduzir risco de logica opaca no store.

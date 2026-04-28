@@ -41,9 +41,9 @@ export const TransactionDeleteModal: React.FC<TransactionDeleteModalProps> = ({
             <DialogTitle className="text-base font-semibold">
               Excluir transacao
             </DialogTitle>
-            <DialogDescription className="mt-1 text-sm">
-              Excluir "{transactionTitle}"?
-            </DialogDescription>
+          <DialogDescription className="mt-1 text-sm">
+            Excluir "{transactionTitle}"? Essa acao remove o lancamento do balanço apos a sincronizacao.
+          </DialogDescription>
           </DialogHeader>
           <div className="mt-4 flex gap-3">
             <button
@@ -81,7 +81,7 @@ export const TransactionDeleteModal: React.FC<TransactionDeleteModalProps> = ({
             Excluir transacao
           </DialogTitle>
           <DialogDescription className="mt-1 text-sm">
-            "{transactionTitle}" faz parte de uma serie.
+            "{transactionTitle}" faz parte de uma serie. Escolha com cuidado quais lancamentos saem do balanço.
           </DialogDescription>
         </DialogHeader>
         <div className="mt-4 space-y-2">
@@ -90,21 +90,30 @@ export const TransactionDeleteModal: React.FC<TransactionDeleteModalProps> = ({
             disabled={isSubmitting}
             className="w-full rounded-xl bg-muted/50 px-4 py-2.5 text-left text-sm font-medium text-foreground transition-colors hover:bg-muted"
           >
-            Excluir apenas este
+            <span className="block">Excluir apenas este</span>
+            <span className="mt-0.5 block text-xs font-normal text-muted-foreground">
+              Remove somente o lancamento selecionado.
+            </span>
           </button>
           <button
             onClick={() => onConfirm('future')}
             disabled={isSubmitting}
             className="w-full rounded-xl bg-muted/50 px-4 py-2.5 text-left text-sm font-medium text-foreground transition-colors hover:bg-muted"
           >
-            Este e os proximos
+            <span className="block">Este e os proximos</span>
+            <span className="mt-0.5 block text-xs font-normal text-muted-foreground">
+              Remove este lancamento e os futuros da serie.
+            </span>
           </button>
           <button
             onClick={() => onConfirm('all')}
             disabled={isSubmitting}
             className="w-full rounded-xl bg-destructive/5 px-4 py-2.5 text-left text-sm font-medium text-destructive transition-colors hover:bg-destructive/10"
           >
-            Excluir todos da serie
+            <span className="block">Excluir todos da serie</span>
+            <span className="mt-0.5 block text-xs font-normal text-destructive/80">
+              Remove todos os lancamentos relacionados.
+            </span>
           </button>
           <button
             onClick={onClose}
@@ -151,7 +160,7 @@ export const TransactionUpdateModal: React.FC<TransactionUpdateModalProps> = ({
             Atualizar transacao
           </DialogTitle>
           <DialogDescription className="mt-1 text-sm">
-            "{transactionTitle}" faz parte de uma serie. Aplicar alteracao em:
+            "{transactionTitle}" faz parte de uma serie. Escolha onde a alteracao deve refletir.
           </DialogDescription>
         </DialogHeader>
         <div className="mt-4 space-y-2">
@@ -160,21 +169,30 @@ export const TransactionUpdateModal: React.FC<TransactionUpdateModalProps> = ({
             disabled={isSubmitting}
             className="w-full rounded-xl bg-muted/50 px-4 py-2.5 text-left text-sm font-medium text-foreground transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-60"
           >
-            Apenas este
+            <span className="block">Apenas este</span>
+            <span className="mt-0.5 block text-xs font-normal text-muted-foreground">
+              Mantem os demais lancamentos da serie como estao.
+            </span>
           </button>
           <button
             onClick={() => onConfirm('future')}
             disabled={isSubmitting}
             className="w-full rounded-xl bg-muted/50 px-4 py-2.5 text-left text-sm font-medium text-foreground transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-60"
           >
-            Este e os proximos
+            <span className="block">Este e os proximos</span>
+            <span className="mt-0.5 block text-xs font-normal text-muted-foreground">
+              Atualiza este lancamento e os futuros.
+            </span>
           </button>
           <button
             onClick={() => onConfirm('all')}
             disabled={isSubmitting}
             className="w-full rounded-xl bg-primary/10 px-4 py-2.5 text-left text-sm font-medium text-primary transition-colors hover:bg-primary/20 disabled:cursor-not-allowed disabled:opacity-60"
           >
-            Todos da serie
+            <span className="block">Todos da serie</span>
+            <span className="mt-0.5 block text-xs font-normal text-primary/80">
+              Atualiza todos os lancamentos relacionados.
+            </span>
           </button>
           <button
             onClick={onClose}

@@ -13,6 +13,9 @@ export interface TransactionSummary {
   completedIncome: number;
   completedExpense: number;
   completedBalance: number;
+  pendingIncome: number;
+  pendingExpense: number;
+  pendingBalance: number;
   pendingCount: number;
 }
 
@@ -79,6 +82,20 @@ export const summarizeTransactions = (
     (transaction) => transaction.status === 'pending'
   ).length;
 
+  const pendingIncome = transactions
+    .filter(
+      (transaction) =>
+        transaction.type === 'income' && transaction.status === 'pending'
+    )
+    .reduce((total, transaction) => total + transaction.amount, 0);
+
+  const pendingExpense = transactions
+    .filter(
+      (transaction) =>
+        transaction.type === 'expense' && transaction.status === 'pending'
+    )
+    .reduce((total, transaction) => total + transaction.amount, 0);
+
   return {
     income,
     expense,
@@ -86,6 +103,9 @@ export const summarizeTransactions = (
     completedIncome,
     completedExpense,
     completedBalance: completedIncome - completedExpense,
+    pendingIncome,
+    pendingExpense,
+    pendingBalance: pendingIncome - pendingExpense,
     pendingCount,
   };
 };
