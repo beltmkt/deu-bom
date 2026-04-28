@@ -1,4 +1,4 @@
-import { format, startOfMonth, endOfMonth, addDays, subDays, isWithinInterval, parseISO } from 'date-fns';
+import { format, getDaysInMonth, subDays, isWithinInterval, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
 export const formatDate = (date: string | Date, formatStr = 'dd/MM/yyyy'): string => {
@@ -19,18 +19,21 @@ export const getCustomCycleRange = (cycleStartDay: number, referenceDate: Date =
   const year = referenceDate.getFullYear();
   const month = referenceDate.getMonth();
   const day = referenceDate.getDate();
+  const currentMonthCycleDay = Math.min(cycleStartDay, getDaysInMonth(new Date(year, month, 1)));
+  const nextMonthCycleDay = Math.min(cycleStartDay, getDaysInMonth(new Date(year, month + 1, 1)));
+  const previousMonthCycleDay = Math.min(cycleStartDay, getDaysInMonth(new Date(year, month - 1, 1)));
   
   let startDate: Date;
   let endDate: Date;
   
-  if (day >= cycleStartDay) {
+  if (day >= currentMonthCycleDay) {
     // Current cycle started this month
-    startDate = new Date(year, month, cycleStartDay);
-    endDate = subDays(new Date(year, month + 1, cycleStartDay), 1);
+    startDate = new Date(year, month, currentMonthCycleDay);
+    endDate = subDays(new Date(year, month + 1, nextMonthCycleDay), 1);
   } else {
     // Current cycle started last month
-    startDate = new Date(year, month - 1, cycleStartDay);
-    endDate = subDays(new Date(year, month, cycleStartDay), 1);
+    startDate = new Date(year, month - 1, previousMonthCycleDay);
+    endDate = subDays(new Date(year, month, currentMonthCycleDay), 1);
   }
   
   return { startDate, endDate };

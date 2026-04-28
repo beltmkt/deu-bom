@@ -62,7 +62,7 @@ const Transactions: React.FC = () => {
     }
   }, [initialize, initialized]);
 
-  const cycleDays = Array.from({ length: 28 }, (_, index) => index + 1);
+  const cycleDays = Array.from({ length: 30 }, (_, index) => index + 2);
 
   const monthTransactions = useMemo(
     () => filterTransactionsByMonth(transactions, selectedMonth),
@@ -262,23 +262,30 @@ const Transactions: React.FC = () => {
             </div>
           </div>
 
-          <div className="mt-2 flex items-center gap-2 overflow-x-auto text-xs text-muted-foreground">
-            <span className="shrink-0">Fechamento</span>
+          <div className="mt-3 rounded-xl border border-border/60 bg-background/70 px-3 py-2">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+              <div className="min-w-0 flex-1">
+                <p className="text-xs font-medium text-foreground">Dia de vencimento do ciclo</p>
+                <p className="mt-0.5 text-xs leading-5 text-muted-foreground">
+                  Opcional: use se seu mes financeiro comeca em um dia fixo, como dia 5 ou 10. Em meses curtos, dia 29, 30 ou 31 vira o ultimo dia valido.
+                </p>
+              </div>
             <select
               value={settings.cycleStartDay}
               onChange={(event) =>
                 updateSettings({ cycleStartDay: Number(event.target.value) })
               }
-              className="h-8 rounded-lg border border-border bg-background px-2 text-xs font-medium text-foreground"
+                className="h-9 rounded-lg border border-border bg-background px-2 text-xs font-medium text-foreground sm:w-40"
               aria-label="Dia de fechamento do mes"
             >
+                <option value={1}>Sem ajuste</option>
               {cycleDays.map((day) => (
                 <option key={day} value={day}>
                   Dia {day}
                 </option>
               ))}
             </select>
-            <span className="shrink-0">usado para alinhar seu mes real.</span>
+            </div>
           </div>
         </div>
       </header>

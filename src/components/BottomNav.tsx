@@ -157,17 +157,9 @@ export const BottomNav: React.FC = () => {
           })}
         </nav>
 
-        <div className={cn('border-t border-border/60 px-4 py-4', !isExpanded && 'px-3')}>
-          <div
-            className={cn(
-              'rounded-2xl bg-muted/60 p-3',
-              !isExpanded && 'flex items-center justify-center p-2'
-            )}
-          >
-            <BarChart3 className="h-4 w-4 shrink-0 text-primary" />
-            <div className={cn('mt-2 text-xs text-muted-foreground', !isExpanded && 'hidden')}>
-              Abra o dashboard para acompanhar receitas, despesas e meses com maior gasto.
-            </div>
+        <div className="border-t border-border/60 px-4 py-4">
+          <div className="flex h-10 items-center justify-center rounded-2xl bg-muted/40 text-primary">
+            <BarChart3 className="h-4 w-4 shrink-0" />
           </div>
         </div>
       </aside>

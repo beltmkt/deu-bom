@@ -6,7 +6,10 @@ import { useFinanceStore, useCategoryById } from '@/stores/financeStore';
 import { formatCurrency } from '@/utils/currency';
 import { getRelativeDate } from '@/utils/dates';
 import type { Transaction } from '@/types/finance';
-import { TransactionDeleteModal } from '@/components/TransactionDeleteModal';
+import {
+  TransactionDeleteModal,
+  TransactionUpdateModal,
+} from '@/components/TransactionDeleteModal';
 import { toast } from 'sonner';
 
 interface TransactionCardProps {
@@ -23,9 +26,11 @@ export const TransactionCard: React.FC<TransactionCardProps> = ({
   const [swipeOffset, setSwipeOffset] = React.useState(0);
   const [isDeleting, setIsDeleting] = React.useState(false);
   const [showDeleteModal, setShowDeleteModal] = React.useState(false);
+  const [showStatusScopeModal, setShowStatusScopeModal] = React.useState(false);
   const [isResolvingDelete, setIsResolvingDelete] = React.useState(false);
+  const [isResolvingStatus, setIsResolvingStatus] = React.useState(false);
   const category = useCategoryById(transaction.categoryId);
-  const { toggleTransactionStatus, deleteTransaction } = useFinanceStore();
+  const { toggleTransactionStatus, updateTransaction, deleteTransaction } = useFinanceStore();
 
   const isRecurring = !!(transaction.groupId || transaction.parentTransactionId || (transaction.totalInstallments && transaction.totalInstallments > 1));
 
@@ -59,6 +64,11 @@ export const TransactionCard: React.FC<TransactionCardProps> = ({
 
   const handleStatusToggle = (e: React.MouseEvent) => {
     e.stopPropagation();
+    if (isRecurring) {
+      setShowStatusScopeModal(true);
+      return;
+    }
+
     toggleTransactionStatus(transaction.id);
   };
 
@@ -86,6 +96,29 @@ export const TransactionCard: React.FC<TransactionCardProps> = ({
       setIsDeleting(true);
     } finally {
       setIsResolvingDelete(false);
+    }
+  };
+
+  const handleStatusScopeConfirm = async (scope: 'single' | 'future' | 'all') => {
+    if (isResolvingStatus) return;
+
+    const nextStatus = transaction.status === 'completed' ? 'pending' : 'completed';
+
+    setIsResolvingStatus(true);
+    try {
+      const success =
+        scope === 'single'
+          ? await updateTransaction(transaction.id, { status: nextStatus }, false)
+          : scope === 'future'
+            ? await updateTransaction(transaction.id, { status: nextStatus }, true)
+            : await updateTransaction(transaction.id, { status: nextStatus }, false, true);
+
+      if (!success) return;
+
+      toast.success('Status atualizado!');
+      setShowStatusScopeModal(false);
+    } finally {
+      setIsResolvingStatus(false);
     }
   };
 
@@ -247,6 +280,17 @@ export const TransactionCard: React.FC<TransactionCardProps> = ({
         isRecurring={isRecurring}
         transactionTitle={transaction.title}
         isSubmitting={isResolvingDelete}
+      />
+
+      <TransactionUpdateModal
+        isOpen={showStatusScopeModal}
+        onClose={() => {
+          if (isResolvingStatus) return;
+          setShowStatusScopeModal(false);
+        }}
+        onConfirm={handleStatusScopeConfirm}
+        transactionTitle={transaction.title}
+        isSubmitting={isResolvingStatus}
       />
     </>
   );
