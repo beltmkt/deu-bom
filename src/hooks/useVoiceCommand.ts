@@ -5,8 +5,13 @@ type SpeechRecognitionEventResult = {
   transcript: string;
 };
 
+type SpeechRecognitionResultLike = ArrayLike<SpeechRecognitionEventResult> & {
+  isFinal: boolean;
+};
+
 type SpeechRecognitionEventLike = {
-  results: ArrayLike<ArrayLike<SpeechRecognitionEventResult>>;
+  resultIndex: number;
+  results: ArrayLike<SpeechRecognitionResultLike>;
 };
 
 type SpeechRecognitionErrorEventLike = {
@@ -17,8 +22,10 @@ type SpeechRecognitionLike = {
   lang: string;
   interimResults: boolean;
   maxAlternatives: number;
+  continuous: boolean;
   start: () => void;
   stop: () => void;
+  onstart: (() => void) | null;
   onresult: ((event: SpeechRecognitionEventLike) => void) | null;
   onerror: ((event: SpeechRecognitionErrorEventLike) => void) | null;
   onend: (() => void) | null;
@@ -32,6 +39,7 @@ interface VoiceCommandOptions {
 
 export const useVoiceCommand = ({ onTranscript }: VoiceCommandOptions) => {
   const [isListening, setIsListening] = useState(false);
+  const [lastTranscript, setLastTranscript] = useState('');
   const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
 
   const Recognition = useMemo(() => {
@@ -60,20 +68,57 @@ export const useVoiceCommand = ({ onTranscript }: VoiceCommandOptions) => {
 
     const recognition = new Recognition();
     recognition.lang = 'pt-BR';
-    recognition.interimResults = false;
+    recognition.interimResults = true;
     recognition.maxAlternatives = 1;
+    recognition.continuous = false;
+
+    setLastTranscript('');
+    recognition.onstart = () => {
+      toast.info('Ouvindo... fale o comando agora.');
+    };
 
     recognition.onresult = (event) => {
-      const transcript = event.results[0]?.[0]?.transcript?.trim();
-      if (transcript) {
-        onTranscript(transcript);
-      } else {
+      let interimTranscript = '';
+      let finalTranscript = '';
+
+      for (let index = event.resultIndex; index < event.results.length; index += 1) {
+        const result = event.results[index];
+        const transcript = result?.[0]?.transcript?.trim() || '';
+        if (!transcript) continue;
+
+        if (result.isFinal) {
+          finalTranscript += transcript;
+        } else {
+          interimTranscript += transcript;
+        }
+      }
+
+      const transcript = (finalTranscript || interimTranscript).trim();
+      if (transcript) setLastTranscript(transcript);
+
+      if (finalTranscript.trim()) {
+        toast.success(`Ouvi: ${finalTranscript.trim()}`);
+        onTranscript(finalTranscript.trim());
+      } else if (!transcript) {
         toast.error('Nao consegui entender o comando.');
       }
     };
 
-    recognition.onerror = () => {
-      toast.error('Nao consegui ouvir agora. Tente novamente.');
+    recognition.onerror = (event) => {
+      const messageByError: Record<string, string> = {
+        'audio-capture': 'Nao encontrei um microfone ativo neste aparelho.',
+        'not-allowed': 'Permissao do microfone bloqueada. Libere o microfone no navegador.',
+        'no-speech': 'Nao detectei fala. Tente tocar no microfone e falar mais perto.',
+        network: 'O reconhecimento de voz precisa de conexao com a internet neste navegador.',
+        aborted: 'Escuta cancelada.',
+      };
+
+      const message =
+        messageByError[event.error] || 'Nao consegui ouvir agora. Tente novamente.';
+
+      if (event.error !== 'aborted') {
+        toast.error(message);
+      }
       setIsListening(false);
     };
 
@@ -90,6 +135,7 @@ export const useVoiceCommand = ({ onTranscript }: VoiceCommandOptions) => {
   return {
     isListening,
     isSupported,
+    lastTranscript,
     startListening,
     stopListening,
   };

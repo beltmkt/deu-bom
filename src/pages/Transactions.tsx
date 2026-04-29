@@ -206,7 +206,7 @@ const Transactions: React.FC = () => {
     }
   };
 
-  const { isListening, startListening, stopListening } = useVoiceCommand({
+  const { isListening, lastTranscript, startListening, stopListening } = useVoiceCommand({
     onTranscript: (transcript) => {
       void handleVoiceTranscript(transcript);
     },
@@ -347,6 +347,12 @@ const Transactions: React.FC = () => {
               </button>
             </div>
           </div>
+
+          {isListening || lastTranscript ? (
+            <div className="mt-3 rounded-xl border border-primary/20 bg-primary/10 px-3 py-2 text-xs text-primary">
+              {lastTranscript || 'Ouvindo...'}
+            </div>
+          ) : null}
 
           <MonthSwitcher
             selectedMonth={selectedMonth}

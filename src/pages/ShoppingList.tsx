@@ -125,7 +125,7 @@ const ShoppingList: React.FC = () => {
     toast.success(`Adicionado: ${command.name}.`);
   };
 
-  const { isListening, startListening, stopListening } = useVoiceCommand({
+  const { isListening, lastTranscript, startListening, stopListening } = useVoiceCommand({
     onTranscript: handleVoiceTranscript,
   });
 
@@ -183,6 +183,12 @@ const ShoppingList: React.FC = () => {
               {isListening ? <MicOff className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
             </button>
           </div>
+
+          {isListening || lastTranscript ? (
+            <div className="mt-3 rounded-xl border border-primary/20 bg-primary/10 px-3 py-2 text-xs text-primary">
+              {lastTranscript || 'Ouvindo...'}
+            </div>
+          ) : null}
 
           <div className="mt-4 grid grid-cols-3 gap-2">
             <div className="rounded-xl border border-border bg-background px-3 py-2">
