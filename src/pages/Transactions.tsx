@@ -534,85 +534,112 @@ const Transactions: React.FC = () => {
             className="rounded-[28px] border border-dashed border-border bg-card p-8 text-center"
           >
             <WalletCards className="mx-auto mb-4 h-12 w-12 text-muted-foreground" />
-            <h3 className="text-lg font-semibold">Quadro vazio</h3>
+            <h3 className="text-lg font-semibold">Lista vazia</h3>
             <p className="mt-2 text-sm text-muted-foreground">
-              Ajuste os filtros ou cadastre uma nova movimentacao para preencher o Kanban.
+              Ajuste os filtros ou cadastre uma nova movimentacao para preencher o mes.
             </p>
           </motion.div>
         ) : (
-          <section className="flex gap-3 overflow-x-auto pb-2 lg:grid lg:grid-cols-3 lg:overflow-visible">
-            {kanbanColumns.map((column, index) => (
-              <motion.div
-                key={column.id}
-                onDragEnter={() => setDropTargetColumn(column.id)}
-                onDragOver={(event) => {
-                  event.preventDefault();
-                  event.dataTransfer.dropEffect = 'move';
-                  setDropTargetColumn(column.id);
-                }}
-                onDragLeave={(event) => {
-                  if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
-                    setDropTargetColumn((current) =>
-                      current === column.id ? null : current
-                    );
-                  }
-                }}
-                onDrop={(event) => {
-                  event.preventDefault();
-                  void handleDropOnColumn(column.id);
-                }}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.05 }}
-                className={`min-h-[320px] min-w-[252px] rounded-2xl border bg-card p-2.5 transition-colors lg:min-w-0 ${
-                  dropTargetColumn === column.id
-                    ? 'border-primary/60 bg-primary/5'
-                    : 'border-border'
-                }`}
-              >
-                <div className={`rounded-xl border px-3 py-3 ${column.tone}`}>
-                  <div className="flex items-start justify-between gap-4">
-                    <div>
-                      <p className="text-base font-semibold text-foreground">{column.title}</p>
-                      <p className="mt-1 hidden text-xs leading-5 text-muted-foreground sm:block">
-                        {column.description}
-                      </p>
-                    </div>
-                    <span className="rounded-full bg-background/70 px-3 py-1 text-sm font-medium text-foreground">
-                      {column.count}
-                    </span>
-                  </div>
-                  <p className="mt-4 text-xl font-semibold text-foreground">
-                    {formatCurrency(column.total)}
+          <>
+            <section className="space-y-2 lg:hidden">
+              <div className="flex items-center justify-between gap-3 rounded-2xl border border-border bg-card px-4 py-3">
+                <div>
+                  <p className="text-sm font-semibold text-foreground">Lancamentos do mes</p>
+                  <p className="mt-0.5 text-xs text-muted-foreground">
+                    {filteredTransactions.length} item
+                    {filteredTransactions.length === 1 ? '' : 's'} no filtro atual
                   </p>
                 </div>
+                <span className="rounded-full bg-muted px-3 py-1 text-xs font-medium text-muted-foreground">
+                  Lista
+                </span>
+              </div>
 
-                <div className="mt-2.5 space-y-2">
-                  {column.items.length === 0 ? (
-                    <div className="rounded-xl border border-dashed border-border bg-muted/20 p-4 text-center text-xs text-muted-foreground">
-                      {column.empty}
+              <div className="space-y-2">
+                {filteredTransactions.map((transaction) => (
+                  <TransactionCard
+                    key={transaction.id}
+                    transaction={transaction}
+                    onEdit={setEditTransaction}
+                  />
+                ))}
+              </div>
+            </section>
+
+            <section className="hidden gap-3 pb-2 lg:grid lg:grid-cols-3 lg:overflow-visible">
+              {kanbanColumns.map((column, index) => (
+                <motion.div
+                  key={column.id}
+                  onDragEnter={() => setDropTargetColumn(column.id)}
+                  onDragOver={(event) => {
+                    event.preventDefault();
+                    event.dataTransfer.dropEffect = 'move';
+                    setDropTargetColumn(column.id);
+                  }}
+                  onDragLeave={(event) => {
+                    if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
+                      setDropTargetColumn((current) =>
+                        current === column.id ? null : current
+                      );
+                    }
+                  }}
+                  onDrop={(event) => {
+                    event.preventDefault();
+                    void handleDropOnColumn(column.id);
+                  }}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: index * 0.05 }}
+                  className={`min-h-[320px] rounded-2xl border bg-card p-2.5 transition-colors ${
+                    dropTargetColumn === column.id
+                      ? 'border-primary/60 bg-primary/5'
+                      : 'border-border'
+                  }`}
+                >
+                  <div className={`rounded-xl border px-3 py-3 ${column.tone}`}>
+                    <div className="flex items-start justify-between gap-4">
+                      <div>
+                        <p className="text-base font-semibold text-foreground">{column.title}</p>
+                        <p className="mt-1 hidden text-xs leading-5 text-muted-foreground sm:block">
+                          {column.description}
+                        </p>
+                      </div>
+                      <span className="rounded-full bg-background/70 px-3 py-1 text-sm font-medium text-foreground">
+                        {column.count}
+                      </span>
                     </div>
-                  ) : (
-                    column.items.map((transaction) => (
-                      <TransactionCard
-                        key={transaction.id}
-                        transaction={transaction}
-                        onEdit={setEditTransaction}
-                        compact
-                        draggable
-                        isDragging={draggingTransactionId === transaction.id}
-                        onDragStart={(item) => setDraggingTransactionId(item.id)}
-                        onDragEnd={() => {
-                          setDraggingTransactionId(null);
-                          setDropTargetColumn(null);
-                        }}
-                      />
-                    ))
-                  )}
-                </div>
-              </motion.div>
-            ))}
-          </section>
+                    <p className="mt-4 text-xl font-semibold text-foreground">
+                      {formatCurrency(column.total)}
+                    </p>
+                  </div>
+
+                  <div className="mt-2.5 space-y-2">
+                    {column.items.length === 0 ? (
+                      <div className="rounded-xl border border-dashed border-border bg-muted/20 p-4 text-center text-xs text-muted-foreground">
+                        {column.empty}
+                      </div>
+                    ) : (
+                      column.items.map((transaction) => (
+                        <TransactionCard
+                          key={transaction.id}
+                          transaction={transaction}
+                          onEdit={setEditTransaction}
+                          compact
+                          draggable
+                          isDragging={draggingTransactionId === transaction.id}
+                          onDragStart={(item) => setDraggingTransactionId(item.id)}
+                          onDragEnd={() => {
+                            setDraggingTransactionId(null);
+                            setDropTargetColumn(null);
+                          }}
+                        />
+                      ))
+                    )}
+                  </div>
+                </motion.div>
+              ))}
+            </section>
+          </>
         )}
       </main>
 

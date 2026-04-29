@@ -138,3 +138,9 @@
 - Corrigido reconhecimento que escrevia texto parcial mas nao executava quando o navegador nao emitia resultado final.
 - Parser passou a aceitar contexto preferencial da tela (`transaction` ou `shopping`) para evitar comando cair no dominio errado.
 - Criado mapa completo em `docs/bmad/voice-command-capability-map.md` cobrindo criacao, atualizacao e exclusao por voz em Financas, Lista de Compras, Festometro, Metas, Categorias, Orcamentos, Configuracoes e Workspace.
+
+## 2026-04-29 - Financas mobile em lista
+
+- Tela `Financas` passou a usar lista vertical no mobile.
+- Kanban foi mantido apenas no desktop (`lg+`).
+- Estado vazio deixou de mencionar Kanban para nao confundir no celular.
