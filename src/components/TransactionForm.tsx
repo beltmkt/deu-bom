@@ -413,6 +413,8 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
     toast.success('Abrindo Google Agenda...');
   };
 
+  const canSave = Boolean(title && amount && categoryId && !isSubmitting && !isResolvingScope);
+
   const applySuggestedCategory = () => {
     if (!suggestedCategoryId) return;
     setCategoryId(suggestedCategoryId);
@@ -443,16 +445,30 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
           onClick={(event) => event.stopPropagation()}
           className="absolute bottom-0 left-0 right-0 flex max-h-[96dvh] flex-col overflow-hidden rounded-t-3xl bg-card sm:static sm:max-h-[86vh] sm:w-[min(42rem,calc(100vw-1.5rem))] sm:rounded-3xl"
         >
-          <div className="sticky top-0 z-10 flex flex-shrink-0 items-center justify-between border-b border-border bg-card px-4 py-3 sm:px-5">
+          <div className="sticky top-0 z-30 flex flex-shrink-0 items-center justify-between gap-3 border-b border-border bg-card px-4 py-3 sm:px-5">
             <h2 className="text-base font-semibold sm:text-lg">
               {editTransaction ? 'Editar transacao' : 'Nova transacao'}
             </h2>
-            <button
-              onClick={handleClose}
-              className="touch-btn flex h-9 w-9 items-center justify-center rounded-full bg-muted"
-            >
-              <X className="h-5 w-5" />
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => handleSubmit()}
+                disabled={!canSave}
+                className={`h-9 rounded-full px-4 text-sm font-semibold transition-all disabled:cursor-not-allowed disabled:opacity-50 ${
+                  type === 'income'
+                    ? 'bg-income text-income-foreground'
+                    : 'bg-expense text-expense-foreground'
+                }`}
+              >
+                {isSubmitting ? 'Salvando...' : 'Salvar'}
+              </button>
+              <button
+                onClick={handleClose}
+                className="touch-btn flex h-9 w-9 items-center justify-center rounded-full bg-muted"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
           </div>
 
           <div className="flex-1 overflow-y-auto px-4 pb-28 pt-4 sm:px-5 sm:pb-6">
@@ -939,7 +955,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
 
               <button
                 onClick={() => handleSubmit()}
-                disabled={!title || !amount || !categoryId || isSubmitting || isResolvingScope}
+                disabled={!canSave}
                 className={`h-12 w-full rounded-xl text-sm font-semibold transition-all disabled:cursor-not-allowed disabled:opacity-50 ${
                   type === 'income'
                     ? 'bg-income text-income-foreground shadow-glow-income'
