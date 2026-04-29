@@ -84,7 +84,10 @@ const parseAmount = (text: string) => {
   const match = normalizedText.match(/(?:r\$|reais|real|valor|por|custa|preco|preço)\s*(\d+(?:[,.]\d{1,2})?)/i);
   if (!match) {
     const looseMatch = normalizedText.match(/\b(\d+(?:[,.]\d{1,2})?)\s*(?:reais|real)\b/i);
-    return looseMatch ? Number(looseMatch[1].replace(',', '.')) : 0;
+    if (looseMatch) return Number(looseMatch[1].replace(',', '.'));
+
+    const trailingNumber = normalizedText.match(/\b(\d+(?:[,.]\d{1,2})?)$/i);
+    return trailingNumber ? Number(trailingNumber[1].replace(',', '.')) : 0;
   }
 
   return Number(match[1].replace(',', '.'));
@@ -156,7 +159,7 @@ const cleanTitle = (text: string, amount: number) =>
     .replace(/^(adicionar|add|inserir|lancar|registrar)\s+/i, '')
     .replace(/\b(despesa|receita|gasto|entrada|ganho)\b/gi, '')
     .replace(new RegExp(`\\b${String(amount).replace('.', '[,.]')}\\b`, 'i'), '')
-    .replace(/\b(r\$|reais|real|valor|por|de|no|na|em|hoje|amanha|ontem)\b/gi, ' ')
+    .replace(/\b(r\$|reais|real|valor|por|de|do|da|dos|das|no|na|em|hoje|amanha|ontem)\b/gi, ' ')
     .replace(/\s+/g, ' ')
     .trim();
 
@@ -179,7 +182,9 @@ export const parseVoiceCommand = (
     normalized.includes('gasto') ||
     normalized.includes('receita') ||
     normalized.includes('entrada') ||
-    normalized.includes('ganho');
+    normalized.includes('ganho') ||
+    normalized.includes('salario') ||
+    normalized.includes('salário');
 
   if (wantsShopping && !wantsTransaction) {
     const estimatedPrice = parseAmount(transcript);
@@ -211,7 +216,9 @@ export const parseVoiceCommand = (
     const type: TransactionType =
       normalized.includes('receita') ||
       normalized.includes('entrada') ||
-      normalized.includes('ganho')
+      normalized.includes('ganho') ||
+      normalized.includes('salario') ||
+      normalized.includes('salário')
         ? 'income'
         : 'expense';
     const amount = parseAmount(transcript);

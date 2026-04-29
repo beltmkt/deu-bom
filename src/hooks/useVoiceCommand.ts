@@ -77,9 +77,7 @@ export const useVoiceCommand = ({ onTranscript }: VoiceCommandOptions) => {
     setLastTranscript('');
     lastTranscriptRef.current = '';
     dispatchedRef.current = false;
-    recognition.onstart = () => {
-      toast.info('Ouvindo... fale o comando agora.');
-    };
+    recognition.onstart = () => undefined;
 
     recognition.onresult = (event) => {
       let interimTranscript = '';
@@ -105,7 +103,6 @@ export const useVoiceCommand = ({ onTranscript }: VoiceCommandOptions) => {
 
       if (finalTranscript.trim()) {
         dispatchedRef.current = true;
-        toast.success(`Ouvi: ${finalTranscript.trim()}`);
         onTranscript(finalTranscript.trim());
       } else if (!transcript) {
         toast.error('Nao consegui entender o comando.');
@@ -133,7 +130,6 @@ export const useVoiceCommand = ({ onTranscript }: VoiceCommandOptions) => {
     recognition.onend = () => {
       if (!dispatchedRef.current && lastTranscriptRef.current) {
         dispatchedRef.current = true;
-        toast.success(`Ouvi: ${lastTranscriptRef.current}`);
         onTranscript(lastTranscriptRef.current);
       }
 

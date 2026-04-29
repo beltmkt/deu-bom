@@ -20,6 +20,8 @@ import { toast } from 'sonner';
 
 const STORAGE_KEY = 'deu-bom-shopping-list-v1';
 
+type ShoppingVoiceDraft = Omit<ShoppingListItem, 'id' | 'createdAt' | 'updatedAt' | 'checked'>;
+
 const createId = () =>
   typeof crypto !== 'undefined' && 'randomUUID' in crypto
     ? crypto.randomUUID()
@@ -43,6 +45,8 @@ const ShoppingList: React.FC = () => {
   const [quantity, setQuantity] = useState(1);
   const [unit, setUnit] = useState('un');
   const [estimatedPrice, setEstimatedPrice] = useState(0);
+  const [voiceDraft, setVoiceDraft] = useState<ShoppingVoiceDraft | null>(null);
+  const [voicePrompt, setVoicePrompt] = useState('');
 
   useEffect(() => {
     setItems(loadItems());
@@ -110,23 +114,38 @@ const ShoppingList: React.FC = () => {
     const command = parseVoiceCommand(transcript, { preferredKind: 'shopping' });
 
     if (!command || command.kind !== 'shopping') {
-      toast.error('Diga algo como: adicionar arroz 2 pacotes por 18 reais na lista.');
+      setVoiceDraft(null);
+      setVoicePrompt('Nao entendi o item. Diga algo como: cinco unidades de detergente por 5 reais.');
       return;
     }
 
-    addItem({
+    setVoicePrompt('Confira os dados antes de adicionar na lista.');
+    setVoiceDraft({
       name: command.name,
       quantity: command.quantity,
       unit: command.unit,
       estimatedPrice: command.estimatedPrice,
+    });
+  };
+
+  const handleSaveVoiceDraft = () => {
+    if (!voiceDraft) return;
+
+    if (!voiceDraft.name.trim()) {
+      setVoicePrompt('Ainda falta o nome do item.');
+      return;
+    }
+
+    addItem({
+      name: voiceDraft.name.trim(),
+      quantity: Math.max(1, voiceDraft.quantity),
+      unit: voiceDraft.unit.trim() || 'un',
+      estimatedPrice: Math.max(0, voiceDraft.estimatedPrice),
       checked: false,
     });
 
-    toast.success(
-      `Adicionado: ${command.quantity} ${command.unit} de ${command.name}${
-        command.estimatedPrice > 0 ? ` por ${formatCurrency(command.estimatedPrice)} cada` : ''
-      }.`
-    );
+    setVoiceDraft(null);
+    setVoicePrompt('');
   };
 
   const { isListening, lastTranscript, startListening, stopListening } = useVoiceCommand({
@@ -191,6 +210,108 @@ const ShoppingList: React.FC = () => {
           {isListening || lastTranscript ? (
             <div className="mt-3 rounded-xl border border-primary/20 bg-primary/10 px-3 py-2 text-xs text-primary">
               {lastTranscript || 'Ouvindo...'}
+            </div>
+          ) : null}
+
+          {(voiceDraft || voicePrompt) ? (
+            <div className="mt-3 rounded-2xl border border-border bg-background p-3">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-sm font-semibold text-foreground">Revisar item por voz</p>
+                  <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                    {voicePrompt || 'Confira nome, quantidade e preco antes de adicionar.'}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setVoiceDraft(null);
+                    setVoicePrompt('');
+                  }}
+                  className="rounded-lg px-2 py-1 text-xs font-medium text-muted-foreground hover:bg-muted"
+                >
+                  Fechar
+                </button>
+              </div>
+
+              {voiceDraft ? (
+                <div className="mt-3 space-y-2">
+                  <label className="block text-xs text-muted-foreground">
+                    Item
+                    <input
+                      type="text"
+                      value={voiceDraft.name}
+                      onChange={(event) =>
+                        setVoiceDraft((current) =>
+                          current ? { ...current, name: event.target.value } : current
+                        )
+                      }
+                      className="mt-1 h-10 w-full rounded-xl border border-border bg-card px-3 text-sm text-foreground"
+                    />
+                  </label>
+
+                  <div className="grid grid-cols-3 gap-2">
+                    <label className="text-xs text-muted-foreground">
+                      Qtd.
+                      <input
+                        type="number"
+                        min="1"
+                        value={voiceDraft.quantity}
+                        onChange={(event) =>
+                          setVoiceDraft((current) =>
+                            current ? { ...current, quantity: Number(event.target.value) } : current
+                          )
+                        }
+                        className="mt-1 h-10 w-full rounded-xl border border-border bg-card px-3 text-sm text-foreground"
+                      />
+                    </label>
+
+                    <label className="text-xs text-muted-foreground">
+                      Un.
+                      <input
+                        type="text"
+                        value={voiceDraft.unit}
+                        onChange={(event) =>
+                          setVoiceDraft((current) =>
+                            current ? { ...current, unit: event.target.value } : current
+                          )
+                        }
+                        className="mt-1 h-10 w-full rounded-xl border border-border bg-card px-3 text-sm text-foreground"
+                      />
+                    </label>
+
+                    <label className="text-xs text-muted-foreground">
+                      Preco
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={voiceDraft.estimatedPrice}
+                        onChange={(event) =>
+                          setVoiceDraft((current) =>
+                            current
+                              ? { ...current, estimatedPrice: Number(event.target.value) }
+                              : current
+                          )
+                        }
+                        className="mt-1 h-10 w-full rounded-xl border border-border bg-card px-3 text-sm text-foreground"
+                      />
+                    </label>
+                  </div>
+
+                  <div className="rounded-xl bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
+                    Total: {formatCurrency(voiceDraft.quantity * voiceDraft.estimatedPrice)}
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={handleSaveVoiceDraft}
+                    className="h-10 w-full rounded-xl bg-primary text-sm font-semibold text-primary-foreground"
+                  >
+                    Confirmar e adicionar
+                  </button>
+                </div>
+              ) : null}
             </div>
           ) : null}
 

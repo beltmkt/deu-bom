@@ -46,6 +46,14 @@ interface KanbanColumn {
   items: Transaction[];
 }
 
+interface VoiceTransactionDraft {
+  title: string;
+  amount: number;
+  type: TransactionType;
+  date: string;
+  isRecurring: boolean | null;
+}
+
 const Transactions: React.FC = () => {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editTransaction, setEditTransaction] = useState<Transaction | null>(null);
@@ -57,6 +65,9 @@ const Transactions: React.FC = () => {
   const [selectedMonth, setSelectedMonth] = useState(new Date());
   const [defaultType, setDefaultType] = useState<TransactionType>('expense');
   const [showCyclePicker, setShowCyclePicker] = useState(false);
+  const [voiceDraft, setVoiceDraft] = useState<VoiceTransactionDraft | null>(null);
+  const [voicePrompt, setVoicePrompt] = useState('');
+  const [isSavingVoiceDraft, setIsSavingVoiceDraft] = useState(false);
   const [draggingTransactionId, setDraggingTransactionId] = useState<string | null>(null);
   const [dropTargetColumn, setDropTargetColumn] = useState<ColumnId | null>(null);
   const [pendingDragTransaction, setPendingDragTransaction] = useState<Transaction | null>(null);
@@ -68,7 +79,14 @@ const Transactions: React.FC = () => {
   const categories = useCategories();
   const loading = useFinanceLoading();
   const settings = useSettings();
-  const { initialize, initialized, updateSettings, updateTransaction, addTransaction } = useFinanceStore();
+  const {
+    initialize,
+    initialized,
+    updateSettings,
+    updateTransaction,
+    addTransaction,
+    generateRecurringTransactions,
+  } = useFinanceStore();
 
   useEffect(() => {
     if (!initialized) {
@@ -177,36 +195,72 @@ const Transactions: React.FC = () => {
     setIsFormOpen(true);
   };
 
-  const handleVoiceTranscript = async (transcript: string) => {
+  const handleVoiceTranscript = (transcript: string) => {
     const command = parseVoiceCommand(transcript, { preferredKind: 'transaction' });
 
     if (!command || command.kind !== 'transaction') {
-      toast.error('Diga algo como: adicionar despesa mercado de 45 reais.');
+      setVoiceDraft(null);
+      setVoicePrompt('Nao entendi os dados principais. Diga algo como: salario do Joao 5000 ou despesa mercado 45 reais.');
       return;
     }
 
-    const fallbackCategory = categories.find((category) => category.type === command.type);
-    if (!fallbackCategory) {
-      toast.error('Nao encontrei uma categoria para esse tipo de lancamento.');
-      return;
-    }
-
-    const success = await addTransaction({
+    setVoicePrompt('Confira antes de salvar. Falta confirmar se repete e a data do lancamento.');
+    setVoiceDraft({
       title: command.title,
       amount: command.amount,
       type: command.type,
-      status: 'pending',
-      categoryId: fallbackCategory.id,
       date: new Date().toISOString().slice(0, 10),
-      notes: `Adicionado por voz: "${transcript}"`,
-      notify: false,
-      recurrenceType: 'none',
+      isRecurring: command.type === 'income' && command.title.toLowerCase().includes('salario')
+        ? null
+        : false,
     });
+  };
 
-    if (success) {
-      toast.success(
-        command.type === 'income' ? 'Receita adicionada por voz.' : 'Despesa adicionada por voz.'
-      );
+  const handleSaveVoiceDraft = async () => {
+    if (!voiceDraft || isSavingVoiceDraft) return;
+
+    if (!voiceDraft.title.trim() || voiceDraft.amount <= 0 || !voiceDraft.date) {
+      setVoicePrompt('Ainda falta titulo, valor ou data antes de salvar.');
+      return;
+    }
+
+    if (voiceDraft.isRecurring === null) {
+      setVoicePrompt('Esse lancamento se repete todo mes?');
+      return;
+    }
+
+    const fallbackCategory = categories.find((category) => category.type === voiceDraft.type);
+    if (!fallbackCategory) {
+      setVoicePrompt('Nao encontrei uma categoria para esse tipo de lancamento.');
+      return;
+    }
+
+    const transactionData = {
+      title: voiceDraft.title.trim(),
+      amount: voiceDraft.amount,
+      type: voiceDraft.type,
+      status: 'pending' as const,
+      categoryId: fallbackCategory.id,
+      date: voiceDraft.date,
+      notes: 'Revisado a partir de comando de voz',
+      notify: false,
+      recurrenceType: voiceDraft.isRecurring ? ('subscription' as const) : ('none' as const),
+      recurrenceInterval: voiceDraft.isRecurring ? ('monthly' as const) : undefined,
+    };
+
+    setIsSavingVoiceDraft(true);
+    try {
+      const success = voiceDraft.isRecurring
+        ? await generateRecurringTransactions(transactionData, 24, 'monthly', false)
+        : await addTransaction(transactionData);
+
+      if (!success) return;
+
+      setVoiceDraft(null);
+      setVoicePrompt('');
+      toast.success(voiceDraft.isRecurring ? 'Lancamento recorrente salvo.' : 'Lancamento salvo.');
+    } finally {
+      setIsSavingVoiceDraft(false);
     }
   };
 
@@ -355,6 +409,142 @@ const Transactions: React.FC = () => {
           {isListening || lastTranscript ? (
             <div className="mt-3 rounded-xl border border-primary/20 bg-primary/10 px-3 py-2 text-xs text-primary">
               {lastTranscript || 'Ouvindo...'}
+            </div>
+          ) : null}
+
+          {(voiceDraft || voicePrompt) ? (
+            <div className="mt-3 rounded-2xl border border-border bg-background p-3">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-sm font-semibold text-foreground">Revisar comando de voz</p>
+                  <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                    {voicePrompt || 'Confira os dados antes de salvar.'}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setVoiceDraft(null);
+                    setVoicePrompt('');
+                  }}
+                  className="rounded-lg px-2 py-1 text-xs font-medium text-muted-foreground hover:bg-muted"
+                >
+                  Fechar
+                </button>
+              </div>
+
+              {voiceDraft ? (
+                <div className="mt-3 space-y-2">
+                  <div className="grid grid-cols-2 gap-2">
+                    <label className="text-xs text-muted-foreground">
+                      Tipo
+                      <select
+                        value={voiceDraft.type}
+                        onChange={(event) =>
+                          setVoiceDraft((current) =>
+                            current
+                              ? { ...current, type: event.target.value as TransactionType }
+                              : current
+                          )
+                        }
+                        className="mt-1 h-10 w-full rounded-xl border border-border bg-card px-3 text-sm text-foreground"
+                      >
+                        <option value="income">Receita</option>
+                        <option value="expense">Despesa</option>
+                      </select>
+                    </label>
+
+                    <label className="text-xs text-muted-foreground">
+                      Data
+                      <input
+                        type="date"
+                        value={voiceDraft.date}
+                        onChange={(event) =>
+                          setVoiceDraft((current) =>
+                            current ? { ...current, date: event.target.value } : current
+                          )
+                        }
+                        className="mt-1 h-10 w-full rounded-xl border border-border bg-card px-3 text-sm text-foreground"
+                      />
+                    </label>
+                  </div>
+
+                  <label className="block text-xs text-muted-foreground">
+                    Descricao
+                    <input
+                      type="text"
+                      value={voiceDraft.title}
+                      onChange={(event) =>
+                        setVoiceDraft((current) =>
+                          current ? { ...current, title: event.target.value } : current
+                        )
+                      }
+                      className="mt-1 h-10 w-full rounded-xl border border-border bg-card px-3 text-sm text-foreground"
+                    />
+                  </label>
+
+                  <label className="block text-xs text-muted-foreground">
+                    Valor
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={voiceDraft.amount}
+                      onChange={(event) =>
+                        setVoiceDraft((current) =>
+                          current ? { ...current, amount: Number(event.target.value) } : current
+                        )
+                      }
+                      className="mt-1 h-10 w-full rounded-xl border border-border bg-card px-3 text-sm text-foreground"
+                    />
+                  </label>
+
+                  <div className="rounded-xl border border-border/70 bg-muted/30 p-2">
+                    <p className="text-xs font-medium text-foreground">Repete todo mes?</p>
+                    <div className="mt-2 grid grid-cols-2 gap-2">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setVoiceDraft((current) =>
+                            current ? { ...current, isRecurring: true } : current
+                          )
+                        }
+                        className={`h-9 rounded-lg text-sm font-medium ${
+                          voiceDraft.isRecurring === true
+                            ? 'bg-primary text-primary-foreground'
+                            : 'bg-card text-muted-foreground'
+                        }`}
+                      >
+                        Sim
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setVoiceDraft((current) =>
+                            current ? { ...current, isRecurring: false } : current
+                          )
+                        }
+                        className={`h-9 rounded-lg text-sm font-medium ${
+                          voiceDraft.isRecurring === false
+                            ? 'bg-primary text-primary-foreground'
+                            : 'bg-card text-muted-foreground'
+                        }`}
+                      >
+                        Nao
+                      </button>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => void handleSaveVoiceDraft()}
+                    disabled={isSavingVoiceDraft}
+                    className="h-10 w-full rounded-xl bg-primary text-sm font-semibold text-primary-foreground disabled:opacity-60"
+                  >
+                    {isSavingVoiceDraft ? 'Salvando...' : 'Confirmar e salvar'}
+                  </button>
+                </div>
+              ) : null}
             </div>
           ) : null}
 

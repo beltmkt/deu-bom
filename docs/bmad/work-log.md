@@ -145,3 +145,11 @@
 - Kanban foi mantido apenas no desktop (`lg+`).
 - Estado vazio deixou de mencionar Kanban para nao confundir no celular.
 - Cabecalho mobile foi enxugado e o vencimento do ciclo virou um seletor compacto com icone de calendario.
+
+## 2026-04-29 - Voz com revisao antes de salvar
+
+- Removidas notificacoes de "ouvindo" e "ouvi" para reduzir inseguranca no uso por voz.
+- Financas agora transforma comando de voz em rascunho revisavel antes de salvar.
+- Lista de Compras agora transforma comando de voz em rascunho revisavel antes de adicionar.
+- Parser de Financas passou a entender salario como receita e valores no final da frase, como "salario do Joao 5000".
+- Fluxo de voz em Financas pergunta se o lancamento repete todo mes antes de salvar casos provaveis de salario.
