@@ -7,6 +7,9 @@ export type ParsedVoiceCommand =
       type: TransactionType;
       title: string;
       amount: number;
+      recurrenceType: 'none' | 'installment' | 'subscription';
+      installmentCount?: number;
+      dayOfMonth?: number;
     }
   | {
       kind: 'shopping';
@@ -77,20 +80,59 @@ const normalize = (value: string) =>
     .replace(/\s+/g, ' ')
     .trim();
 
+const numericPattern = String.raw`\d+(?:\.\d{3})*(?:,\d{1,2})?|\d+(?:[,.]\d{1,2})?`;
+
+const parseNumericToken = (value: string) => {
+  const normalized = value.trim();
+
+  if (normalized.includes(',')) {
+    return Number(normalized.replace(/\./g, '').replace(',', '.'));
+  }
+
+  if (/^\d+\.\d{3}$/.test(normalized)) {
+    return Number(normalized.replace(/\./g, ''));
+  }
+
+  return Number(normalized.replace(',', '.'));
+};
+
 const parseAmount = (text: string) => {
   const normalizedText = normalize(text)
     .replace(/\br\s*\$\b/g, 'r$')
     .replace(/\br\s+(\d)/g, 'r$ $1');
-  const match = normalizedText.match(/(?:r\$|reais|real|valor|por|custa|preco|preço)\s*(\d+(?:[,.]\d{1,2})?)/i);
-  if (!match) {
-    const looseMatch = normalizedText.match(/\b(\d+(?:[,.]\d{1,2})?)\s*(?:reais|real)\b/i);
-    if (looseMatch) return Number(looseMatch[1].replace(',', '.'));
 
-    const trailingNumber = normalizedText.match(/\b(\d+(?:[,.]\d{1,2})?)$/i);
-    return trailingNumber ? Number(trailingNumber[1].replace(',', '.')) : 0;
+  const installmentAmount = normalizedText.match(
+    new RegExp(`\\b\\d+\\s*x\\s+de\\s+(${numericPattern})\\b`, 'i')
+  );
+  if (installmentAmount) return parseNumericToken(installmentAmount[1]);
+
+  const match = normalizedText.match(
+    new RegExp(`(?:r\\$|reais|real|valor|por|custa|preco|preço)\\s*(${numericPattern})`, 'i')
+  );
+  if (!match) {
+    const looseMatch = normalizedText.match(
+      new RegExp(`\\b(${numericPattern})\\s*(?:reais|real)\\b`, 'i')
+    );
+    if (looseMatch) return parseNumericToken(looseMatch[1]);
+
+    const candidates = Array.from(
+      normalizedText.matchAll(new RegExp(`\\b(${numericPattern})\\b`, 'gi'))
+    )
+      .filter((candidate) => {
+        const index = candidate.index || 0;
+        const before = normalizedText.slice(Math.max(0, index - 8), index);
+        const after = normalizedText.slice(index + candidate[0].length, index + candidate[0].length + 3);
+        if (/\bdi(?:a)?\s*$/i.test(before)) return false;
+        if (/^\s*x/i.test(after)) return false;
+        return true;
+      })
+      .map((candidate) => parseNumericToken(candidate[1]))
+      .filter((candidate) => Number.isFinite(candidate) && candidate > 0);
+
+    return candidates.length > 0 ? Math.max(...candidates) : 0;
   }
 
-  return Number(match[1].replace(',', '.'));
+  return parseNumericToken(match[1]);
 };
 
 const unitPattern = Object.keys(unitAliases).join('|');
@@ -154,11 +196,30 @@ const removeFirstOccurrence = (value: string, target: string) => {
   return value.replace(new RegExp(`\\b${target.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i'), ' ');
 };
 
+const parseDayOfMonth = (normalized: string) => {
+  const match = normalized.match(/\bdi(?:a)?\s+(\d{1,2})\b/i);
+  if (!match) return undefined;
+
+  const day = Number(match[1]);
+  return day >= 1 && day <= 31 ? day : undefined;
+};
+
+const parseInstallments = (normalized: string) => {
+  const match = normalized.match(/\b(\d{1,3})\s*x\b/i);
+  if (!match) return undefined;
+
+  const count = Number(match[1]);
+  return count >= 2 && count <= 120 ? count : undefined;
+};
+
 const cleanTitle = (text: string, amount: number) =>
-  text
+  normalize(text)
     .replace(/^(adicionar|add|inserir|lancar|registrar)\s+/i, '')
     .replace(/\b(despesa|receita|gasto|entrada|ganho)\b/gi, '')
-    .replace(new RegExp(`\\b${String(amount).replace('.', '[,.]')}\\b`, 'i'), '')
+    .replace(/\b\d{1,3}\s*x\s+de\s+\d+(?:[.,]\d+)?\b/gi, ' ')
+    .replace(/\bdi(?:a)?\s+\d{1,2}\b/gi, ' ')
+    .replace(/\btodo\s+(?:mes|mês|dia)\b/gi, ' ')
+    .replace(new RegExp(`\\b${numericPattern}\\b`, 'gi'), ' ')
     .replace(/\b(r\$|reais|real|valor|por|de|do|da|dos|das|no|na|em|hoje|amanha|ontem)\b/gi, ' ')
     .replace(/\s+/g, ' ')
     .trim();
@@ -223,6 +284,18 @@ export const parseVoiceCommand = (
         : 'expense';
     const amount = parseAmount(transcript);
     const title = cleanTitle(transcript, amount);
+    const dayOfMonth = parseDayOfMonth(normalized);
+    const installmentCount = parseInstallments(normalized);
+    const isSubscription =
+      normalized.includes('todo mes') ||
+      normalized.includes('todo mês') ||
+      normalized.includes('todo dia') ||
+      (type === 'income' && normalized.includes('salario'));
+    const recurrenceType = installmentCount
+      ? 'installment'
+      : isSubscription
+        ? 'subscription'
+        : 'none';
 
     if (!amount || !title) return null;
 
@@ -232,6 +305,9 @@ export const parseVoiceCommand = (
       type,
       title,
       amount,
+      recurrenceType,
+      installmentCount,
+      dayOfMonth,
     };
   }
 

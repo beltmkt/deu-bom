@@ -51,7 +51,9 @@ interface VoiceTransactionDraft {
   amount: number;
   type: TransactionType;
   date: string;
-  isRecurring: boolean | null;
+  recurrenceType: 'none' | 'installment' | 'subscription';
+  installmentCount: number;
+  dayOfMonth?: number;
 }
 
 const Transactions: React.FC = () => {
@@ -97,6 +99,18 @@ const Transactions: React.FC = () => {
   const cycleDays = Array.from({ length: 30 }, (_, index) => index + 2);
   const cycleLabel =
     settings.cycleStartDay === 1 ? 'Sem ajuste' : `Dia ${settings.cycleStartDay}`;
+
+  const getDateFromDayOfMonth = (dayOfMonth?: number) => {
+    const today = new Date();
+    const normalizedDay = Math.min(
+      Math.max(dayOfMonth || today.getDate(), 1),
+      new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate()
+    );
+
+    return new Date(today.getFullYear(), today.getMonth(), normalizedDay)
+      .toISOString()
+      .slice(0, 10);
+  };
 
   const monthTransactions = useMemo(
     () => filterTransactionsByMonth(transactions, selectedMonth),
@@ -204,15 +218,15 @@ const Transactions: React.FC = () => {
       return;
     }
 
-    setVoicePrompt('Confira antes de salvar. Falta confirmar se repete e a data do lancamento.');
+    setVoicePrompt('Confira os dados interpretados antes de salvar.');
     setVoiceDraft({
       title: command.title,
       amount: command.amount,
       type: command.type,
-      date: new Date().toISOString().slice(0, 10),
-      isRecurring: command.type === 'income' && command.title.toLowerCase().includes('salario')
-        ? null
-        : false,
+      date: getDateFromDayOfMonth(command.dayOfMonth),
+      recurrenceType: command.recurrenceType,
+      installmentCount: command.installmentCount || 2,
+      dayOfMonth: command.dayOfMonth,
     });
   };
 
@@ -224,41 +238,53 @@ const Transactions: React.FC = () => {
       return;
     }
 
-    if (voiceDraft.isRecurring === null) {
-      setVoicePrompt('Esse lancamento se repete todo mes?');
-      return;
-    }
-
     const fallbackCategory = categories.find((category) => category.type === voiceDraft.type);
     if (!fallbackCategory) {
       setVoicePrompt('Nao encontrei uma categoria para esse tipo de lancamento.');
       return;
     }
 
+    const recurringCount =
+      voiceDraft.recurrenceType === 'installment'
+        ? Math.max(2, voiceDraft.installmentCount)
+        : 24;
+    const amountForStore =
+      voiceDraft.recurrenceType === 'installment'
+        ? voiceDraft.amount * recurringCount
+        : voiceDraft.amount;
+
     const transactionData = {
       title: voiceDraft.title.trim(),
-      amount: voiceDraft.amount,
+      amount: amountForStore,
       type: voiceDraft.type,
       status: 'pending' as const,
       categoryId: fallbackCategory.id,
       date: voiceDraft.date,
       notes: 'Revisado a partir de comando de voz',
       notify: false,
-      recurrenceType: voiceDraft.isRecurring ? ('subscription' as const) : ('none' as const),
-      recurrenceInterval: voiceDraft.isRecurring ? ('monthly' as const) : undefined,
+      recurrenceType: voiceDraft.recurrenceType,
+      recurrenceInterval: voiceDraft.recurrenceType === 'none' ? undefined : ('monthly' as const),
     };
 
     setIsSavingVoiceDraft(true);
     try {
-      const success = voiceDraft.isRecurring
+      const success = voiceDraft.recurrenceType === 'subscription'
         ? await generateRecurringTransactions(transactionData, 24, 'monthly', false)
+        : voiceDraft.recurrenceType === 'installment'
+          ? await generateRecurringTransactions(transactionData, recurringCount, 'monthly', true)
         : await addTransaction(transactionData);
 
       if (!success) return;
 
       setVoiceDraft(null);
       setVoicePrompt('');
-      toast.success(voiceDraft.isRecurring ? 'Lancamento recorrente salvo.' : 'Lancamento salvo.');
+      toast.success(
+        voiceDraft.recurrenceType === 'none'
+          ? 'Lancamento salvo.'
+          : voiceDraft.recurrenceType === 'installment'
+            ? 'Parcelas salvas.'
+            : 'Lancamento recorrente salvo.'
+      );
     } finally {
       setIsSavingVoiceDraft(false);
     }
@@ -484,7 +510,7 @@ const Transactions: React.FC = () => {
                   </label>
 
                   <label className="block text-xs text-muted-foreground">
-                    Valor
+                    {voiceDraft.recurrenceType === 'installment' ? 'Valor da parcela' : 'Valor'}
                     <input
                       type="number"
                       min="0"
@@ -499,40 +525,70 @@ const Transactions: React.FC = () => {
                     />
                   </label>
 
-                  <div className="rounded-xl border border-border/70 bg-muted/30 p-2">
-                    <p className="text-xs font-medium text-foreground">Repete todo mes?</p>
-                    <div className="mt-2 grid grid-cols-2 gap-2">
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setVoiceDraft((current) =>
-                            current ? { ...current, isRecurring: true } : current
-                          )
-                        }
-                        className={`h-9 rounded-lg text-sm font-medium ${
-                          voiceDraft.isRecurring === true
-                            ? 'bg-primary text-primary-foreground'
-                            : 'bg-card text-muted-foreground'
-                        }`}
-                      >
-                        Sim
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setVoiceDraft((current) =>
-                            current ? { ...current, isRecurring: false } : current
-                          )
-                        }
-                        className={`h-9 rounded-lg text-sm font-medium ${
-                          voiceDraft.isRecurring === false
-                            ? 'bg-primary text-primary-foreground'
-                            : 'bg-card text-muted-foreground'
-                        }`}
-                      >
-                        Nao
-                      </button>
+                  {voiceDraft.recurrenceType === 'installment' ? (
+                    <div className="rounded-xl bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
+                      Total parcelado:{' '}
+                      {formatCurrency(voiceDraft.amount * Math.max(2, voiceDraft.installmentCount))}
                     </div>
+                  ) : null}
+
+                  <div className="rounded-xl border border-border/70 bg-muted/30 p-2">
+                    <p className="text-xs font-medium text-foreground">Como esse lancamento entra?</p>
+                    <div className="mt-2 grid grid-cols-3 gap-2">
+                      {[
+                        { value: 'none', label: 'Unico' },
+                        { value: 'subscription', label: 'Mensal' },
+                        { value: 'installment', label: 'Parcelado' },
+                      ].map((option) => (
+                        <button
+                          key={option.value}
+                          type="button"
+                          onClick={() =>
+                            setVoiceDraft((current) =>
+                              current
+                                ? {
+                                    ...current,
+                                    recurrenceType: option.value as VoiceTransactionDraft['recurrenceType'],
+                                  }
+                                : current
+                            )
+                          }
+                          className={`h-9 rounded-lg text-sm font-medium ${
+                            voiceDraft.recurrenceType === option.value
+                              ? 'bg-primary text-primary-foreground'
+                              : 'bg-card text-muted-foreground'
+                          }`}
+                        >
+                          {option.label}
+                        </button>
+                      ))}
+                    </div>
+
+                    {voiceDraft.recurrenceType === 'installment' ? (
+                      <label className="mt-2 block text-xs text-muted-foreground">
+                        Parcelas
+                        <input
+                          type="number"
+                          min="2"
+                          max="120"
+                          value={voiceDraft.installmentCount}
+                          onChange={(event) =>
+                            setVoiceDraft((current) =>
+                              current
+                                ? { ...current, installmentCount: Number(event.target.value) }
+                                : current
+                            )
+                          }
+                          className="mt-1 h-10 w-full rounded-xl border border-border bg-card px-3 text-sm text-foreground"
+                        />
+                      </label>
+                    ) : null}
+
+                    {voiceDraft.dayOfMonth ? (
+                      <p className="mt-2 text-xs text-muted-foreground">
+                        Dia de pagamento/vencimento entendido: {voiceDraft.dayOfMonth}
+                      </p>
+                    ) : null}
                   </div>
 
                   <button

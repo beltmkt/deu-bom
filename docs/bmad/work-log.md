@@ -153,3 +153,4 @@
 - Lista de Compras agora transforma comando de voz em rascunho revisavel antes de adicionar.
 - Parser de Financas passou a entender salario como receita e valores no final da frase, como "salario do Joao 5000".
 - Fluxo de voz em Financas pergunta se o lancamento repete todo mes antes de salvar casos provaveis de salario.
+- Parser de Financas passou a preencher automaticamente recorrencia mensal, parcelas, valor da parcela e dia de vencimento quando o comando inclui padroes como "salario todo dia 5" ou "geladeira 6x de 600 dia 20".
