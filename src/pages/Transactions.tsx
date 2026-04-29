@@ -3,6 +3,8 @@ import { AnimatePresence, motion } from 'framer-motion';
 import {
   Filter,
   Loader2,
+  Mic,
+  MicOff,
   Plus,
   Search,
   WalletCards,
@@ -27,6 +29,8 @@ import {
 import { formatCurrency } from '@/utils/currency';
 import type { Transaction, TransactionType } from '@/types/finance';
 import { toast } from 'sonner';
+import { useVoiceCommand } from '@/hooks/useVoiceCommand';
+import { parseVoiceCommand } from '@/services/voiceCommandParser';
 
 type ColumnId = 'pay' | 'receive' | 'done';
 
@@ -62,7 +66,7 @@ const Transactions: React.FC = () => {
   const categories = useCategories();
   const loading = useFinanceLoading();
   const settings = useSettings();
-  const { initialize, initialized, updateSettings, updateTransaction } = useFinanceStore();
+  const { initialize, initialized, updateSettings, updateTransaction, addTransaction } = useFinanceStore();
 
   useEffect(() => {
     if (!initialized) {
@@ -168,6 +172,45 @@ const Transactions: React.FC = () => {
     setEditTransaction(null);
     setIsFormOpen(true);
   };
+
+  const handleVoiceTranscript = async (transcript: string) => {
+    const command = parseVoiceCommand(transcript);
+
+    if (!command || command.kind !== 'transaction') {
+      toast.error('Diga algo como: adicionar despesa mercado de 45 reais.');
+      return;
+    }
+
+    const fallbackCategory = categories.find((category) => category.type === command.type);
+    if (!fallbackCategory) {
+      toast.error('Nao encontrei uma categoria para esse tipo de lancamento.');
+      return;
+    }
+
+    const success = await addTransaction({
+      title: command.title,
+      amount: command.amount,
+      type: command.type,
+      status: 'pending',
+      categoryId: fallbackCategory.id,
+      date: new Date().toISOString().slice(0, 10),
+      notes: `Adicionado por voz: "${transcript}"`,
+      notify: false,
+      recurrenceType: 'none',
+    });
+
+    if (success) {
+      toast.success(
+        command.type === 'income' ? 'Receita adicionada por voz.' : 'Despesa adicionada por voz.'
+      );
+    }
+  };
+
+  const { isListening, startListening, stopListening } = useVoiceCommand({
+    onTranscript: (transcript) => {
+      void handleVoiceTranscript(transcript);
+    },
+  });
 
   const isRecurringTransaction = (transaction: Transaction) =>
     Boolean(
@@ -277,7 +320,19 @@ const Transactions: React.FC = () => {
               </p>
             </div>
 
-            <div className="grid grid-cols-2 gap-2 sm:flex">
+            <div className="grid grid-cols-[auto_1fr_1fr] gap-2 sm:flex">
+              <button
+                type="button"
+                onClick={isListening ? stopListening : startListening}
+                className={`flex h-10 w-10 items-center justify-center rounded-xl transition-colors ${
+                  isListening
+                    ? 'bg-expense text-expense-foreground'
+                    : 'border border-border bg-background text-foreground hover:bg-muted/50'
+                }`}
+                aria-label={isListening ? 'Parar gravacao' : 'Adicionar lancamento por voz'}
+              >
+                {isListening ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
+              </button>
               <button
                 onClick={() => openForm('income')}
                 className="rounded-xl border border-border bg-background px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted/50"

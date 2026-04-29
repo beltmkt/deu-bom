@@ -9,6 +9,7 @@ import {
   PartyPopper,
   PiggyBank,
   Settings,
+  ShoppingCart,
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
@@ -17,6 +18,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 const navItems = [
   { to: '/', icon: Home, label: 'Inicio' },
   { to: '/transactions', icon: KanbanSquare, label: 'Financas' },
+  { to: '/shopping-list', icon: ShoppingCart, label: 'Lista' },
   { to: '/festometro', icon: PartyPopper, label: 'Festometro' },
   { to: '/budgets', icon: PiggyBank, label: 'Metas' },
   { to: '/analytics', icon: BarChart3, label: 'Dashboard' },
@@ -56,7 +58,7 @@ export const BottomNav: React.FC = () => {
           className="fixed inset-x-0 bottom-0 z-[70] border-t border-border/70 bg-card/95 px-2 pb-[calc(0.35rem+env(safe-area-inset-bottom,0px))] pt-2 backdrop-blur-xl md:hidden"
           aria-label="Navegacao principal"
         >
-          <div className="grid grid-cols-4 gap-1">
+          <div className="grid grid-cols-5 gap-1">
             {mobileNavItems.map((item) => {
               const isActive = location.pathname === item.to;
 

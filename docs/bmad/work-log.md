@@ -121,3 +121,14 @@
   - aba Lista de Compras;
   - indicacao de promocoes e melhores mercados por localizacao;
   - comando de voz para adicionar, atualizar e apagar transacoes, receitas, despesas e itens da lista.
+
+## 2026-04-29 - Lista de Compras e voz MVP
+
+- Criada rota autenticada `/shopping-list`.
+- Adicionada aba Lista na barra inferior mobile.
+- Lista de Compras permite adicionar, marcar comprado e remover itens, persistindo em `localStorage`.
+- Reconhecimento de voz adicionado em:
+  - `Financas`: cria despesa ou receita pendente com categoria sugerida por tipo.
+  - `Lista de Compras`: cria item com quantidade, unidade e valor estimado.
+- Parser inicial de comandos em `src/services/voiceCommandParser.ts`.
+- Hook compartilhado de captura por voz em `src/hooks/useVoiceCommand.ts`.
