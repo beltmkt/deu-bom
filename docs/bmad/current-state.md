@@ -14,6 +14,7 @@
 - `Analytics`: leitura historica e tendencias.
 - `Festometro`: deve evoluir para gerenciador completo de eventos, com foco em valores entre participantes, itens a comprar e quantidades.
 - `Settings`: equipe, tema, exportacao/importacao e preferencias.
+- Mobile: barra inferior focada em Inicio, Financas, Festometro e Config; Dashboard/relatorios e Metas ficam fora da navegacao mobile neste momento.
 
 ## Ajustes concluidos nesta etapa
 
@@ -26,6 +27,7 @@
 - Checklist QA de confiabilidade financeira criado em `docs/qa/core-finance-reliability.md`.
 - Dashboard e Transactions redesenhadas com identidade distinta.
 - Utilitarios compartilhados de agrupamento e resumo para reduzir duplicidade.
+- Mapa das proximas frentes mobile criado em `docs/bmad/mobile-next-features-map.md`, cobrindo Lista de Compras, promocoes por localizacao e comandos de voz.
 
 ## Frente atual em andamento
 

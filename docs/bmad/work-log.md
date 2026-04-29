@@ -111,3 +111,13 @@
 - Recomendacao antes de iniciar implementacao:
   - criar um Architecture Lite curto com modelo de transacao, saldo, datas, recorrencia/parcela, store/query keys e workspace.
   - iniciar producao pela historia vertical "Cadastrar e listar transacoes manuais do mes atual".
+
+## 2026-04-29 - Foco mobile e proximas abas
+
+- Barra inferior mobile reduzida para Inicio, Financas, Festometro e Config.
+- Aba Metas foi ocultada momentaneamente no mobile.
+- Dashboard/relatorios foi removido da navegacao mobile.
+- Criado mapa em `docs/bmad/mobile-next-features-map.md` para:
+  - aba Lista de Compras;
+  - indicacao de promocoes e melhores mercados por localizacao;
+  - comando de voz para adicionar, atualizar e apagar transacoes, receitas, despesas e itens da lista.

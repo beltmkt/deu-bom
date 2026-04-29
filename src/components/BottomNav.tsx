@@ -23,6 +23,10 @@ const navItems = [
   { to: '/settings', icon: Settings, label: 'Config' },
 ];
 
+const mobileNavItems = navItems.filter(
+  (item) => item.to !== '/budgets' && item.to !== '/analytics'
+);
+
 export const BottomNav: React.FC = () => {
   const location = useLocation();
   const isMobile = useIsMobile();
@@ -52,8 +56,8 @@ export const BottomNav: React.FC = () => {
           className="fixed inset-x-0 bottom-0 z-[70] border-t border-border/70 bg-card/95 px-2 pb-[calc(0.35rem+env(safe-area-inset-bottom,0px))] pt-2 backdrop-blur-xl md:hidden"
           aria-label="Navegacao principal"
         >
-          <div className="grid grid-cols-6 gap-1">
-            {navItems.map((item) => {
+          <div className="grid grid-cols-4 gap-1">
+            {mobileNavItems.map((item) => {
               const isActive = location.pathname === item.to;
 
               return (
