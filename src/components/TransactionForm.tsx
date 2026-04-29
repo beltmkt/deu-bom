@@ -441,7 +441,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
           exit={{ opacity: 0, y: 24, scale: 0.98 }}
           transition={{ type: 'spring', damping: 24, stiffness: 280 }}
           onClick={(event) => event.stopPropagation()}
-          className="absolute bottom-0 left-0 right-0 flex max-h-[88vh] flex-col overflow-hidden rounded-t-3xl bg-card sm:static sm:max-h-[86vh] sm:w-[min(42rem,calc(100vw-1.5rem))] sm:rounded-3xl"
+          className="absolute bottom-0 left-0 right-0 flex max-h-[96dvh] flex-col overflow-hidden rounded-t-3xl bg-card sm:static sm:max-h-[86vh] sm:w-[min(42rem,calc(100vw-1.5rem))] sm:rounded-3xl"
         >
           <div className="sticky top-0 z-10 flex flex-shrink-0 items-center justify-between border-b border-border bg-card px-4 py-3 sm:px-5">
             <h2 className="text-base font-semibold sm:text-lg">
@@ -455,7 +455,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
             </button>
           </div>
 
-          <div className="flex-1 overflow-y-auto px-4 pb-6 pt-4 sm:px-5">
+          <div className="flex-1 overflow-y-auto px-4 pb-28 pt-4 sm:px-5 sm:pb-6">
             <div className="mb-6 grid grid-cols-2 gap-2 rounded-xl bg-muted p-1">
               <button
                 onClick={() => setType('expense')}
@@ -923,7 +923,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
             ) : null}
           </div>
 
-          <div className="shrink-0 border-t border-border bg-card p-4 sm:p-5">
+          <div className="sticky bottom-0 z-20 shrink-0 border-t border-border bg-card/95 p-4 pb-[calc(1rem+env(safe-area-inset-bottom,0px))] shadow-[0_-12px_28px_rgba(15,23,42,0.08)] backdrop-blur sm:p-5">
             <div className="grid gap-2 sm:grid-cols-[auto_1fr]">
               <button
                 type="button"
@@ -938,7 +938,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
               <button
                 onClick={() => handleSubmit()}
                 disabled={!title || !amount || !categoryId || isSubmitting || isResolvingScope}
-                className={`w-full rounded-xl py-3 text-sm font-semibold transition-all disabled:cursor-not-allowed disabled:opacity-50 ${
+                className={`w-full rounded-xl py-3.5 text-sm font-semibold transition-all disabled:cursor-not-allowed disabled:opacity-50 ${
                   type === 'income'
                     ? 'bg-income text-income-foreground shadow-glow-income'
                     : 'bg-expense text-expense-foreground shadow-glow-expense'

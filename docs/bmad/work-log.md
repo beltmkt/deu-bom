@@ -161,3 +161,9 @@
 - Cards mantem o selo de status como leitura, deixando a acao principal separada e mais facil de tocar.
 - Criado resolvedor de icones por nome de categoria para corrigir categorias antigas com icone incoerente, como Moradia usando casa.
 - Seletor de categoria, cards de lancamento e orcamentos passaram a usar o mesmo resolvedor visual.
+
+## 2026-04-29 - Salvar visivel no cadastro manual
+
+- Rodape do formulario manual de transacoes passou a ficar fixo no fundo do modal mobile.
+- Modal ganhou altura baseada em `dvh` e area segura inferior para evitar que o botao Salvar fique escondido pela navegacao do celular.
+- Conteudo rolavel recebeu respiro inferior para os ultimos campos nao ficarem encobertos pelo rodape de acoes.
