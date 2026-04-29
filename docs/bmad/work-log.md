@@ -154,3 +154,10 @@
 - Parser de Financas passou a entender salario como receita e valores no final da frase, como "salario do Joao 5000".
 - Fluxo de voz em Financas pergunta se o lancamento repete todo mes antes de salvar casos provaveis de salario.
 - Parser de Financas passou a preencher automaticamente recorrencia mensal, parcelas, valor da parcela e dia de vencimento quando o comando inclui padroes como "salario todo dia 5" ou "geladeira 6x de 600 dia 20".
+
+## 2026-04-29 - Confirmacao rapida e icones de categorias
+
+- Lista mobile de Financas ganhou botao externo ao card para marcar lancamento como pago ou recebido sem abrir a edicao.
+- Cards mantem o selo de status como leitura, deixando a acao principal separada e mais facil de tocar.
+- Criado resolvedor de icones por nome de categoria para corrigir categorias antigas com icone incoerente, como Moradia usando casa.
+- Seletor de categoria, cards de lancamento e orcamentos passaram a usar o mesmo resolvedor visual.

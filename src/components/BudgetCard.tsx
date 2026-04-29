@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { Circle, PiggyBank, Plus, Trash2, icons } from 'lucide-react';
+import { PiggyBank, Plus, Trash2 } from 'lucide-react';
 import {
   useBudgets,
   useCategories,
@@ -9,6 +9,7 @@ import {
 } from '@/stores/financeStore';
 import { formatCurrency } from '@/utils/currency';
 import { EmptyState } from '@/components/EmptyState';
+import { getCategoryIcon } from '@/utils/categoryIcons';
 
 interface BudgetCardProps {
   onAddBudget: () => void;
@@ -78,10 +79,7 @@ export const BudgetCard: React.FC<BudgetCardProps> = ({ onAddBudget }) => {
 
       <div className="grid gap-3 xl:grid-cols-2">
         {budgetsWithSpent.map((budget, index) => {
-          const Icon =
-            (budget.category?.icon
-              ? icons[budget.category.icon as keyof typeof icons]
-              : undefined) || Circle;
+          const Icon = getCategoryIcon(budget.category);
 
           const percentage = Math.min((budget.spent / budget.limit) * 100, 100);
           const isOverBudget = budget.spent > budget.limit;

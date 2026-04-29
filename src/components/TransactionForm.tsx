@@ -5,16 +5,15 @@ import {
   CalendarPlus,
   Check,
   ChevronDown,
-  Circle,
   Clock,
   Sparkles,
   X,
-  icons,
 } from 'lucide-react';
 import { addMonths, addWeeks, addYears, format, parseISO } from 'date-fns';
 import { useCategories, useFinanceStore, useTransactions } from '@/stores/financeStore';
 import { CurrencyInput } from './CurrencyInput';
 import { openGoogleCalendar } from '@/utils/googleCalendar';
+import { getCategoryIcon } from '@/utils/categoryIcons';
 import { toast } from 'sonner';
 import type {
   RecurrenceInterval,
@@ -419,10 +418,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
     setCategoryId(suggestedCategoryId);
   };
 
-  const CategoryIcon =
-    (selectedCategory?.icon
-      ? icons[selectedCategory.icon as keyof typeof icons]
-      : undefined) || Circle;
+  const CategoryIcon = getCategoryIcon(selectedCategory);
 
   const suggestedCategory = suggestedCategoryId
     ? categories.find((category) => category.id === suggestedCategoryId)
@@ -554,8 +550,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
                   >
                     <div className="mt-3 grid grid-cols-4 gap-2 rounded-xl bg-muted p-3">
                       {filteredCategories.map((category) => {
-                        const Icon =
-                          icons[category.icon as keyof typeof icons] || Circle;
+                        const Icon = getCategoryIcon(category);
 
                         return (
                           <button

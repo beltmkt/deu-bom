@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { ChevronDown, Circle, PiggyBank, X, icons } from 'lucide-react';
+import { ChevronDown, PiggyBank, X } from 'lucide-react';
 import { useCategories, useFinanceStore } from '@/stores/financeStore';
 import { CurrencyInput } from './CurrencyInput';
+import { getCategoryIcon } from '@/utils/categoryIcons';
 
 interface BudgetFormProps {
   isOpen: boolean;
@@ -38,10 +39,7 @@ export const BudgetForm: React.FC<BudgetFormProps> = ({ isOpen, onClose }) => {
     }
   };
 
-  const CategoryIcon =
-    (selectedCategory?.icon
-      ? icons[selectedCategory.icon as keyof typeof icons]
-      : undefined) || Circle;
+  const CategoryIcon = getCategoryIcon(selectedCategory);
 
   if (!isOpen) return null;
 
@@ -127,8 +125,7 @@ export const BudgetForm: React.FC<BudgetFormProps> = ({ isOpen, onClose }) => {
                   >
                     <div className="mt-3 grid max-h-56 grid-cols-2 gap-2 overflow-y-auto rounded-2xl bg-muted p-3 sm:grid-cols-3">
                       {expenseCategories.map((category) => {
-                        const Icon =
-                          icons[category.icon as keyof typeof icons] || Circle;
+                        const Icon = getCategoryIcon(category);
 
                         return (
                           <button

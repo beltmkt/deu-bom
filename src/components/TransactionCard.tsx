@@ -1,10 +1,11 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Check, Circle, GripVertical, Trash2, icons } from 'lucide-react';
+import { Check, CheckCircle2, Circle, GripVertical, Trash2 } from 'lucide-react';
 import { useSwipeable } from 'react-swipeable';
 import { useFinanceStore, useCategoryById } from '@/stores/financeStore';
 import { formatCurrency } from '@/utils/currency';
 import { getRelativeDate } from '@/utils/dates';
+import { getCategoryIcon } from '@/utils/categoryIcons';
 import type { Transaction } from '@/types/finance';
 import {
   TransactionDeleteModal,
@@ -131,8 +132,7 @@ export const TransactionCard: React.FC<TransactionCardProps> = ({
     }
   };
 
-  const IconComponent =
-    (category?.icon ? icons[category.icon as keyof typeof icons] : undefined) || Circle;
+  const IconComponent = getCategoryIcon(category);
 
   const isIncome = transaction.type === 'income';
   const isPending = transaction.status === 'pending';
@@ -185,28 +185,51 @@ export const TransactionCard: React.FC<TransactionCardProps> = ({
           <Trash2 className="w-5 h-5 text-destructive-foreground" />
         </div>
 
-        {/* Card content */}
-        <div
-          onClick={() => {
-            if (didDragRef.current) return;
-            onEdit(transaction);
-          }}
-          className={`
-            relative bg-card border border-border rounded-xl ${compact ? 'p-3' : 'p-4'}
-            active:scale-[0.98] transition-transform duration-100
-            cursor-pointer group ${draggable ? 'select-none' : ''}
-          `}
-        >
-          <div className={compact ? 'flex items-start gap-2.5' : 'flex items-start gap-3'}>
+        <div className={compact ? '' : 'flex items-stretch gap-2'}>
+          {!compact ? (
+            <button
+              type="button"
+              onClick={handleStatusToggle}
+              aria-label={toggleLabel}
+              title={toggleLabel}
+              className={`flex w-12 flex-shrink-0 items-center justify-center rounded-xl border text-sm font-medium transition-colors ${
+                isPending
+                  ? 'border-pending/25 bg-card text-pending shadow-[var(--shadow-sm)] hover:bg-pending/10'
+                  : isIncome
+                    ? 'border-income/20 bg-income/10 text-income hover:bg-income/15'
+                    : 'border-primary/20 bg-primary/10 text-primary hover:bg-primary/15'
+              }`}
+            >
+              {isPending ? (
+                <CheckCircle2 className="h-5 w-5" />
+              ) : (
+                <Circle className="h-5 w-5" />
+              )}
+            </button>
+          ) : null}
+
+          {/* Card content */}
+          <div
+            onClick={() => {
+              if (didDragRef.current) return;
+              onEdit(transaction);
+            }}
+            className={`
+              relative min-w-0 flex-1 bg-card border border-border rounded-xl ${compact ? 'p-3' : 'p-4'}
+              active:scale-[0.98] transition-transform duration-100
+              cursor-pointer group ${draggable ? 'select-none' : ''}
+            `}
+          >
+            <div className={compact ? 'flex items-start gap-2.5' : 'flex items-start gap-3'}>
             <div
               className={`mt-0.5 flex items-center justify-center rounded-full flex-shrink-0 ${
                 compact ? 'h-8 w-8' : 'h-9 w-9'
               }`}
-              style={{ backgroundColor: category?.color + '20' }}
+              style={{ backgroundColor: `${category?.color || '#64748b'}20` }}
             >
               <IconComponent
                 className={compact ? 'h-3.5 w-3.5' : 'h-4 w-4'}
-                style={{ color: category?.color }}
+                style={{ color: category?.color || '#64748b' }}
               />
             </div>
 
@@ -255,17 +278,13 @@ export const TransactionCard: React.FC<TransactionCardProps> = ({
               </div>
 
               <div className={`${compact ? 'mt-2' : 'mt-3'} flex items-center justify-between gap-3`}>
-                <button
-                  type="button"
-                  onClick={handleStatusToggle}
-                  aria-label={toggleLabel}
-                  title={toggleLabel}
-                  className={`inline-flex h-5 items-center gap-1 rounded-full border px-1.5 text-[10px] font-medium transition-colors ${
+                <div
+                  className={`inline-flex h-5 items-center gap-1 rounded-full border px-1.5 text-[10px] font-medium ${
                     isPending
-                      ? 'border-pending/15 bg-pending/5 text-pending hover:bg-pending/10'
+                      ? 'border-pending/15 bg-pending/5 text-pending'
                       : isIncome
-                      ? 'border-income/20 bg-income/10 text-income hover:bg-income/15'
-                      : 'border-primary/20 bg-primary/10 text-primary hover:bg-primary/15'
+                        ? 'border-income/20 bg-income/10 text-income'
+                        : 'border-primary/20 bg-primary/10 text-primary'
                   }`}
                 >
                   {isPending ? (
@@ -274,8 +293,7 @@ export const TransactionCard: React.FC<TransactionCardProps> = ({
                     <Check className="h-2.5 w-2.5" />
                   )}
                   {statusLabel}
-                  <span className="sr-only">{toggleLabel}</span>
-                </button>
+                </div>
               </div>
 
               {draggable ? (
@@ -285,6 +303,7 @@ export const TransactionCard: React.FC<TransactionCardProps> = ({
               ) : null}
             </div>
           </div>
+        </div>
         </div>
       </motion.div>
 
