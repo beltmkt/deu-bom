@@ -174,7 +174,7 @@ const Transactions: React.FC = () => {
   };
 
   const handleVoiceTranscript = async (transcript: string) => {
-    const command = parseVoiceCommand(transcript);
+    const command = parseVoiceCommand(transcript, { preferredKind: 'transaction' });
 
     if (!command || command.kind !== 'transaction') {
       toast.error('Diga algo como: adicionar despesa mercado de 45 reais.');

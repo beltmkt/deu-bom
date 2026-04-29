@@ -132,3 +132,9 @@
   - `Lista de Compras`: cria item com quantidade, unidade e valor estimado.
 - Parser inicial de comandos em `src/services/voiceCommandParser.ts`.
 - Hook compartilhado de captura por voz em `src/hooks/useVoiceCommand.ts`.
+
+## 2026-04-29 - Voz: fallback e mapa abrangente
+
+- Corrigido reconhecimento que escrevia texto parcial mas nao executava quando o navegador nao emitia resultado final.
+- Parser passou a aceitar contexto preferencial da tela (`transaction` ou `shopping`) para evitar comando cair no dominio errado.
+- Criado mapa completo em `docs/bmad/voice-command-capability-map.md` cobrindo criacao, atualizacao e exclusao por voz em Financas, Lista de Compras, Festometro, Metas, Categorias, Orcamentos, Configuracoes e Workspace.

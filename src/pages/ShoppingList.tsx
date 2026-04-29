@@ -107,7 +107,7 @@ const ShoppingList: React.FC = () => {
   };
 
   const handleVoiceTranscript = (transcript: string) => {
-    const command = parseVoiceCommand(transcript);
+    const command = parseVoiceCommand(transcript, { preferredKind: 'shopping' });
 
     if (!command || command.kind !== 'shopping') {
       toast.error('Diga algo como: adicionar arroz 2 pacotes por 18 reais na lista.');

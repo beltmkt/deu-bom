@@ -17,6 +17,10 @@ export type ParsedVoiceCommand =
       estimatedPrice: number;
     };
 
+interface ParseVoiceCommandOptions {
+  preferredKind?: 'transaction' | 'shopping';
+}
+
 const normalize = (value: string) =>
   value
     .toLowerCase()
@@ -44,16 +48,21 @@ const cleanTitle = (text: string, amount: number) =>
     .replace(/\s+/g, ' ')
     .trim();
 
-export const parseVoiceCommand = (transcript: string): ParsedVoiceCommand | null => {
+export const parseVoiceCommand = (
+  transcript: string,
+  options: ParseVoiceCommandOptions = {}
+): ParsedVoiceCommand | null => {
   const normalized = normalize(transcript);
 
   const wantsShopping =
+    options.preferredKind === 'shopping' ||
     normalized.includes('lista') ||
     normalized.includes('compra') ||
     normalized.includes('compras') ||
     normalized.includes('mercado');
 
   const wantsTransaction =
+    options.preferredKind === 'transaction' ||
     normalized.includes('despesa') ||
     normalized.includes('gasto') ||
     normalized.includes('receita') ||

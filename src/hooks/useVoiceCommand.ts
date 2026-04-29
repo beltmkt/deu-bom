@@ -41,6 +41,8 @@ export const useVoiceCommand = ({ onTranscript }: VoiceCommandOptions) => {
   const [isListening, setIsListening] = useState(false);
   const [lastTranscript, setLastTranscript] = useState('');
   const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
+  const lastTranscriptRef = useRef('');
+  const dispatchedRef = useRef(false);
 
   const Recognition = useMemo(() => {
     if (typeof window === 'undefined') return null;
@@ -73,6 +75,8 @@ export const useVoiceCommand = ({ onTranscript }: VoiceCommandOptions) => {
     recognition.continuous = false;
 
     setLastTranscript('');
+    lastTranscriptRef.current = '';
+    dispatchedRef.current = false;
     recognition.onstart = () => {
       toast.info('Ouvindo... fale o comando agora.');
     };
@@ -94,9 +98,13 @@ export const useVoiceCommand = ({ onTranscript }: VoiceCommandOptions) => {
       }
 
       const transcript = (finalTranscript || interimTranscript).trim();
-      if (transcript) setLastTranscript(transcript);
+      if (transcript) {
+        lastTranscriptRef.current = transcript;
+        setLastTranscript(transcript);
+      }
 
       if (finalTranscript.trim()) {
+        dispatchedRef.current = true;
         toast.success(`Ouvi: ${finalTranscript.trim()}`);
         onTranscript(finalTranscript.trim());
       } else if (!transcript) {
@@ -123,6 +131,12 @@ export const useVoiceCommand = ({ onTranscript }: VoiceCommandOptions) => {
     };
 
     recognition.onend = () => {
+      if (!dispatchedRef.current && lastTranscriptRef.current) {
+        dispatchedRef.current = true;
+        toast.success(`Ouvi: ${lastTranscriptRef.current}`);
+        onTranscript(lastTranscriptRef.current);
+      }
+
       setIsListening(false);
       recognitionRef.current = null;
     };
