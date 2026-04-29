@@ -923,22 +923,24 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
             ) : null}
           </div>
 
-          <div className="sticky bottom-0 z-20 shrink-0 border-t border-border bg-card/95 p-4 pb-[calc(1rem+env(safe-area-inset-bottom,0px))] shadow-[0_-12px_28px_rgba(15,23,42,0.08)] backdrop-blur sm:p-5">
-            <div className="grid gap-2 sm:grid-cols-[auto_1fr]">
+          <div className="sticky bottom-0 z-20 shrink-0 border-t border-border bg-card/95 p-3 pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))] shadow-[0_-12px_28px_rgba(15,23,42,0.08)] backdrop-blur sm:p-5">
+            <div className="grid grid-cols-[3.25rem_1fr] gap-2 sm:grid-cols-[auto_1fr]">
               <button
                 type="button"
                 onClick={handleAddToCalendar}
                 disabled={!canOpenCalendar || isSubmitting || isResolvingScope}
-                className="inline-flex items-center justify-center gap-2 rounded-xl border border-border bg-muted/50 px-4 py-3 text-sm font-medium text-foreground transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
+                className="inline-flex h-12 items-center justify-center gap-2 rounded-xl border border-border bg-muted/50 px-3 text-sm font-medium text-foreground transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50 sm:px-4"
+                aria-label="Adicionar ao Google"
+                title="Adicionar ao Google"
               >
                 <CalendarPlus className="h-4 w-4" />
-                Adicionar ao Google
+                <span className="hidden sm:inline">Adicionar ao Google</span>
               </button>
 
               <button
                 onClick={() => handleSubmit()}
                 disabled={!title || !amount || !categoryId || isSubmitting || isResolvingScope}
-                className={`w-full rounded-xl py-3.5 text-sm font-semibold transition-all disabled:cursor-not-allowed disabled:opacity-50 ${
+                className={`h-12 w-full rounded-xl text-sm font-semibold transition-all disabled:cursor-not-allowed disabled:opacity-50 ${
                   type === 'income'
                     ? 'bg-income text-income-foreground shadow-glow-income'
                     : 'bg-expense text-expense-foreground shadow-glow-expense'

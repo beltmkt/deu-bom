@@ -167,3 +167,4 @@
 - Rodape do formulario manual de transacoes passou a ficar fixo no fundo do modal mobile.
 - Modal ganhou altura baseada em `dvh` e area segura inferior para evitar que o botao Salvar fique escondido pela navegacao do celular.
 - Conteudo rolavel recebeu respiro inferior para os ultimos campos nao ficarem encobertos pelo rodape de acoes.
+- Rodape mobile foi compactado para uma unica linha, mantendo Salvar como acao principal visivel e Google Agenda como icone secundario.
