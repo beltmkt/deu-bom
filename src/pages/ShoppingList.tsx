@@ -122,7 +122,11 @@ const ShoppingList: React.FC = () => {
       checked: false,
     });
 
-    toast.success(`Adicionado: ${command.name}.`);
+    toast.success(
+      `Adicionado: ${command.quantity} ${command.unit} de ${command.name}${
+        command.estimatedPrice > 0 ? ` por ${formatCurrency(command.estimatedPrice)} cada` : ''
+      }.`
+    );
   };
 
   const { isListening, lastTranscript, startListening, stopListening } = useVoiceCommand({

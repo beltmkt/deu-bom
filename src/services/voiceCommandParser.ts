@@ -21,6 +21,54 @@ interface ParseVoiceCommandOptions {
   preferredKind?: 'transaction' | 'shopping';
 }
 
+const numberWords: Record<string, number> = {
+  um: 1,
+  uma: 1,
+  dois: 2,
+  duas: 2,
+  tres: 3,
+  três: 3,
+  quatro: 4,
+  cinco: 5,
+  seis: 6,
+  sete: 7,
+  oito: 8,
+  nove: 9,
+  dez: 10,
+  onze: 11,
+  doze: 12,
+  treze: 13,
+  quatorze: 14,
+  catorze: 14,
+  quinze: 15,
+  dezesseis: 16,
+  dezassete: 17,
+  dezessete: 17,
+  dezoito: 18,
+  dezenove: 19,
+  vinte: 20,
+};
+
+const unitAliases: Record<string, string> = {
+  unidades: 'un',
+  unidade: 'un',
+  un: 'un',
+  kg: 'kg',
+  quilo: 'kg',
+  quilos: 'kg',
+  kilo: 'kg',
+  kilos: 'kg',
+  pacote: 'pacote',
+  pacotes: 'pacote',
+  litro: 'l',
+  litros: 'l',
+  l: 'l',
+  caixa: 'caixa',
+  caixas: 'caixa',
+  garrafa: 'garrafa',
+  garrafas: 'garrafa',
+};
+
 const normalize = (value: string) =>
   value
     .toLowerCase()
@@ -30,13 +78,77 @@ const normalize = (value: string) =>
     .trim();
 
 const parseAmount = (text: string) => {
-  const match = text.match(/(?:r\$|reais|real|valor|por|de)\s*(\d+(?:[,.]\d{1,2})?)/i);
+  const normalizedText = normalize(text)
+    .replace(/\br\s*\$\b/g, 'r$')
+    .replace(/\br\s+(\d)/g, 'r$ $1');
+  const match = normalizedText.match(/(?:r\$|reais|real|valor|por|custa|preco|preço)\s*(\d+(?:[,.]\d{1,2})?)/i);
   if (!match) {
-    const looseMatch = text.match(/\b(\d+(?:[,.]\d{1,2})?)\b/);
+    const looseMatch = normalizedText.match(/\b(\d+(?:[,.]\d{1,2})?)\s*(?:reais|real)\b/i);
     return looseMatch ? Number(looseMatch[1].replace(',', '.')) : 0;
   }
 
   return Number(match[1].replace(',', '.'));
+};
+
+const unitPattern = Object.keys(unitAliases).join('|');
+const numberWordPattern = Object.keys(numberWords).join('|');
+
+const parseSpokenNumber = (value?: string) => {
+  if (!value) return null;
+  const normalized = normalize(value);
+  if (/^\d+$/.test(normalized)) return Number(normalized);
+  return numberWords[normalized] ?? null;
+};
+
+const parseShoppingQuantity = (normalized: string) => {
+  const quantityWithUnit = normalized.match(
+    new RegExp(`\\b(\\d+|${numberWordPattern})\\s+(${unitPattern})\\b`, 'i')
+  );
+
+  if (quantityWithUnit) {
+    return {
+      quantity: parseSpokenNumber(quantityWithUnit[1]) || 1,
+      unit: unitAliases[quantityWithUnit[2]] || 'un',
+      raw: quantityWithUnit[0],
+    };
+  }
+
+  const leadingQuantity = normalized.match(new RegExp(`^(?:adicionar|add|inserir|colocar)?\\s*(\\d+|${numberWordPattern})\\b`, 'i'));
+
+  if (leadingQuantity) {
+    return {
+      quantity: parseSpokenNumber(leadingQuantity[1]) || 1,
+      unit: 'un',
+      raw: leadingQuantity[1],
+    };
+  }
+
+  const trailingQuantity = normalized.match(new RegExp(`\\b(\\d+|${numberWordPattern})$`, 'i'));
+
+  if (trailingQuantity) {
+    return {
+      quantity: parseSpokenNumber(trailingQuantity[1]) || 1,
+      unit: 'un',
+      raw: trailingQuantity[1],
+    };
+  }
+
+  return {
+    quantity: 1,
+    unit: 'un',
+    raw: '',
+  };
+};
+
+const stripPriceFragments = (value: string) =>
+  value
+    .replace(/\b(?:por|valor|custa|preco|preço)\s*(?:r\s*\$|reais|real)?\s*\d+(?:[,.]\d{1,2})?\b/gi, ' ')
+    .replace(/\b(?:r\s*\$)\s*\d+(?:[,.]\d{1,2})?\b/gi, ' ')
+    .replace(/\b\d+(?:[,.]\d{1,2})?\s*(?:reais|real)\b/gi, ' ');
+
+const removeFirstOccurrence = (value: string, target: string) => {
+  if (!target) return value;
+  return value.replace(new RegExp(`\\b${target.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i'), ' ');
 };
 
 const cleanTitle = (text: string, amount: number) =>
@@ -71,14 +183,15 @@ export const parseVoiceCommand = (
 
   if (wantsShopping && !wantsTransaction) {
     const estimatedPrice = parseAmount(transcript);
-    const quantityMatch = normalized.match(/\b(\d+)\s*(unidades|unidade|un|kg|quilo|quilos|pacotes|pacote|litros|litro|l)\b/);
-    const quantity = quantityMatch ? Number(quantityMatch[1]) : 1;
-    const unit = quantityMatch?.[2]?.replace('quilos', 'kg').replace('quilo', 'kg') || 'un';
-    const name = normalized
+    const parsedQuantity = parseShoppingQuantity(normalized);
+    const withoutPrice = stripPriceFragments(normalized);
+    const withoutQuantity = removeFirstOccurrence(withoutPrice, parsedQuantity.raw);
+    const name = withoutQuantity
       .replace(/^(adicionar|add|inserir|colocar)\s+/i, '')
-      .replace(/\b(na|no|a|lista|de|compras|compra|mercado|por|r\$|reais|real)\b/g, ' ')
+      .replace(/\b(na|no|a|o|os|as|lista|de|do|da|dos|das|compras|compra|mercado|para)\b/g, ' ')
+      .replace(new RegExp(`\\b(${unitPattern})\\b`, 'gi'), ' ')
+      .replace(/\br\s*\$|\$|reais|real/gi, ' ')
       .replace(/\b\d+(?:[,.]\d{1,2})?\b/g, ' ')
-      .replace(/\b(unidades|unidade|un|kg|quilo|quilos|pacotes|pacote|litros|litro|l)\b/g, ' ')
       .replace(/\s+/g, ' ')
       .trim();
 
@@ -88,8 +201,8 @@ export const parseVoiceCommand = (
       kind: 'shopping',
       action: 'add',
       name,
-      quantity,
-      unit,
+      quantity: parsedQuantity.quantity,
+      unit: parsedQuantity.unit,
       estimatedPrice,
     };
   }
