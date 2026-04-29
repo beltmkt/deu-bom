@@ -144,3 +144,4 @@
 - Tela `Financas` passou a usar lista vertical no mobile.
 - Kanban foi mantido apenas no desktop (`lg+`).
 - Estado vazio deixou de mencionar Kanban para nao confundir no celular.
+- Cabecalho mobile foi enxugado e o vencimento do ciclo virou um seletor compacto com icone de calendario.

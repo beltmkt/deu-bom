@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
+  CalendarDays,
   Filter,
   Loader2,
   Mic,
@@ -55,6 +56,7 @@ const Transactions: React.FC = () => {
   const [showFilters, setShowFilters] = useState(false);
   const [selectedMonth, setSelectedMonth] = useState(new Date());
   const [defaultType, setDefaultType] = useState<TransactionType>('expense');
+  const [showCyclePicker, setShowCyclePicker] = useState(false);
   const [draggingTransactionId, setDraggingTransactionId] = useState<string | null>(null);
   const [dropTargetColumn, setDropTargetColumn] = useState<ColumnId | null>(null);
   const [pendingDragTransaction, setPendingDragTransaction] = useState<Transaction | null>(null);
@@ -75,6 +77,8 @@ const Transactions: React.FC = () => {
   }, [initialize, initialized]);
 
   const cycleDays = Array.from({ length: 30 }, (_, index) => index + 2);
+  const cycleLabel =
+    settings.cycleStartDay === 1 ? 'Sem ajuste' : `Dia ${settings.cycleStartDay}`;
 
   const monthTransactions = useMemo(
     () => filterTransactionsByMonth(transactions, selectedMonth),
@@ -307,7 +311,7 @@ const Transactions: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-background pb-[calc(var(--app-bottom-nav-height,0px)+1rem+env(safe-area-inset-bottom,0px))] md:pl-[var(--app-sidebar-width,88px)]">
-      <header className="sticky top-0 z-30 border-b border-border/50 bg-background/90 px-4 py-3 backdrop-blur-xl sm:px-6 lg:px-8">
+      <header className="sticky top-0 z-30 border-b border-border/50 bg-background/90 px-3 py-2 backdrop-blur-xl sm:px-6 lg:px-8 lg:py-3">
         <div className="mx-auto max-w-7xl rounded-2xl border border-border/60 bg-card/90 p-3 shadow-[var(--shadow-sm)] sm:p-4">
           <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
             <div className="max-w-lg">
@@ -315,7 +319,7 @@ const Transactions: React.FC = () => {
                 Financas
               </p>
               <h1 className="text-xl font-semibold sm:text-2xl">Organize seus lancamentos</h1>
-              <p className="mt-1 text-sm text-muted-foreground">
+              <p className="mt-1 hidden text-sm text-muted-foreground sm:block">
                 Pague, receba, confirme e ajuste o mes sem poluir a tela.
               </p>
             </div>
@@ -413,7 +417,53 @@ const Transactions: React.FC = () => {
             </div>
           </div>
 
-          <div className="mt-3 rounded-xl border border-border/60 bg-background/70 px-3 py-2">
+          <div className="mt-3 lg:hidden">
+            <button
+              type="button"
+              onClick={() => setShowCyclePicker((current) => !current)}
+              className="flex h-10 w-full items-center justify-between rounded-xl border border-border/60 bg-background/70 px-3 text-left text-sm font-medium text-foreground"
+              aria-expanded={showCyclePicker}
+            >
+              <span className="flex items-center gap-2">
+                <CalendarDays className="h-4 w-4 text-muted-foreground" />
+                Ciclo: {cycleLabel}
+              </span>
+              <span className="text-xs text-muted-foreground">Alterar</span>
+            </button>
+
+            <AnimatePresence>
+              {showCyclePicker ? (
+                <motion.div
+                  initial={{ opacity: 0, y: -6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -6 }}
+                  className="mt-2 rounded-xl border border-border bg-background p-2"
+                >
+                  <div className="grid grid-cols-5 gap-1.5">
+                    {[1, ...cycleDays].map((day) => (
+                      <button
+                        key={day}
+                        type="button"
+                        onClick={() => {
+                          void updateSettings({ cycleStartDay: day });
+                          setShowCyclePicker(false);
+                        }}
+                        className={`h-9 rounded-lg text-xs font-medium transition-colors ${
+                          settings.cycleStartDay === day
+                            ? 'bg-primary text-primary-foreground'
+                            : 'bg-muted/50 text-muted-foreground'
+                        }`}
+                      >
+                        {day === 1 ? 'Sem' : day}
+                      </button>
+                    ))}
+                  </div>
+                </motion.div>
+              ) : null}
+            </AnimatePresence>
+          </div>
+
+          <div className="mt-3 hidden rounded-xl border border-border/60 bg-background/70 px-3 py-2 lg:block">
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
               <div className="min-w-0 flex-1">
                 <p className="text-xs font-medium text-foreground">Dia de vencimento do ciclo</p>
@@ -441,7 +491,7 @@ const Transactions: React.FC = () => {
         </div>
       </header>
 
-      <main className="mx-auto max-w-7xl space-y-5 px-4 py-5 sm:px-6 lg:px-8">
+      <main className="mx-auto max-w-7xl space-y-4 px-3 py-4 sm:px-6 lg:space-y-5 lg:px-8 lg:py-5">
         <AnimatePresence>
           {showFilters && (
             <motion.section
@@ -542,7 +592,7 @@ const Transactions: React.FC = () => {
         ) : (
           <>
             <section className="space-y-2 lg:hidden">
-              <div className="flex items-center justify-between gap-3 rounded-2xl border border-border bg-card px-4 py-3">
+              <div className="flex items-center justify-between gap-3 px-1">
                 <div>
                   <p className="text-sm font-semibold text-foreground">Lancamentos do mes</p>
                   <p className="mt-0.5 text-xs text-muted-foreground">
@@ -550,9 +600,6 @@ const Transactions: React.FC = () => {
                     {filteredTransactions.length === 1 ? '' : 's'} no filtro atual
                   </p>
                 </div>
-                <span className="rounded-full bg-muted px-3 py-1 text-xs font-medium text-muted-foreground">
-                  Lista
-                </span>
               </div>
 
               <div className="space-y-2">
