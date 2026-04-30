@@ -551,6 +551,24 @@ export type Database = {
         Returns: boolean
       }
       get_auth_user_email: { Args: never; Returns: string }
+      get_workspace_invitation_by_token: {
+        Args: { invite_token: string }
+        Returns: {
+          email: string
+          role: string
+          workspace_id: string
+          workspace_name: string
+          expires_at: string
+        }[]
+      }
+      accept_workspace_invitation: {
+        Args: { invite_token: string }
+        Returns: {
+          workspace_id: string
+          workspace_name: string
+          role: string
+        }[]
+      }
       is_workspace_member: {
         Args: { uid: string; ws_id: string }
         Returns: boolean

@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
@@ -20,7 +20,7 @@ import { toast } from 'sonner';
 const AcceptInvite: React.FC = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const { user, signIn, signUp } = useAuth();
+  const { user, signIn, loading: authStateLoading } = useAuth();
 
   const token = searchParams.get('token');
 
@@ -38,8 +38,20 @@ const AcceptInvite: React.FC = () => {
   const [password, setPassword] = useState('');
   const [displayName, setDisplayName] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [authLoading, setAuthLoading] = useState(false);
+  const [authSubmitting, setAuthSubmitting] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
+  const acceptanceStartedRef = useRef(false);
+
+  const getInviteErrorMessage = (message?: string) => {
+    if (!message) return 'Erro ao aceitar convite';
+    if (message.includes('AUTH_REQUIRED')) return 'Entre na sua conta para aceitar o convite.';
+    if (message.includes('INVITE_NOT_FOUND')) return 'Convite nao encontrado ou ja utilizado.';
+    if (message.includes('INVITE_EXPIRED')) return 'Este convite expirou.';
+    if (message.includes('INVITE_EMAIL_MISMATCH')) {
+      return 'Este convite pertence a outro email. Entre com o email convidado.';
+    }
+    return getErrorMessage({ message }, 'Erro ao aceitar convite');
+  };
 
   const fetchInvitation = useCallback(async () => {
     if (!token) {
@@ -48,11 +60,11 @@ const AcceptInvite: React.FC = () => {
       return;
     }
 
-    const { data: invitationData, error: invitationError } = await supabase
-      .from('workspace_invitations')
-      .select('email, role, workspace_id, expires_at')
-      .eq('token', token)
-      .maybeSingle();
+    const { data, error: invitationError } = await supabase.rpc(
+      'get_workspace_invitation_by_token',
+      { invite_token: token }
+    );
+    const invitationData = data?.[0];
 
     if (invitationError || !invitationData) {
       setError('Convite nao encontrado ou expirado');
@@ -66,15 +78,9 @@ const AcceptInvite: React.FC = () => {
       return;
     }
 
-    const { data: workspace } = await supabase
-      .from('workspaces')
-      .select('name')
-      .eq('id', invitationData.workspace_id)
-      .maybeSingle();
-
     setInvitation({
       email: invitationData.email,
-      workspaceName: workspace?.name || 'Espaco',
+      workspaceName: invitationData.workspace_name || 'Espaco',
       role: invitationData.role,
       workspaceId: invitationData.workspace_id,
     });
@@ -87,66 +93,68 @@ const AcceptInvite: React.FC = () => {
   }, [fetchInvitation]);
 
   const handleAcceptInvite = useCallback(async () => {
-    if (!invitation || !token || !user) return;
+    if (!invitation || !token || !user || accepting || acceptanceStartedRef.current) return;
 
+    acceptanceStartedRef.current = true;
     setAccepting(true);
 
     try {
-      const { error: memberError } = await supabase.from('workspace_members').insert({
-        workspace_id: invitation.workspaceId,
-        user_id: user.id,
-        role: invitation.role as 'editor' | 'viewer',
-        accepted_at: new Date().toISOString(),
+      const { error: acceptError } = await supabase.rpc('accept_workspace_invitation', {
+        invite_token: token,
       });
 
-      if (memberError && memberError.code !== '23505') {
-        throw memberError;
+      if (acceptError) {
+        throw acceptError;
       }
-
-      if (memberError?.code === '23505') {
-        toast.info('Voce ja faz parte deste workspace.');
-      }
-
-      await supabase.from('workspace_invitations').delete().eq('token', token);
-      await supabase
-        .from('profiles')
-        .update({ current_workspace_id: invitation.workspaceId })
-        .eq('id', user.id);
 
       toast.success('Convite aceito com sucesso.');
       navigate('/');
     } catch (error: unknown) {
       console.error('Error accepting invite:', error);
-      toast.error(getErrorMessage(error, 'Erro ao aceitar convite'));
+      const message =
+        typeof error === 'object' && error && 'message' in error
+          ? String((error as { message?: unknown }).message || '')
+          : '';
+      toast.error(getInviteErrorMessage(message));
     } finally {
       setAccepting(false);
     }
-  }, [invitation, navigate, token, user]);
+  }, [accepting, invitation, navigate, token, user]);
 
   useEffect(() => {
-    if (user && invitation) {
+    if (!authStateLoading && user && invitation) {
       handleAcceptInvite();
     }
-  }, [handleAcceptInvite, invitation, user]);
+  }, [authStateLoading, handleAcceptInvite, invitation, user]);
 
   const handleAuth = async (event: React.FormEvent) => {
     event.preventDefault();
     setAuthError(null);
-    setAuthLoading(true);
+    setAuthSubmitting(true);
 
     try {
       if (isLogin) {
         const { error: signInError } = await signIn(email, password);
         if (signInError) throw signInError;
       } else {
-        const { error: signUpError } = await signUp(email, password, displayName);
+        const { error: signUpError } = await supabase.auth.signUp({
+          email,
+          password,
+          options: {
+            emailRedirectTo: window.location.href,
+            data: {
+              display_name: displayName || email.split('@')[0],
+              workspace_name: 'Meu Espaco',
+            },
+          },
+        });
         if (signUpError) throw signUpError;
-        toast.success('Conta criada. Confira seu email se necessario.');
+        toast.success('Conta criada. Confira seu email se necessario e volte por este convite.');
       }
     } catch (error: unknown) {
       setAuthError(getErrorMessage(error, 'Erro na autenticacao'));
     } finally {
-      setAuthLoading(false);
+      setAuthSubmitting(false);
     }
   };
 
@@ -307,10 +315,10 @@ const AcceptInvite: React.FC = () => {
 
             <button
               type="submit"
-              disabled={authLoading}
+              disabled={authSubmitting}
               className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary py-4 font-semibold text-primary-foreground disabled:opacity-50"
             >
-              {authLoading ? (
+              {authSubmitting ? (
                 <Loader2 className="h-5 w-5 animate-spin" />
               ) : (
                 <>

@@ -177,3 +177,9 @@
 - Criado contrato tecnico em `docs/bmad/voice-command-intent-contract.md`, definindo `VoiceIntent`, risco, confianca, resolver, confirm sheet e executor.
 - Criada matriz de testes em `docs/bmad/voice-command-test-matrix.md` com cenarios Given/When/Then por modulo.
 - README BMAD atualizado para tornar o pacote de voz descobrivel.
+
+## 2026-04-30 - Aceite de convite corrigido
+
+- Fluxo `/accept-invite` deixou de depender de leitura direta da tabela `workspace_invitations` antes do login.
+- Criadas RPCs seguras no Supabase para buscar convite por token e aceitar convite respeitando email autenticado, expiracao e workspace.
+- Pagina de aceite agora preserva o token durante cadastro/login e aceita o convite pelo banco apos autenticacao.
