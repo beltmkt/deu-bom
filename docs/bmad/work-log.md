@@ -169,3 +169,11 @@
 - Conteudo rolavel recebeu respiro inferior para os ultimos campos nao ficarem encobertos pelo rodape de acoes.
 - Rodape mobile foi compactado para uma unica linha, mantendo Salvar como acao principal visivel e Google Agenda como icone secundario.
 - Cabecalho fixo do modal tambem ganhou botao Salvar para manter a acao disponivel quando o teclado do celular cobre o rodape.
+
+## 2026-04-30 - Pacote documental de comandos de voz
+
+- Mapa operacional de voz expandido em `docs/bmad/voice-command-capability-map.md`.
+- Criado plano de implementacao em `docs/bmad/voice-command-implementation-plan.md`, organizando fases de contrato, Lista, Financas, navegacao, Festometro, Metas, Analytics e Configuracoes.
+- Criado contrato tecnico em `docs/bmad/voice-command-intent-contract.md`, definindo `VoiceIntent`, risco, confianca, resolver, confirm sheet e executor.
+- Criada matriz de testes em `docs/bmad/voice-command-test-matrix.md` com cenarios Given/When/Then por modulo.
+- README BMAD atualizado para tornar o pacote de voz descobrivel.
