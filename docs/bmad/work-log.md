@@ -183,3 +183,17 @@
 - Fluxo `/accept-invite` deixou de depender de leitura direta da tabela `workspace_invitations` antes do login.
 - Criadas RPCs seguras no Supabase para buscar convite por token e aceitar convite respeitando email autenticado, expiracao e workspace.
 - Pagina de aceite agora preserva o token durante cadastro/login e aceita o convite pelo banco apos autenticacao.
+
+## 2026-04-30 - Confiabilidade do email de convite
+
+- Edge function `send-invite-email` simplificada para reduzir risco de spam:
+  - removido remetente `noreply`;
+  - adicionado `reply_to`;
+  - adicionado corpo `text` junto do HTML;
+  - assunto e HTML ficaram mais transacionais e menos promocionais;
+  - campos dinamicos passaram por escape HTML.
+- DNS publico conferido:
+  - DKIM Resend encontrado em `resend._domainkey.labeltservicosdigitais.com.br`;
+  - SPF/Return-Path encontrado em `send.labeltservicosdigitais.com.br`;
+  - DMARC existe em `_dmarc.labeltservicosdigitais.com.br`, mas ainda com `p=none`.
+- Proxima acao recomendada: validar inbox por alguns envios reais e, se SPF/DKIM/DMARC passarem nos headers, evoluir DMARC para politica mais forte com cuidado.
