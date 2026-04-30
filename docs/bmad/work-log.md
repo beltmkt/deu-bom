@@ -197,3 +197,10 @@
   - SPF/Return-Path encontrado em `send.labeltservicosdigitais.com.br`;
   - DMARC existe em `_dmarc.labeltservicosdigitais.com.br`, mas ainda com `p=none`.
 - Proxima acao recomendada: validar inbox por alguns envios reais e, se SPF/DKIM/DMARC passarem nos headers, evoluir DMARC para politica mais forte com cuidado.
+
+## 2026-04-30 - Reenvio de confirmacao de cadastro
+
+- Fluxo de cadastro em `src/pages/Auth.tsx` passou a informar que o usuario precisa confirmar o email.
+- Adicionado botao para reenviar email de confirmacao usando `supabase.auth.resend`.
+- `useAuth` agora expoe `resendConfirmation`, mantendo o redirect para a origem do app.
+- Observacao: a entrega do email inicial ainda depende da configuracao de Auth/SMTP do Supabase; o app agora oferece uma recuperacao visivel para o usuario.
