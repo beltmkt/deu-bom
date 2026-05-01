@@ -1,9 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { Resend } from "https://esm.sh/resend@2.0.0";
 
-const resendApiKey = Deno.env.get("RESEND_API_KEY");
-const resend = new Resend(resendApiKey);
-
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
@@ -22,7 +19,27 @@ interface EventInviteRequest {
   appUrl?: string;
 }
 
+interface ResendEmailResponse {
+  data?: {
+    id?: string;
+  } | null;
+  error?: {
+    message?: string;
+    name?: string;
+    statusCode?: number;
+  } | null;
+}
+
 const DEFAULT_APP_URL = "https://deu-bom-financas-sem-erro.vercel.app";
+
+const getResendClient = () => {
+  const resendApiKey = Deno.env.get("RESEND_API_KEY");
+  if (!resendApiKey) {
+    throw new Error("Missing RESEND_API_KEY");
+  }
+
+  return new Resend(resendApiKey);
+};
 
 const escapeHtml = (value: string) =>
   value
@@ -124,13 +141,7 @@ const handler = async (req: Request): Promise<Response> => {
       });
     }
 
-    if (!resendApiKey) {
-      return new Response(JSON.stringify({ error: "Missing RESEND_API_KEY" }), {
-        status: 500,
-        headers: { "Content-Type": "application/json", ...corsHeaders },
-      });
-    }
-
+    const resend = getResendClient();
     const safeParticipant = escapeHtml(participantName);
     const safeEvent = escapeHtml(eventName);
     const safeHost = escapeHtml(hostName);
@@ -185,6 +196,11 @@ const handler = async (req: Request): Promise<Response> => {
         </html>
       `,
     });
+
+    if ((emailResponse as ResendEmailResponse)?.error) {
+      const resendError = (emailResponse as ResendEmailResponse).error;
+      throw new Error(resendError?.message || "Resend failed to send event invite email");
+    }
 
     return new Response(JSON.stringify({ success: true, data: emailResponse }), {
       status: 200,

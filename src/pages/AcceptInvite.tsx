@@ -41,6 +41,7 @@ const AcceptInvite: React.FC = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [authSubmitting, setAuthSubmitting] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
+  const [acceptError, setAcceptError] = useState<string | null>(null);
   const acceptanceStartedRef = useRef(false);
 
   const getInviteErrorMessage = (message?: string) => {
@@ -98,6 +99,7 @@ const AcceptInvite: React.FC = () => {
 
     acceptanceStartedRef.current = true;
     setAccepting(true);
+    setAcceptError(null);
 
     try {
       const { error: acceptError } = await supabase.rpc('accept_workspace_invitation', {
@@ -116,17 +118,19 @@ const AcceptInvite: React.FC = () => {
         typeof error === 'object' && error && 'message' in error
           ? String((error as { message?: unknown }).message || '')
           : '';
-      toast.error(getInviteErrorMessage(message));
+      const friendlyMessage = getInviteErrorMessage(message);
+      setAcceptError(friendlyMessage);
+      toast.error(friendlyMessage);
     } finally {
       setAccepting(false);
     }
   }, [accepting, invitation, navigate, token, user]);
 
   useEffect(() => {
-    if (!authStateLoading && user && invitation) {
+    if (!authStateLoading && user && invitation && !acceptError) {
       handleAcceptInvite();
     }
-  }, [authStateLoading, handleAcceptInvite, invitation, user]);
+  }, [acceptError, authStateLoading, handleAcceptInvite, invitation, user]);
 
   const handleAuth = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -213,6 +217,41 @@ const AcceptInvite: React.FC = () => {
         >
           <Loader2 className="mx-auto mb-4 h-12 w-12 animate-spin text-primary" />
           <p className="text-muted-foreground">Aceitando convite...</p>
+        </motion.div>
+      </div>
+    );
+  }
+
+  if (acceptError) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background p-4">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="w-full max-w-md rounded-2xl border border-border bg-card p-8 text-center"
+        >
+          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-expense/10">
+            <X className="h-8 w-8 text-expense" />
+          </div>
+          <h1 className="mb-2 text-xl font-bold">Nao foi possivel aceitar</h1>
+          <p className="mb-6 text-muted-foreground">{acceptError}</p>
+          <div className="grid gap-3">
+            <button
+              onClick={() => {
+                acceptanceStartedRef.current = false;
+                void handleAcceptInvite();
+              }}
+              className="w-full rounded-xl bg-primary py-3 font-semibold text-primary-foreground"
+            >
+              Tentar novamente
+            </button>
+            <button
+              onClick={() => navigate('/auth')}
+              className="w-full rounded-xl border border-border py-3 font-semibold text-foreground"
+            >
+              Entrar com outro email
+            </button>
+          </div>
         </motion.div>
       </div>
     );

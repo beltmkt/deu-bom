@@ -36,6 +36,7 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { generateICSFile } from '@/utils/calendarFile';
 import { getPublicAppUrl } from '@/utils/appUrl';
+import { getFunctionErrorMessage } from '@/utils/errors';
 import { EventDeleteModal } from '@/components/EventDeleteModal';
 
 interface Event {
@@ -887,7 +888,7 @@ const Leisure: React.FC = () => {
     } catch (error) {
       console.error('Failed to send event invite:', error);
       toast.error('Erro ao enviar convite', {
-        description: error instanceof Error ? error.message : 'Tente novamente em instantes.',
+        description: await getFunctionErrorMessage(error, 'Tente novamente em instantes.'),
       });
     } finally {
       setSendingInviteId(null);

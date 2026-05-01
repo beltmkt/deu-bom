@@ -2,6 +2,7 @@ import { useState, useEffect, createContext, useContext, ReactNode, useCallback,
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
 import { getPublicAppUrl } from '@/utils/appUrl';
+import { getFunctionErrorMessage } from '@/utils/errors';
 
 interface Workspace {
   id: string;
@@ -297,6 +298,8 @@ export const WorkspaceProvider = ({ children }: { children: ReactNode }) => {
   const inviteUser = useCallback(async (email: string, role: 'editor' | 'viewer') => {
     if (!user || !currentWorkspace) return;
 
+    const normalizedEmail = email.trim().toLowerCase();
+
     // Get current user's display name for the email
     const { data: profile } = await supabase
       .from('profiles')
@@ -311,7 +314,7 @@ export const WorkspaceProvider = ({ children }: { children: ReactNode }) => {
       .from('workspace_invitations')
       .select('id')
       .eq('workspace_id', currentWorkspace.id)
-      .eq('email', email)
+      .eq('email', normalizedEmail)
       .maybeSingle();
 
     if (existingInvitation) {
@@ -330,7 +333,7 @@ export const WorkspaceProvider = ({ children }: { children: ReactNode }) => {
       .from('workspace_invitations')
       .insert({
         workspace_id: currentWorkspace.id,
-        email,
+        email: normalizedEmail,
         role,
         invited_by: user.id,
       })
@@ -341,11 +344,13 @@ export const WorkspaceProvider = ({ children }: { children: ReactNode }) => {
       throw error;
     }
 
+    let emailDeliveryError: unknown = null;
+
     // Send invite email via edge function
     try {
       const { error: emailError } = await supabase.functions.invoke('send-invite-email', {
         body: {
-          email,
+          email: normalizedEmail,
           workspaceName: currentWorkspace.name,
           inviterName,
           token: invitation.token,
@@ -356,13 +361,23 @@ export const WorkspaceProvider = ({ children }: { children: ReactNode }) => {
 
       if (emailError) {
         console.error('Failed to send invite email:', emailError);
-        // Don't throw - invitation was created, just email failed
+        emailDeliveryError = new Error(
+          await getFunctionErrorMessage(
+            emailError,
+            'Convite criado, mas o email nao foi enviado. Verifique a Edge Function e o RESEND_API_KEY.',
+          ),
+        );
       }
     } catch (emailErr) {
       console.error('Email sending error:', emailErr);
+      emailDeliveryError = emailErr;
     }
 
     await loadWorkspaceDetails(currentWorkspace.id, workspaces, user.id);
+
+    if (emailDeliveryError) {
+      throw emailDeliveryError;
+    }
   }, [user, currentWorkspace, workspaces, loadWorkspaceDetails]);
 
   const removeInvitation = useCallback(async (invitationId: string) => {

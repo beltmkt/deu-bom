@@ -1,8 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { Resend } from "https://esm.sh/resend@2.0.0";
 
-const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
-
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
@@ -23,6 +21,11 @@ interface ResendEmailResponse {
   data?: {
     id?: string;
   } | null;
+  error?: {
+    message?: string;
+    name?: string;
+    statusCode?: number;
+  } | null;
 }
 
 interface ResendEmailStatusResponse {
@@ -32,6 +35,15 @@ interface ResendEmailStatusResponse {
 const DEFAULT_APP_URL = "https://deu-bom-financas-sem-erro.vercel.app";
 const DEFAULT_FROM_EMAIL = "convites@labeltservicosdigitais.com.br";
 const DEFAULT_REPLY_TO = "contato@labeltservicosdigitais.com.br";
+
+const getResendClient = () => {
+  const resendApiKey = Deno.env.get("RESEND_API_KEY");
+  if (!resendApiKey) {
+    throw new Error("Missing RESEND_API_KEY");
+  }
+
+  return new Resend(resendApiKey);
+};
 
 const escapeHtml = (value: string) =>
   value
@@ -110,6 +122,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     console.log(`Sending invite to ${email} for workspace ${workspaceName}`);
 
+    const resend = getResendClient();
     const acceptUrl = `${resolveAppUrl(appUrl)}/accept-invite?token=${token}`;
     const roleLabel = role === "editor" ? "Editor" : "Visualizador";
     const fromEmail = Deno.env.get("INVITE_FROM_EMAIL") || DEFAULT_FROM_EMAIL;
@@ -170,6 +183,11 @@ const handler = async (req: Request): Promise<Response> => {
         </html>
       `,
     });
+
+    if ((emailResponse as ResendEmailResponse)?.error) {
+      const resendError = (emailResponse as ResendEmailResponse).error;
+      throw new Error(resendError?.message || "Resend failed to send invite email");
+    }
 
     console.log("Email sent successfully:", emailResponse);
 
