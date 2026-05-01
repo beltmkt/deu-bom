@@ -261,6 +261,7 @@ const Leisure: React.FC = () => {
   // Form states
   const [showItemForm, setShowItemForm] = useState(false);
   const [showParticipantForm, setShowParticipantForm] = useState(false);
+  const [addingParticipant, setAddingParticipant] = useState(false);
   
   const [childrenPercentage, setChildrenPercentage] = useState(50);
   
@@ -751,31 +752,51 @@ const Leisure: React.FC = () => {
     }
   };
 
-  const addParticipant = async () => {
+  const addParticipant = async (sendInviteAfterAdd = false) => {
     if (!selectedEvent || !participantName) return;
 
+    setAddingParticipant(true);
+
     try {
-      const { error } = await supabase
+      const { data: insertedParticipant, error } = await supabase
         .from('event_participants')
         .insert({
           event_id: selectedEvent.id,
           name: participantName,
           is_child: participantIsChild,
           email: participantEmail || null,
-        });
+        })
+        .select('*')
+        .single();
 
       if (error) throw error;
 
-      toast.success('Participante adicionado!');
+      toast.success(
+        sendInviteAfterAdd && participantEmail
+          ? 'Participante adicionado. Enviando convite...'
+          : 'Participante adicionado!'
+      );
       setShowParticipantForm(false);
       setParticipantName('');
       setParticipantEmail('');
       setParticipantIsChild(false);
       const { formattedItems, formattedParticipants } = await refreshEventDetails(selectedEvent.id);
-      await syncEventTotals(selectedEvent.id, formattedItems, formattedParticipants);
+      const refreshedDetails = await syncEventTotals(selectedEvent.id, formattedItems, formattedParticipants);
+
+      if (sendInviteAfterAdd && participantEmail && insertedParticipant) {
+        const participantForInvite =
+          refreshedDetails.formattedParticipants.find(
+            (participant) => participant.id === insertedParticipant.id
+          ) ||
+          formatEventParticipants([insertedParticipant])[0];
+
+        await sendParticipantInvite(participantForInvite);
+      }
     } catch (error) {
       console.error('Failed to add participant:', error);
       toast.error('Erro ao adicionar participante');
+    } finally {
+      setAddingParticipant(false);
     }
   };
 
@@ -2526,7 +2547,7 @@ const Leisure: React.FC = () => {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 bg-black/50 p-3 backdrop-blur-sm sm:flex sm:items-center sm:justify-center sm:p-6"
+            className="fixed inset-0 z-[90] bg-black/50 p-3 backdrop-blur-sm sm:flex sm:items-center sm:justify-center sm:p-6"
             onClick={() => setShowParticipantForm(false)}
           >
             <motion.div
@@ -2535,9 +2556,9 @@ const Leisure: React.FC = () => {
               exit={{ y: 24, opacity: 0 }}
               transition={{ type: 'spring', damping: 28, stiffness: 260 }}
               onClick={(e) => e.stopPropagation()}
-              className="absolute bottom-0 left-0 right-0 rounded-t-2xl border border-border bg-card p-4 shadow-2xl sm:static sm:max-w-lg sm:rounded-2xl"
+              className="absolute bottom-0 left-0 right-0 flex max-h-[calc(100dvh-1.5rem)] flex-col rounded-t-2xl border border-border bg-card shadow-2xl sm:static sm:max-h-[min(720px,calc(100dvh-3rem))] sm:max-w-lg sm:rounded-2xl"
             >
-              <div className="mb-4 flex items-center justify-between">
+              <div className="flex items-center justify-between px-4 pb-3 pt-4">
                 <div>
                   <p className="text-xs font-medium uppercase tracking-[0.16em] text-muted-foreground">Participante</p>
                   <h2 className="text-base font-semibold">Adicionar participante</h2>
@@ -2550,7 +2571,7 @@ const Leisure: React.FC = () => {
                 </button>
               </div>
               
-              <div className="space-y-3">
+              <div className="flex-1 space-y-3 overflow-y-auto px-4 pb-4">
                 <div>
                   <label className="mb-1.5 block text-xs font-medium text-muted-foreground">
                     Nome
@@ -2600,13 +2621,23 @@ const Leisure: React.FC = () => {
                     Criança
                   </button>
                 </div>
+              </div>
 
+              <div className="space-y-2 border-t border-border bg-card px-4 pb-[calc(1rem+env(safe-area-inset-bottom,0px))] pt-3">
                 <button
-                  onClick={addParticipant}
-                  disabled={!participantName}
-                  className="h-11 w-full rounded-xl bg-primary text-sm font-semibold text-primary-foreground disabled:opacity-50"
+                  onClick={() => addParticipant(Boolean(participantEmail.trim()))}
+                  disabled={!participantName || !participantEmail.trim() || addingParticipant}
+                  className="flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-primary text-sm font-semibold text-primary-foreground disabled:opacity-50"
                 >
-                  Adicionar participante
+                  <Send className="h-4 w-4" />
+                  Adicionar e enviar convite
+                </button>
+                <button
+                  onClick={() => addParticipant(false)}
+                  disabled={!participantName || addingParticipant}
+                  className="h-11 w-full rounded-xl border border-border bg-muted text-sm font-semibold text-foreground disabled:opacity-50"
+                >
+                  {addingParticipant ? 'Adicionando...' : 'Adicionar sem enviar'}
                 </button>
               </div>
             </motion.div>
