@@ -34,7 +34,7 @@ import { useWorkspace } from '@/hooks/useWorkspace';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { openGoogleCalendar } from '@/utils/googleCalendar';
+import { generateICSFile } from '@/utils/calendarFile';
 import { EventDeleteModal } from '@/components/EventDeleteModal';
 
 interface Event {
@@ -621,15 +621,13 @@ const Leisure: React.FC = () => {
         });
       }
 
-      // Add to Google Calendar if requested (using the toggle state, not the parameter)
+      // Generate a native calendar file when requested.
       if (addToCalendar && eventDate) {
-        openGoogleCalendar({
-          title: finalName,
+        generateICSFile({
+          summary: finalName,
           date: eventDate,
           time: eventTime,
-          amount: calculatedTotal,
-          type: 'expense',
-          notes: transactionDescription,
+          description: `${transactionDescription}\nValor previsto: ${formatCurrency(calculatedTotal)}`,
         });
       }
 
@@ -853,6 +851,7 @@ const Leisure: React.FC = () => {
           participantName: participant.name,
           eventName: selectedEvent.name,
           eventDate: selectedEvent.eventDate,
+          eventTime,
           hostName,
           hostEmail,
           amountDue: participant.amountDue,
@@ -1269,9 +1268,9 @@ const Leisure: React.FC = () => {
 
                       <label className="flex cursor-pointer items-center justify-between gap-3 rounded-xl bg-muted/50 p-3">
                         <div>
-                          <p className="text-sm font-medium">Adicionar ao Google Agenda</p>
+                          <p className="text-sm font-medium">Salvar na agenda do celular</p>
                           <p className="text-xs text-muted-foreground">
-                            Abre a agenda quando o evento for salvo.
+                            Gera um convite compativel com a agenda instalada.
                           </p>
                         </div>
                         <span
@@ -1899,20 +1898,17 @@ const Leisure: React.FC = () => {
                             )}
                           </div>
                           <div className="min-w-0">
-                            <div className="flex items-center gap-2">
-                              <p className="truncate text-sm font-medium">{participant.name}</p>
-                              {participant.email && (
-                                <button
-                                  type="button"
-                                  onClick={() => sendParticipantInvite(participant)}
-                                  disabled={sendingInviteId === participant.id}
-                                  className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary disabled:cursor-not-allowed disabled:opacity-50"
-                                  title="Enviar convite"
-                                >
-                                  <Send className="h-3.5 w-3.5" />
-                                </button>
-                              )}
-                            </div>
+                            <p className="truncate text-sm font-medium">{participant.name}</p>
+                            <button
+                              type="button"
+                              onClick={() => sendParticipantInvite(participant)}
+                              disabled={!participant.email || sendingInviteId === participant.id}
+                              className="mt-2 inline-flex h-8 items-center gap-1.5 rounded-full bg-primary/10 px-3 text-xs font-semibold text-primary disabled:cursor-not-allowed disabled:opacity-50"
+                              title={participant.email ? 'Enviar convite' : 'Adicione um email para enviar o convite'}
+                            >
+                              <Send className="h-3.5 w-3.5" />
+                              Enviar convite
+                            </button>
                             <p className="truncate text-xs text-muted-foreground">
                               {participant.isChild ? 'Criança' : 'Adulto'}
                               {participant.email && ` • ${participant.email}`}
@@ -2265,7 +2261,7 @@ const Leisure: React.FC = () => {
                               className="h-10 rounded-xl border border-border bg-background px-3 text-sm"
                             />
                             <label className="flex items-center justify-between rounded-xl border border-border bg-background px-3 py-2 sm:col-span-2">
-                              <span className="text-sm">Adicionar ao Google Agenda</span>
+                              <span className="text-sm">Salvar na agenda do celular</span>
                               <input
                                 type="checkbox"
                                 checked={addToCalendar}
@@ -2655,7 +2651,7 @@ const Leisure: React.FC = () => {
                 {addToCalendar && (
                   <p className="text-xs text-primary mt-2 flex items-center justify-center gap-1">
                     <Calendar className="w-3 h-3" />
-                    Será adicionado ao Google Agenda
+                    Sera salvo na agenda do celular
                   </p>
                 )}
               </div>

@@ -15,6 +15,7 @@ interface EventInviteRequest {
   participantName?: string;
   eventName?: string;
   eventDate?: string | null;
+  eventTime?: string | null;
   hostName?: string;
   hostEmail?: string;
   amountDue?: number;
@@ -81,21 +82,21 @@ const formatEventDate = (date?: string | null) => {
   }
 };
 
-const buildGoogleCalendarUrl = (eventName: string, eventDate?: string | null) => {
+const buildCalendarEventUrl = (
+  appUrl: string,
+  eventName: string,
+  eventDate?: string | null,
+  eventTime?: string | null,
+) => {
   const params = new URLSearchParams({
-    action: "TEMPLATE",
-    text: eventName,
-    details: "Convite enviado pelo Deu Bom - Financas Sem Erro.",
-    sf: "true",
-    output: "xml",
+    title: eventName,
+    description: "Convite enviado pelo Deu Bom - Financas Sem Erro.",
   });
 
-  if (eventDate) {
-    const dateToken = eventDate.replaceAll("-", "");
-    params.set("dates", `${dateToken}/${dateToken}`);
-  }
+  if (eventDate) params.set("date", eventDate);
+  if (eventTime) params.set("time", eventTime);
 
-  return `https://calendar.google.com/calendar/render?${params.toString()}`;
+  return `${appUrl}/calendar-event?${params.toString()}`;
 };
 
 const handler = async (req: Request): Promise<Response> => {
@@ -109,6 +110,7 @@ const handler = async (req: Request): Promise<Response> => {
       participantName,
       eventName,
       eventDate,
+      eventTime,
       hostName,
       hostEmail,
       amountDue,
@@ -134,8 +136,9 @@ const handler = async (req: Request): Promise<Response> => {
     const safeHost = escapeHtml(hostName);
     const safeHostEmail = hostEmail ? escapeHtml(hostEmail) : "";
     const headerHost = sanitizeHeaderText(hostName);
-    const eventUrl = `${resolveAppUrl(appUrl)}/festometro`;
-    const calendarUrl = buildGoogleCalendarUrl(eventName, eventDate);
+    const resolvedAppUrl = resolveAppUrl(appUrl);
+    const eventUrl = `${resolvedAppUrl}/festometro`;
+    const calendarUrl = buildCalendarEventUrl(resolvedAppUrl, eventName, eventDate, eventTime);
 
     const emailResponse = await resend.emails.send({
       from: `${headerHost} via Deu Bom <noreply@labeltservicosdigitais.com.br>`,
@@ -166,7 +169,7 @@ const handler = async (req: Request): Promise<Response> => {
                 <p style="color: #059669; font-size: 18px; font-weight: 700; margin: 0;">${formatCurrency(amountDue)}</p>
               </div>
               <a href="${calendarUrl}" style="display: block; padding: 14px 16px; background: #10b981; color: #ffffff; text-align: center; text-decoration: none; border-radius: 12px; font-weight: 700; margin-bottom: 10px;">
-                Adicionar ao Google Agenda
+                Salvar na agenda
               </a>
               <a href="${eventUrl}" style="display: block; padding: 14px 16px; background: #18181b; color: #ffffff; text-align: center; text-decoration: none; border-radius: 12px; font-weight: 700;">
                 Abrir Deu Bom

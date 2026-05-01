@@ -62,15 +62,28 @@ interface SimpleCalendarEvent {
   summary: string;
   description: string;
   date: string;
+  time?: string;
 }
 
 /**
  * Generates and downloads an .ics file for a simple event.
  */
 export function generateICSFile(event: SimpleCalendarEvent): void {
-  const eventDate = new Date(event.date);
-  const startDate = format(eventDate, 'yyyyMMdd');
-  const endDate = format(addDays(eventDate, 1), 'yyyyMMdd');
+  const eventDate = new Date(`${event.date}T12:00:00`);
+  let startDate: string;
+  let endDate: string;
+
+  if (event.time) {
+    const [hours, minutes] = event.time.split(':').map(Number);
+    eventDate.setHours(hours || 0, minutes || 0, 0, 0);
+    const endDateTime = new Date(eventDate);
+    endDateTime.setHours(endDateTime.getHours() + 2);
+    startDate = format(eventDate, "yyyyMMdd'T'HHmmss");
+    endDate = format(endDateTime, "yyyyMMdd'T'HHmmss");
+  } else {
+    startDate = format(eventDate, 'yyyyMMdd');
+    endDate = format(addDays(eventDate, 1), 'yyyyMMdd');
+  }
   
   const uid = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}@financas-app`;
   const now = format(new Date(), "yyyyMMdd'T'HHmmss'Z'");
@@ -84,8 +97,8 @@ export function generateICSFile(event: SimpleCalendarEvent): void {
     'BEGIN:VEVENT',
     `UID:${uid}`,
     `DTSTAMP:${now}`,
-    `DTSTART;VALUE=DATE:${startDate}`,
-    `DTEND;VALUE=DATE:${endDate}`,
+    event.time ? `DTSTART:${startDate}` : `DTSTART;VALUE=DATE:${startDate}`,
+    event.time ? `DTEND:${endDate}` : `DTEND;VALUE=DATE:${endDate}`,
     `SUMMARY:${event.summary}`,
     `DESCRIPTION:${event.description.replace(/\n/g, '\\n')}`,
     'STATUS:CONFIRMED',

@@ -8,6 +8,7 @@ import { WorkspaceProvider } from "@/hooks/useWorkspace";
 import { ThemeProvider } from "@/hooks/useTheme";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { PWAInstallHint } from "@/components/PWAInstallHint";
+import { PWAUpdateNotice } from "@/components/PWAUpdateNotice";
 import Dashboard from "./pages/Dashboard";
 import Transactions from "./pages/Transactions";
 import Budgets from "./pages/Budgets";
@@ -18,6 +19,8 @@ import ShoppingList from "./pages/ShoppingList";
 import Auth from "./pages/Auth";
 import AcceptInvite from "./pages/AcceptInvite";
 import ResetPassword from "./pages/ResetPassword";
+import AuthConfirm from "./pages/AuthConfirm";
+import CalendarEvent from "./pages/CalendarEvent";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -31,10 +34,13 @@ const App = () => (
             <Toaster />
             <Sonner position="top-center" />
             <PWAInstallHint />
+            <PWAUpdateNotice />
             <BrowserRouter>
               <Routes>
               <Route path="/auth" element={<Auth />} />
+              <Route path="/auth/confirm" element={<AuthConfirm />} />
               <Route path="/accept-invite" element={<AcceptInvite />} />
+              <Route path="/calendar-event" element={<CalendarEvent />} />
               <Route path="/reset-password" element={<ResetPassword />} />
               <Route
                 path="/"
