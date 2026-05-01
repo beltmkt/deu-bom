@@ -35,6 +35,7 @@ import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { generateICSFile } from '@/utils/calendarFile';
+import { getPublicAppUrl } from '@/utils/appUrl';
 import { EventDeleteModal } from '@/components/EventDeleteModal';
 
 interface Event {
@@ -876,7 +877,7 @@ const Leisure: React.FC = () => {
           hostName,
           hostEmail,
           amountDue: participant.amountDue,
-          appUrl: window.location.origin,
+          appUrl: getPublicAppUrl(),
         },
       });
 
@@ -885,7 +886,9 @@ const Leisure: React.FC = () => {
       toast.success('Convite enviado!');
     } catch (error) {
       console.error('Failed to send event invite:', error);
-      toast.error('Erro ao enviar convite');
+      toast.error('Erro ao enviar convite', {
+        description: error instanceof Error ? error.message : 'Tente novamente em instantes.',
+      });
     } finally {
       setSendingInviteId(null);
     }

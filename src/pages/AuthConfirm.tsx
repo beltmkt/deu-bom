@@ -11,6 +11,8 @@ const AuthConfirm = () => {
     const confirmEmail = async () => {
       const params = new URLSearchParams(window.location.search);
       const code = params.get('code');
+      const next = params.get('next');
+      const nextPath = next?.startsWith('/') ? next : '/';
 
       if (code) {
         const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
@@ -20,7 +22,14 @@ const AuthConfirm = () => {
         }
       }
 
-      navigate('/', { replace: true });
+      const { data } = await supabase.auth.getSession();
+
+      if (!data.session) {
+        setError('Confirmacao recebida, mas a sessao nao foi iniciada. Entre com seu email e senha.');
+        return;
+      }
+
+      navigate(nextPath, { replace: true });
     };
 
     confirmEmail();

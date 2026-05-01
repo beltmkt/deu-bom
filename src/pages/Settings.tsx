@@ -75,6 +75,9 @@ const Settings: React.FC = () => {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [deleteConfirmation, setDeleteConfirmation] = useState('');
   const [isDeletingData, setIsDeletingData] = useState(false);
+  const [notificationPermission, setNotificationPermission] = useState<NotificationPermission | 'unsupported'>(
+    typeof window !== 'undefined' && 'Notification' in window ? Notification.permission : 'unsupported'
+  );
 
   const canManageWorkspace = userRole === 'owner';
   const canDeleteScopeData = !currentWorkspace || userRole === 'owner';
@@ -85,6 +88,23 @@ const Settings: React.FC = () => {
       initialize();
     }
   }, [initialize, initialized]);
+
+  const requestNotificationPermission = async () => {
+    if (!('Notification' in window)) {
+      setNotificationPermission('unsupported');
+      toast.error('Este navegador nao suporta notificacoes.');
+      return;
+    }
+
+    const permission = await Notification.requestPermission();
+    setNotificationPermission(permission);
+
+    if (permission === 'granted') {
+      toast.success('Notificacoes ativadas neste dispositivo.');
+    } else {
+      toast.error('Permissao de notificacao nao concedida.');
+    }
+  };
 
   const loadProfile = useCallback(async () => {
     if (!user) return;
@@ -644,6 +664,19 @@ const Settings: React.FC = () => {
                     />
                   </button>
                 </div>
+
+                {settings.notificationsEnabled && notificationPermission !== 'granted' ? (
+                  <button
+                    type="button"
+                    onClick={requestNotificationPermission}
+                    className="mt-4 rounded-xl border border-primary/30 bg-primary/10 px-4 py-3 text-sm font-semibold text-primary disabled:cursor-not-allowed disabled:opacity-60"
+                    disabled={notificationPermission === 'unsupported'}
+                  >
+                    {notificationPermission === 'unsupported'
+                      ? 'Notificacoes indisponiveis neste navegador'
+                      : 'Permitir notificacoes neste aparelho'}
+                  </button>
+                ) : null}
               </div>
             </div>
           </SurfaceCard>

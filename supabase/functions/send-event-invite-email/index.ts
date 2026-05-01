@@ -142,9 +142,9 @@ const handler = async (req: Request): Promise<Response> => {
 
     const emailResponse = await resend.emails.send({
       from: `${headerHost} via Deu Bom <noreply@labeltservicosdigitais.com.br>`,
-      reply_to: hostEmail,
+      ...(hostEmail ? { reply_to: hostEmail } : {}),
       to: [email],
-      subject: `${safeHost} te convidou para ${eventName}`,
+      subject: `${headerHost} te convidou para ${sanitizeHeaderText(eventName)}`,
       html: `
         <!DOCTYPE html>
         <html>

@@ -9,6 +9,7 @@ import { ThemeProvider } from "@/hooks/useTheme";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { PWAInstallHint } from "@/components/PWAInstallHint";
 import { PWAUpdateNotice } from "@/components/PWAUpdateNotice";
+import { PendingNotifications } from "@/components/PendingNotifications";
 import Dashboard from "./pages/Dashboard";
 import Transactions from "./pages/Transactions";
 import Budgets from "./pages/Budgets";
@@ -35,6 +36,7 @@ const App = () => (
             <Sonner position="top-center" />
             <PWAInstallHint />
             <PWAUpdateNotice />
+            <PendingNotifications />
             <BrowserRouter>
               <Routes>
               <Route path="/auth" element={<Auth />} />

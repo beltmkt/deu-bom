@@ -1,6 +1,7 @@
 import { useState, useEffect, createContext, useContext, ReactNode, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
+import { getPublicAppUrl } from '@/utils/appUrl';
 
 interface Workspace {
   id: string;
@@ -26,11 +27,7 @@ interface WorkspaceInvitation {
 }
 
 const getAppUrl = () => {
-  if (typeof window !== 'undefined' && window.location.origin) {
-    return window.location.origin;
-  }
-
-  return 'https://deu-bom-financas-sem-erro.vercel.app';
+  return getPublicAppUrl();
 };
 
 interface WorkspaceContextType {

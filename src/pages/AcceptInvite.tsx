@@ -13,6 +13,7 @@ import {
   X,
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import { buildAppUrl } from '@/utils/appUrl';
 import { useAuth } from '@/hooks/useAuth';
 import { getErrorMessage } from '@/utils/errors';
 import { toast } from 'sonner';
@@ -137,11 +138,12 @@ const AcceptInvite: React.FC = () => {
         const { error: signInError } = await signIn(email, password);
         if (signInError) throw signInError;
       } else {
+        const nextPath = `/accept-invite?token=${encodeURIComponent(token || '')}`;
         const { error: signUpError } = await supabase.auth.signUp({
           email,
           password,
           options: {
-            emailRedirectTo: window.location.href,
+            emailRedirectTo: buildAppUrl(`/auth/confirm?next=${encodeURIComponent(nextPath)}`),
             data: {
               display_name: displayName || email.split('@')[0],
               workspace_name: 'Meu Espaco',
