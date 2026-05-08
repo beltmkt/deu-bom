@@ -17,6 +17,7 @@ import Analytics from "./pages/Analytics";
 import Settings from "./pages/Settings";
 import Leisure from "./pages/Leisure";
 import ShoppingList from "./pages/ShoppingList";
+import MailAutomation from "./pages/MailAutomation";
 import Auth from "./pages/Auth";
 import AcceptInvite from "./pages/AcceptInvite";
 import ResetPassword from "./pages/ResetPassword";
@@ -89,6 +90,14 @@ const App = () => (
                 element={
                   <ProtectedRoute>
                     <ShoppingList />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/mail-automation"
+                element={
+                  <ProtectedRoute>
+                    <MailAutomation />
                   </ProtectedRoute>
                 }
               />

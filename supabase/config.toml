@@ -5,3 +5,6 @@ verify_jwt = false
 
 [functions.send-event-invite-email]
 verify_jwt = true
+
+[functions.supramail-provision]
+verify_jwt = true

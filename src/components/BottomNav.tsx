@@ -6,6 +6,7 @@ import {
   ChevronRight,
   Home,
   KanbanSquare,
+  MailPlus,
   PartyPopper,
   PiggyBank,
   Settings,
@@ -19,6 +20,7 @@ const navItems = [
   { to: '/', icon: Home, label: 'Inicio' },
   { to: '/transactions', icon: KanbanSquare, label: 'Financas' },
   { to: '/shopping-list', icon: ShoppingCart, label: 'Lista' },
+  { to: '/mail-automation', icon: MailPlus, label: 'E-mails' },
   { to: '/festometro', icon: PartyPopper, label: 'Festometro' },
   { to: '/budgets', icon: PiggyBank, label: 'Metas' },
   { to: '/analytics', icon: BarChart3, label: 'Dashboard' },
@@ -26,7 +28,7 @@ const navItems = [
 ];
 
 const mobileNavItems = navItems.filter(
-  (item) => item.to !== '/budgets' && item.to !== '/analytics'
+  (item) => item.to !== '/budgets' && item.to !== '/analytics' && item.to !== '/festometro'
 );
 
 export const BottomNav: React.FC = () => {
