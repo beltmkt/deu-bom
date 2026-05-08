@@ -27,12 +27,32 @@ const createId = () =>
     ? crypto.randomUUID()
     : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
 
+const parseOptionalPrice = (value: string) => {
+  if (!value.trim()) return null;
+
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? Math.max(0, parsed) : null;
+};
+
+const getItemPrice = (item: ShoppingListItem) => item.estimatedPrice ?? 0;
+
+const getPriceLabel = (price: ShoppingListItem['estimatedPrice']) =>
+  price === null ? 'Preco pendente' : `${formatCurrency(price)} cada`;
+
 const loadItems = (): ShoppingListItem[] => {
   if (typeof window === 'undefined') return [];
 
   try {
     const stored = window.localStorage.getItem(STORAGE_KEY);
-    return stored ? (JSON.parse(stored) as ShoppingListItem[]) : [];
+    const parsed = stored ? (JSON.parse(stored) as ShoppingListItem[]) : [];
+
+    return parsed.map((item) => ({
+      ...item,
+      estimatedPrice:
+        typeof item.estimatedPrice === 'number' && Number.isFinite(item.estimatedPrice)
+          ? item.estimatedPrice
+          : null,
+    }));
   } catch {
     return [];
   }
@@ -44,7 +64,7 @@ const ShoppingList: React.FC = () => {
   const [name, setName] = useState('');
   const [quantity, setQuantity] = useState(1);
   const [unit, setUnit] = useState('un');
-  const [estimatedPrice, setEstimatedPrice] = useState(0);
+  const [estimatedPriceInput, setEstimatedPriceInput] = useState('');
   const [voiceDraft, setVoiceDraft] = useState<ShoppingVoiceDraft | null>(null);
   const [voicePrompt, setVoicePrompt] = useState('');
 
@@ -61,11 +81,11 @@ const ShoppingList: React.FC = () => {
   const totals = useMemo(() => {
     const pending = items.filter((item) => !item.checked);
     const total = items.reduce(
-      (sum, item) => sum + item.quantity * item.estimatedPrice,
+      (sum, item) => sum + item.quantity * getItemPrice(item),
       0
     );
     const pendingTotal = pending.reduce(
-      (sum, item) => sum + item.quantity * item.estimatedPrice,
+      (sum, item) => sum + item.quantity * getItemPrice(item),
       0
     );
 
@@ -99,14 +119,14 @@ const ShoppingList: React.FC = () => {
       name: name.trim(),
       quantity: Math.max(1, quantity),
       unit: unit.trim() || 'un',
-      estimatedPrice: Math.max(0, estimatedPrice),
+      estimatedPrice: parseOptionalPrice(estimatedPriceInput),
       checked: false,
     });
 
     setName('');
     setQuantity(1);
     setUnit('un');
-    setEstimatedPrice(0);
+    setEstimatedPriceInput('');
     toast.success('Item adicionado na lista.');
   };
 
@@ -124,7 +144,7 @@ const ShoppingList: React.FC = () => {
       name: command.name,
       quantity: command.quantity,
       unit: command.unit,
-      estimatedPrice: command.estimatedPrice,
+      estimatedPrice: command.estimatedPrice > 0 ? command.estimatedPrice : null,
     });
   };
 
@@ -140,7 +160,7 @@ const ShoppingList: React.FC = () => {
       name: voiceDraft.name.trim(),
       quantity: Math.max(1, voiceDraft.quantity),
       unit: voiceDraft.unit.trim() || 'un',
-      estimatedPrice: Math.max(0, voiceDraft.estimatedPrice),
+      estimatedPrice: voiceDraft.estimatedPrice === null ? null : Math.max(0, voiceDraft.estimatedPrice),
       checked: false,
     });
 
@@ -165,6 +185,18 @@ const ShoppingList: React.FC = () => {
   const removeItem = (id: string) => {
     setItems((current) => current.filter((item) => item.id !== id));
     toast.success('Item removido.');
+  };
+
+  const updateItemPrice = (id: string, value: string) => {
+    const estimatedPrice = parseOptionalPrice(value);
+
+    setItems((current) =>
+      current.map((item) =>
+        item.id === id
+          ? { ...item, estimatedPrice, updatedAt: new Date().toISOString() }
+          : item
+      )
+    );
   };
 
   if (loading) {
@@ -286,11 +318,12 @@ const ShoppingList: React.FC = () => {
                         type="number"
                         min="0"
                         step="0.01"
-                        value={voiceDraft.estimatedPrice}
+                        value={voiceDraft.estimatedPrice ?? ''}
+                        placeholder="Opcional"
                         onChange={(event) =>
                           setVoiceDraft((current) =>
                             current
-                              ? { ...current, estimatedPrice: Number(event.target.value) }
+                              ? { ...current, estimatedPrice: parseOptionalPrice(event.target.value) }
                               : current
                           )
                         }
@@ -300,7 +333,10 @@ const ShoppingList: React.FC = () => {
                   </div>
 
                   <div className="rounded-xl bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
-                    Total: {formatCurrency(voiceDraft.quantity * voiceDraft.estimatedPrice)}
+                    Total:{' '}
+                    {voiceDraft.estimatedPrice === null
+                      ? 'preco pendente'
+                      : formatCurrency(voiceDraft.quantity * voiceDraft.estimatedPrice)}
                   </div>
 
                   <button
@@ -364,8 +400,9 @@ const ShoppingList: React.FC = () => {
               type="number"
               min="0"
               step="0.01"
-              value={estimatedPrice}
-              onChange={(event) => setEstimatedPrice(Number(event.target.value))}
+              value={estimatedPriceInput}
+              onChange={(event) => setEstimatedPriceInput(event.target.value)}
+              placeholder="Preco opcional"
               className="h-11 rounded-xl border border-border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
               aria-label="Valor estimado"
             />
@@ -417,12 +454,24 @@ const ShoppingList: React.FC = () => {
                     {item.name}
                   </p>
                   <p className="mt-1 text-xs text-muted-foreground">
-                    {item.quantity} {item.unit} | {formatCurrency(item.estimatedPrice)} cada
+                    {item.quantity} {item.unit} | {getPriceLabel(item.estimatedPrice)}
                   </p>
                 </div>
-                <div className="text-right">
+                <div className="w-28 shrink-0 text-right">
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={item.estimatedPrice ?? ''}
+                    onChange={(event) => updateItemPrice(item.id, event.target.value)}
+                    placeholder="Preco"
+                    className="mb-1 h-9 w-full rounded-xl border border-border bg-background px-2 text-right text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                    aria-label={`Atualizar preco de ${item.name}`}
+                  />
                   <p className="text-sm font-semibold">
-                    {formatCurrency(item.quantity * item.estimatedPrice)}
+                    {item.estimatedPrice === null
+                      ? '--'
+                      : formatCurrency(item.quantity * item.estimatedPrice)}
                   </p>
                   <button
                     type="button"

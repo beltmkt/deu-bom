@@ -3,7 +3,7 @@ export interface ShoppingListItem {
   name: string;
   quantity: number;
   unit: string;
-  estimatedPrice: number;
+  estimatedPrice: number | null;
   checked: boolean;
   createdAt: string;
   updatedAt: string;
